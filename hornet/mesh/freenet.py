@@ -41,7 +41,7 @@ def check_room(room: str) -> str:
 
 def check_node(url: str) -> str:
     url = (url or "").strip().rstrip("/")
-    if not _NODE_RE.match(url):
+    if not _NODE_RE.match(url) or not 1 <= int(url.rsplit(":", 1)[1]) <= 65535:
         raise ValueError("Freenet-Knoten: Adresse wie ws://127.0.0.1:7509 erwartet")
     return url
 
