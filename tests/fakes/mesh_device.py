@@ -19,7 +19,7 @@ class FakeMeshDevice:
     def __init__(self, name: str = "TESTSTAND-Funk", channels: dict[int, tuple[str, bytes]] | None = None,
                  fw_ver: int = 3):
         self.name = name
-        self.channels = dict(channels or {1: ("hornet3000", bytes(range(16)))})
+        self.channels = dict(channels if channels is not None else {1: ("hornet3000", bytes(range(16)))})
         self.sent: list[tuple[int, str]] = []          # (Kanal, Text), was die App gesendet hat
         self.set_channel_calls: list[tuple[int, str, bytes]] = []
         self.commands: list[int] = []
@@ -62,6 +62,7 @@ class FakeMeshDevice:
 
     def close(self) -> None:
         self._stop.set()
+        self._t.join(timeout=2)   # erst den Thread beenden, dann die Deskriptoren schließen (Nummern werden wiederverwendet)
         for fd in (self._master, self._slave):
             try:
                 os.close(fd)
@@ -139,7 +140,7 @@ class FakeMeshDevice:
                 return
             idx, text = p[2], p[7:].decode("utf-8", "replace")
             self.sent.append((idx, text))
-            self._write(bytes([6, 1]) + b"\1\2\3\4" + (5000).to_bytes(4, "little"))
+            self._write(bytes([0]))                    # Kanaltext wird mit OK quittiert (Bibliothek erwartet OK/ERROR)
         elif cmd == 10:                                # SYNC_NEXT_MESSAGE
             with self._lock:
                 frame = self.pending.pop(0) if self.pending else None

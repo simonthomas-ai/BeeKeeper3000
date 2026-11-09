@@ -112,8 +112,17 @@ class FrameParser:
     def __init__(self) -> None:
         self.buf = bytearray()
         self.resyncs = 0
+        self._lock = threading.Lock()
+
+    def reset(self) -> None:
+        with self._lock:
+            self.buf.clear()
 
     def feed(self, data: bytes) -> list[bytes]:
+        with self._lock:
+            return self._feed(data)
+
+    def _feed(self, data: bytes) -> list[bytes]:
         self.buf += data
         out: list[bytes] = []
         while True:
@@ -245,6 +254,10 @@ class MeshLink:
             self._ser = self._opener(self.port, self.baud)
         except Exception as e:
             raise LinkError(f"Funkgerät nicht erreichbar ({self.port}): {e}") from e
+        try:
+            self._ser.reset_input_buffer()    # Reste eines halb gesendeten Rahmens vom letzten Mal wegwerfen
+        except Exception:
+            pass
         self._closing.clear()
         self.dead.clear()
         self._reader = threading.Thread(target=self._read_loop, daemon=True, name="mesh-link-rx")
@@ -294,8 +307,21 @@ class MeshLink:
             self._resp.put_nowait(f)
 
     # -- Befehle ---------------------------------------------------------------------------
-    def request(self, payload: bytes, expect: tuple[int, ...], timeout: float | None = None) -> bytes:
-        """Sendet einen Befehl und wartet auf die erste passende Antwort (oder ERROR)."""
+    def request(self, payload: bytes, expect: tuple[int, ...], timeout: float | None = None,
+                retry: bool = False) -> bytes:
+        """Sendet einen Befehl und wartet auf die erste passende Antwort (oder ERROR).
+
+        retry=True nur für Befehle, die man gefahrlos wiederholen darf: Ein Schnipsel Müll vor dem ersten Rahmen kann
+        eine Antwort verschlucken – dann wird der Empfangspuffer geleert und der Befehl einmal wiederholt."""
+        try:
+            return self._request_once(payload, expect, timeout)
+        except LinkError as e:
+            if not retry or "antwortet nicht" not in str(e) or self.dead.is_set():
+                raise
+            self._parser.reset()
+            return self._request_once(payload, expect, timeout)
+
+    def _request_once(self, payload: bytes, expect: tuple[int, ...], timeout: float | None) -> bytes:
         if self._ser is None or self.dead.is_set():
             raise LinkError("Funkgerät nicht verbunden")
         deadline = time.monotonic() + (timeout or self.timeout)
@@ -325,15 +351,15 @@ class MeshLink:
                     return r
 
     def app_start(self) -> SelfInfo:
-        r = self.request(bytes([CMD_APP_START, APP_VERSION]) + b" " * 6 + APP_NAME, (R_SELF_INFO,))
+        r = self.request(bytes([CMD_APP_START, APP_VERSION]) + b" " * 6 + APP_NAME, (R_SELF_INFO,), retry=True)
         self.info = parse_self_info(r)
         return self.info
 
     def device_query(self) -> bytes:
-        return self.request(bytes([CMD_DEVICE_QUERY, APP_VERSION]), (R_DEVICE_INFO,))
+        return self.request(bytes([CMD_DEVICE_QUERY, APP_VERSION]), (R_DEVICE_INFO,), retry=True)
 
     def get_channel(self, idx: int) -> tuple[int, str, bytes]:
-        return parse_channel_info(self.request(bytes([CMD_GET_CHANNEL, idx]), (R_CHANNEL_INFO,)))
+        return parse_channel_info(self.request(bytes([CMD_GET_CHANNEL, idx]), (R_CHANNEL_INFO,), retry=True))
 
     def set_channel(self, idx: int, name: str, secret: bytes) -> None:
         if len(secret) != 16:
@@ -342,7 +368,7 @@ class MeshLink:
         self.request(bytes([CMD_SET_CHANNEL, idx]) + nb + secret, (R_OK,))
 
     def set_time(self, ts: int) -> None:
-        self.request(bytes([CMD_SET_TIME]) + int(ts).to_bytes(4, "little"), (R_OK,))
+        self.request(bytes([CMD_SET_TIME]) + int(ts).to_bytes(4, "little"), (R_OK,), retry=True)
 
     def send_channel_text(self, idx: int, text: str, ts: int | None = None) -> None:
         raw = text.encode("utf-8")
@@ -354,7 +380,7 @@ class MeshLink:
     def next_message(self) -> ChannelMsg | None:
         """Holt die nächste wartende Nachricht; None = keine mehr. Kontaktnachrichten (privat) werden verworfen."""
         r = self.request(bytes([CMD_SYNC_NEXT]), (R_NO_MORE, R_CHANNEL_MSG, R_CHANNEL_MSG_V3, R_CONTACT_MSG,
-                                                    R_CONTACT_MSG_V3))
+                                                    R_CONTACT_MSG_V3), retry=False)
         if r[0] == R_NO_MORE:
             self.waiting.clear()
             return None
@@ -376,7 +402,7 @@ def check_port(port: str) -> str:
     port = (port or "").strip()
     if port.lower() == "auto":
         return "auto"
-    if not _PORT_OK.match(port):
+    if not _PORT_OK.fullmatch(port):
         raise ValueError("Funkgerät: erlaubt sind /dev/ttyUSB0, /dev/ttyACM0, COM3, /dev/cu.usbserial-… oder „auto“")
     return port
 
