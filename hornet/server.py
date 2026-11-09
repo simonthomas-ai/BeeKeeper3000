@@ -334,7 +334,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
     async def setup_put(request: Request):
         body = await body_json(request)
         try:
-            vals = body.get("values") or {}
+            vals = body.get("values", {})
             if not isinstance(vals, dict):
                 raise ValueError("Ungültige Einstellungen")
             changed = await asyncio.to_thread(apply_updates, env_file, vals)

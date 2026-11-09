@@ -1,6 +1,6 @@
 /* Service Worker: Offline-Hülle, Web-Push-Alarme. Medien und API werden nie zwischengespeichert
    (außer der Alarmliste als Offline-Fallback). */
-const CACHE = 'hornet3000-v1';
+const CACHE = 'hornet3000-v2';
 const SHELL = [
   '/', '/assets/style.css', '/assets/app.js', '/assets/knowledge.html',
   '/assets/icons/icon-192.png', '/assets/icons/favicon.svg',
