@@ -16,7 +16,7 @@ function el(tag, attrs = {}, ...kids) {
 }
 
 const DISPLAY = { vvel: 'Asiatische Hornisse', vcra: 'Europäische Hornisse', amel: 'Honigbiene', vespsp: 'Wespe', vzon: 'Klasse vzon' };
-const TABS = ['live', 'alarme', 'einrichtung', 'wissen'];
+const TABS = ['live', 'alarme', 'funk', 'einrichtung', 'wissen'];
 const S = { status: null, sound: localStorage.getItem('sound') === '1', audio: null, wake: null, es: null,
             unseen: 0, barAlert: null, tab: 'live', authed: false, titleTimer: null, setup: null };
 
@@ -86,6 +86,7 @@ function show(tab) {
   setLive(tab === 'live' && !document.hidden);
   if (tab === 'alarme') { S.unseen = 0; renderBadge(); loadAlerts(); }
   if (tab === 'einrichtung') { loadSetup(); renderChannels(); refreshPushUi(); }
+  if (tab === 'funk') { S.funkUnseen = 0; renderFunkBadge(); loadFunk(); }
   if (tab === 'wissen') loadKnowledge();
   window.scrollTo(0, 0);
 }
@@ -265,6 +266,21 @@ function connectEvents() {
   es.addEventListener('alert', e => onAlert(JSON.parse(e.data)));
   for (const ev of ['clip', 'delivery']) es.addEventListener(ev, () => { loadAlerts(); });
   es.addEventListener('status', () => refreshStatus());
+  es.addEventListener('mesh', e => onMesh(JSON.parse(e.data)));
+  es.addEventListener('mesh_notice', e => { const d = JSON.parse(e.data); toast(`Funknetz: Station „${d.station}“ wird begrenzt (${d.reason}).`, 7000); if (S.tab === 'funk') loadFunk(); });
+}
+function renderFunkBadge() {
+  const b = $('#badge-funk');
+  b.hidden = !S.funkUnseen;
+  b.textContent = S.funkUnseen || 0;
+}
+function onMesh(m) {
+  if (m.typ === 'A' || m.typ === 'U') {
+    const where = m.km != null ? `, ca. ${Math.round(m.km)} km entfernt` : '';
+    toast(`📡 ${m.station} meldet Asiatische Hornisse (${m.count} Tier${m.count === 1 ? '' : 'e'}${where}) – ungeprüfte Funkmeldung`, 12000);
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  }
+  if (S.tab === 'funk') loadFunk(); else if (m.typ !== 'R') { S.funkUnseen = (S.funkUnseen || 0) + 1; renderFunkBadge(); }
 }
 function onAlert(a) {
   loadAlerts();
@@ -436,6 +452,53 @@ async function loadKnowledge() {
   } catch { /* Anmeldung/Verbindung */ }
 }
 
+
+/* ---------- Funknetz ---------- */
+const MESH_TYP = { A: 'Sichtung', U: 'Verstärkung', T: 'Test', R: 'Quittung' };
+const MESH_STATUS = { ok: 'angenommen', queued: 'wartet', sent: 'gesendet', failed: 'fehlgeschlagen', expired: 'abgelaufen', limited: 'begrenzt' };
+const WAY_NAME = { lora: 'LoRa (MeshCore)', freenet: 'Freenet (River)' };
+function meshRow(r) {
+  const dir = r.direction === 'in' ? '⬇ empfangen' : '⬆ gesendet';
+  const typ = MESH_TYP[r.typ] || (r.status === 'limited' ? 'Begrenzung' : '–');
+  const bits = [];
+  if (r.typ === 'A' || r.typ === 'U') bits.push(`${r.count} Tier${r.count === 1 ? '' : 'e'}`, `Sicherheit ${pct(r.conf)}`);
+  if (r.lat != null) bits.push(`Position ${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}`);
+  if (r.note) bits.push(r.note);
+  if (r.direction === 'out' && r.acks != null) bits.push(r.acks ? `${r.acks} Quittung${r.acks === 1 ? '' : 'en'}` : 'keine Quittung');
+  const via = (r.via || '').split(',').filter(Boolean).map(v => WAY_NAME[v] || v).join(' + ');
+  return el('li', { class: `mesh-item ${r.direction}${r.status === 'limited' || r.status === 'failed' ? ' bad' : ''}` },
+    el('div', { class: 'ttl' }, `${typ} · ${r.station || '–'}`),
+    el('div', { class: 'sub' }, `${dir} · ${fmtTime(r.ts)} · ${via} · ${MESH_STATUS[r.status] || r.status || ''}`),
+    bits.length ? el('div', { class: 'sub' }, bits.join(' · ')) : '');
+}
+async function loadFunk() {
+  let st;
+  try { st = await api('/api/mesh'); } catch { return; }
+  $('#funk-off').hidden = st.enabled;
+  $('#btn-funk-test').disabled = !st.enabled;
+  const ways = $('#funk-ways');
+  const probs = (st.problems || []).map(p => el('p', { class: 'warn' }, `⚠ ${p}`));
+  ways.replaceChildren(el('h3', {}, `Station „${st.station}“`),
+    ...st.transports.map(t => el('div', { class: 'row-way' },
+      el('span', { class: 'dot ' + (t.online ? 'ok' : 'bad') }), ' ', el('b', {}, t.label), ' – ',
+      t.online ? 'verbunden' : 'nicht verbunden', t.detail ? el('span', { class: 'muted small' }, ` (${t.detail})`) : '',
+      el('div', { class: 'muted small' }, `empfangen ${t.rx ?? 0} · gesendet ${t.tx ?? 0}` +
+        (t.last_rx ? ` · zuletzt empfangen ${ago(t.last_rx)}` : '') +
+        (t.duty_budget_s ? ` · Sendezeit ${t.duty_used_s} von ${t.duty_budget_s} s pro Stunde` : '')))),
+    ...probs,
+    el('p', { class: 'muted small' }, `Warteschlange: ${st.queue} · angenommen ${st.counters.accepted} · doppelt ${st.counters.dup} · begrenzt ${st.counters.limited} · verworfen ${st.counters.rejected}`));
+  const log = $('#funk-log');
+  log.replaceChildren(...st.messages.map(meshRow));
+  $('#funk-log-empty').hidden = st.messages.length > 0;
+  $('#funk-stations').replaceChildren(...st.stations.map(s => el('li', {}, `${s.station} – ${s.n} Meldung${s.n === 1 ? '' : 'en'}, zuletzt ${ago(s.last)}`)));
+}
+$('#btn-funk-test').addEventListener('click', async e => {
+  e.target.disabled = true;
+  try { await api('/api/mesh/test', { method: 'POST' }); $('#funk-test-note').textContent = 'Test in der Warteschlange – Quittungen anderer Stationen erscheinen im Protokoll.'; setTimeout(loadFunk, 1500); }
+  catch (x) { toast(x.message, 6000); }
+  e.target.disabled = false;
+});
+
 /* ---------- Einrichtung ---------- */
 const CLOUD = ['WHATSAPP_PROVIDER', 'cloud'], CMB = ['WHATSAPP_PROVIDER', 'callmebot'];
 const ANTH = ['VERIFY_PROVIDER', 'anthropic'], OLL = ['VERIFY_PROVIDER', 'ollama'];
@@ -481,6 +544,33 @@ const SETUP = [
       { k: 'APIARY_LAT', label: 'Breitengrad des Bienenstands (Dezimalgrad, z. B. 51.05)' },
       { k: 'APIARY_LON', label: 'Längengrad des Bienenstands (z. B. 7.10)' },
       { k: 'SIGHTINGS_RADIUS_KM', label: 'Umkreis für gemeldete Sichtungen (km)' },
+    ] },
+  { title: 'Funknetz – Allgemein', extra: 'mesh',
+    help: 'Die Stationen warnen sich gegenseitig, sobald eine Asiatische Hornisse erkannt wird. Mindestens ein Weg (LoRa oder Freenet) muss unten eingeschaltet sein. Ohne Haken bei „Standort mitsenden“ wird keine Position verschickt.',
+    fields: [
+      { k: 'MESH_STATION', label: 'Name dieser Station im Funknetz (leer = Name des Bienenstands; höchstens 24 Zeichen, ohne | und @)' },
+      { k: 'MESH_SHARE_POSITION', label: 'Standort auf etwa 1 km gerundet mitsenden (Breiten-/Längengrad unter „Adresse und Standort“ nötig)', type: 'bool', def: false },
+      { k: 'MESH_FORWARD', label: 'Meldungen anderer Stationen an Telegram/WhatsApp/SMS weiterreichen', type: 'bool', def: true },
+      { k: 'MESH_ACK', label: 'Empfang von Meldungen anderer Stationen quittieren', type: 'bool', def: true },
+      { k: 'MESH_TRUSTED', label: 'Vertraute Stationen (Namen durch Komma) – sie sind von Anfang an „bekannt“ und werden großzügiger zugelassen' },
+    ] },
+  { title: 'Funknetz – LoRa (MeshCore-Funkgerät)', extra: 'lora',
+    help: 'Funkgerät mit MeshCore-Firmware (Companion-Modus) per USB anschließen, z. B. Heltec V3, LilyGO T-Beam, RAK4631. Alle Stationen brauchen denselben Kanalnamen und Kanalschlüssel (32 Hexzeichen) – wer den Schlüssel kennt, kann in eurem Namen melden: nur an Beteiligte weitergeben. Kanal 0 ist der öffentliche MeshCore-Kanal und wird nie benutzt.',
+    fields: [
+      { k: 'MESH_LORA_ENABLED', label: 'LoRa einschalten', type: 'bool', def: false },
+      { k: 'MESH_LORA_PORT', label: 'Anschluss des Funkgeräts (z. B. /dev/ttyUSB0 oder COM3; leer oder „auto“ = automatisch suchen)' },
+      { k: 'MESH_LORA_CHANNEL_IDX', label: 'Kanalplatz am Gerät (1 bis 7; leer = 1)' },
+      { k: 'MESH_LORA_CHANNEL_NAME', label: 'Kanalname (leer = hornet3000)' },
+      { k: 'MESH_LORA_CHANNEL_KEY', label: 'Kanalschlüssel, 32 Hexzeichen (wird am Gerät eingerichtet)', secret: true },
+      { k: 'MESH_LORA_DUTY', label: 'Erlaubter Sendeanteil (leer = 0,01 = 1 %; im Teilband 869,4–869,65 MHz sind bis 10 % erlaubt)' },
+    ] },
+  { title: 'Funknetz – Freenet (River-Raum)', extra: 'freenet',
+    help: 'Braucht einen laufenden Freenet-Knoten auf diesem Rechner (freenet.org) und das Programm „riverctl“. Lege einen privaten Raum an (riverctl room create --private) oder nimm eine Einladung an; den Raum-Schlüssel zeigt „riverctl room list“. Freenet ist noch jung (Alpha) – nutze es als zweiten Weg neben LoRa.',
+    fields: [
+      { k: 'MESH_FREENET_ENABLED', label: 'Freenet einschalten', type: 'bool', def: false },
+      { k: 'MESH_FREENET_ROOM', label: 'Raum-Schlüssel (Room Owner VK)' },
+      { k: 'MESH_FREENET_RIVERCTL', label: 'Pfad zu riverctl (leer = im Suchpfad)' },
+      { k: 'MESH_FREENET_NODE', label: 'Freenet-Knoten (leer = ws://127.0.0.1:7509)' },
     ] },
   { title: 'Zweite Prüfung durch Bild-KI (optional)',
     help: 'Ordnet jeden Alarm zusätzlich ein (bestätigt, widerspricht, unklar) und schickt die Einschätzung mit. Sie unterdrückt nie einen Alarm.',
@@ -597,6 +687,29 @@ function telegramExtra() {
   } }, 'Bot prüfen und Chats suchen');
   return el('div', {}, el('div', { class: 'row' }, b), res);
 }
+function loraExtra() {
+  const out = el('div', { class: 'probe', 'aria-live': 'polite' });
+  return el('div', {}, el('div', { class: 'row' }, el('button', { type: 'button', onclick: async e => {
+    e.target.disabled = true; out.textContent = 'Suche …';
+    try {
+      const ports = await api('/api/mesh/lora/ports');
+      out.replaceChildren(ports.length ? el('div', {}, ports.map(p => el('div', {}, el('button', { type: 'button', class: 'linkish', onclick: () => { $('#s-MESH_LORA_PORT').value = p.device; } }, p.device), ` ${p.name} ${p.usb}`)))
+                                     : 'Kein serielles Gerät gefunden – USB-Kabel und Treiber prüfen.');
+    } catch (x) { out.textContent = x.message; }
+    e.target.disabled = false;
+  } }, 'Angeschlossene Geräte suchen')), out);
+}
+function freenetExtra() {
+  const code = el('input', { type: 'text', id: 'fn-invite', autocomplete: 'off', spellcheck: 'false', placeholder: 'Einladungscode einfügen' });
+  const out = el('div', { class: 'probe', 'aria-live': 'polite' });
+  return el('div', {}, el('label', { class: 'f' }, 'Einladung zu einem River-Raum annehmen', code),
+    el('div', { class: 'row' }, el('button', { type: 'button', onclick: async e => {
+      e.target.disabled = true; out.textContent = 'Trete bei … (kann bis zu drei Minuten dauern)';
+      try { await api('/api/mesh/freenet/invite', { method: 'POST', body: JSON.stringify({ code: code.value.trim(), nickname: $('#s-MESH_STATION')?.value || '' }) }); out.textContent = 'Beigetreten. Den Raum-Schlüssel (riverctl room list) oben eintragen.'; code.value = ''; }
+      catch (x) { out.textContent = x.message; }
+      e.target.disabled = false;
+    } }, 'Einladung annehmen')), out);
+}
 function geoExtra() {
   return el('div', { class: 'row' }, el('button', { type: 'button', onclick: () => {
     if (!navigator.geolocation) { toast('Standortbestimmung wird hier nicht unterstützt.'); return; }
@@ -614,7 +727,7 @@ async function loadSetup(force = false) {
   root.replaceChildren(...SETUP.map(sec => el('div', { class: 'panel' },
     el('h3', {}, sec.title), sec.help ? el('p', { class: 'muted small' }, sec.help) : '',
     sec.fields.map(fieldEl),
-    sec.extra === 'camera' ? cameraExtra() : sec.extra === 'telegram' ? telegramExtra() : sec.extra === 'geo' ? geoExtra() : '')));
+    sec.extra === 'camera' ? cameraExtra() : sec.extra === 'telegram' ? telegramExtra() : sec.extra === 'geo' ? geoExtra() : sec.extra === 'lora' ? loraExtra() : sec.extra === 'freenet' ? freenetExtra() : '')));
   applyShow();
   $('#setup-intro').textContent = S.setup.configured ? 'Änderungen werden erst nach „Speichern und neu starten“ wirksam.'
     : 'Erster Schritt: die Kamera eintragen und testen. Alle weiteren Meldewege sind optional und lassen sich später ergänzen.';

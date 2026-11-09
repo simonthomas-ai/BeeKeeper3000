@@ -99,6 +99,21 @@
       <p class="muted" id="alerts-empty" hidden>Noch keine Alarme gespeichert.</p>
     </section>
 
+    <section class="view" id="v-funk" aria-labelledby="h-funk">
+      <h1 id="h-funk">Funknetz</h1>
+      <p class="muted small">Die Stationen melden sich gegenseitig, wenn eine Asiatische Hornisse gesehen wurde – über LoRa-Funk (MeshCore) und/oder Freenet. Meldungen anderer Stationen sind ungeprüft; sie ersetzen nie den eigenen Blick auf den Bienenstand.</p>
+      <div id="funk-off" class="panel" hidden>
+        <p>Das Funknetz ist ausgeschaltet. Unter <a href="#einrichtung">Einrichtung → Funknetz</a> lassen sich LoRa und Freenet unabhängig voneinander einschalten.</p>
+      </div>
+      <div class="panel" id="funk-ways"></div>
+      <div class="row"><button id="btn-funk-test" class="primary">Funknetz-Test senden</button><span class="muted small" id="funk-test-note"></span></div>
+      <h2 class="sect">Protokoll</h2>
+      <ol class="list" id="funk-log"></ol>
+      <p class="muted" id="funk-log-empty" hidden>Noch keine Funkmeldungen.</p>
+      <h2 class="sect">Bekannte Stationen</h2>
+      <ul class="plain" id="funk-stations"></ul>
+    </section>
+
     <section class="view" id="v-einrichtung" aria-labelledby="h-einrichtung">
       <h1 id="h-einrichtung">Einrichtung</h1>
       <p class="muted" id="setup-intro">Trage hier Kamera und Meldewege ein. Jede Angabe lässt sich sofort prüfen. Gespeichert wird in der Datei <code>.env</code> im Programmordner.</p>
@@ -156,6 +171,7 @@
   <nav class="tabs" aria-label="Bereiche">
     <a href="#live" data-tab="live">Live</a>
     <a href="#alarme" data-tab="alarme">Alarme<span class="badge" id="badge" hidden>0</span></a>
+    <a href="#funk" data-tab="funk">Funknetz<span class="badge" id="badge-funk" hidden>0</span></a>
     <a href="#einrichtung" data-tab="einrichtung">Einrichtung</a>
     <a href="#wissen" data-tab="wissen">Wissen</a>
   </nav>
