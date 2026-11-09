@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Hornet3000 – Handy-Kamera</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#121915">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { --bg:#121915; --ink:#e9efe4; --ink-2:#a9b8ac; --line:#2e3c34; --calm:#6fbf86; --calm-bg:#1f3326;
+            --warn:#f2b31f; --warn-bg:#3a2f10; --alarm:#ff7a3d; --alarm-bg:#3a1e10; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html,body { height:100%; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.5 -apple-system,system-ui,"Segoe UI",sans-serif;
+           display:flex; flex-direction:column; padding:env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    h1 { font-size:1.15rem; margin:.9rem 1rem .2rem; }
+    p { margin:.4rem 1rem; }
+    .muted { color:var(--ink-2); font-size:.92rem; }
+    .stage { position:relative; margin:.6rem 1rem; border-radius:12px; overflow:hidden; background:#000;
+             aspect-ratio:3/4; max-height:52vh; }
+    video { width:100%; height:100%; object-fit:cover; display:block; transform:scaleX(-1); }
+    video.rear { transform:none; }
+    .badge { position:absolute; left:.6rem; top:.6rem; padding:.2rem .7rem; border-radius:1rem; font-size:.85rem;
+             font-weight:700; background:rgba(0,0,0,.55); display:flex; align-items:center; gap:.4rem; }
+    .dot { width:.6rem; height:.6rem; border-radius:50%; background:var(--ink-2); }
+    .dot.ok { background:var(--calm); animation:pulse 1.4s ease-in-out infinite; }
+    .dot.bad { background:var(--alarm); }
+    @keyframes pulse { 50%{ opacity:.35; } }
+    main { flex:1; display:flex; flex-direction:column; }
+    .panel { margin:.6rem 1rem; padding:.8rem 1rem; border-radius:10px; background:#1b2620; border:1px solid var(--line); }
+    .panel.warn { background:var(--warn-bg); border-color:var(--warn); }
+    .panel.bad { background:var(--alarm-bg); border-color:var(--alarm); }
+    .panel.ok { background:var(--calm-bg); border-color:var(--calm); }
+    .row { display:flex; gap:.6rem; margin:.6rem 1rem; flex-wrap:wrap; }
+    button { flex:1; min-width:10rem; font:inherit; font-weight:700; padding:.9rem 1rem; border-radius:10px;
+             border:1.5px solid var(--ink); background:var(--ink); color:var(--bg); min-height:3rem; }
+    button.ghost { background:transparent; color:var(--ink); }
+    button.danger { background:var(--alarm); border-color:var(--alarm); color:#1b0d05; }
+    button:disabled { opacity:.5; }
+    .foot { margin-top:auto; padding:1rem; text-align:center; }
+    ul { margin:.4rem 1rem; padding-left:1.2rem; }
+    li { margin:.25rem 0; }
+    .stats { display:flex; gap:1.2rem; flex-wrap:wrap; font-size:.88rem; color:var(--ink-2); margin:.3rem 1rem .8rem; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <h1>Hornet3000 – Handy als Kamera</h1>
+  <main>
+    <div id="login" class="panel">
+      <p>Anmeldung läuft …</p>
+    </div>
+
+    <div id="app" class="hidden">
+      <div class="stage">
+        <video id="preview" autoplay playsinline muted></video>
+        <div class="badge"><span class="dot" id="dot"></span><span id="badge-text">getrennt</span></div>
+      </div>
+
+      <div id="precheck" class="panel warn">
+        <p><b>Vor dem Aufstellen:</b></p>
+        <ul>
+          <li>Handy ans Ladekabel anschließen – die Aufnahme läuft dauerhaft.</li>
+          <li>Diese Seite muss im <b>Vordergrund</b> bleiben (nicht sperren, nicht wegwechseln). Browser im Hintergrund
+            pausieren die Kamera – das ist eine Einschränkung des Betriebssystems, keine Fehlfunktion dieser Seite.</li>
+          <li>WLAN in Reichweite des Aufstellorts prüfen.</li>
+        </ul>
+      </div>
+
+      <div class="row">
+        <button id="btn-start">Kamera starten</button>
+        <button id="btn-stop" class="danger hidden">Beenden</button>
+      </div>
+      <div class="row">
+        <button id="btn-flip" class="ghost hidden">Kamera wechseln</button>
+      </div>
+
+      <p class="muted" id="codec-info"></p>
+      <div class="stats" id="stats"></div>
+
+      <div id="err" class="panel bad hidden"></div>
+    </div>
+  </main>
+  <p class="foot muted">Diese Seite gehört zu deiner eigenen Hornet3000-Anlage und sendet Bild und Ton ausschließlich
+    an deinen Server.</p>
+  <script src="/assets/phone.js" defer></script>
+</body>
+</html>
