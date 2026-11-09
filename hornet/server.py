@@ -16,8 +16,8 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocke
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, security
-from .config import ROOT, Settings, ensure_access_token, ensure_env_file, parse_env_file
+from . import __version__, mesh as mesh_pkg, security
+from .config import ROOT, Settings, ensure_access_token, ensure_env_file, ensure_private_dir, parse_env_file
 from .detector import YoloOnnx
 from .engine import Engine, EventBus
 from .notifiers import Hub
@@ -25,6 +25,7 @@ from .phonecam import FORMAT_BY_MIME, PhoneCamera
 from .setup_wizard import apply_updates, list_devices, probe_camera, read_config, telegram_discover
 from .sightings import fetch_sightings
 from .store import Store
+from .webguard import WebGuard
 
 log = logging.getLogger("hornet.server")
 WEB = ROOT / "web"
@@ -43,7 +44,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
     s = s or Settings.from_env()
     env_file = ensure_env_file(env_path or ROOT / ".env")
     ensure_access_token(s, env_file)
-    s.data_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(s.data_dir)
     store = Store(s.db_path)
     hub = Hub(s, store)
     bus = EventBus()
@@ -52,6 +53,8 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
         detector, model_error = load_detector(s)
     engine = Engine(s, store, hub, bus, detector)
     engine.model_error = model_error
+    mesh, mesh_problems = mesh_pkg.create_service(s, store, bus=bus, hub=hub, forward_ok=lambda: not engine.is_muted())
+    engine.mesh = mesh if mesh.transports else None
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -63,12 +66,24 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     app = FastAPI(title="Hornet3000 Alarm", version=__version__, lifespan=lifespan, docs_url=None, redoc_url=None,
                   openapi_url=None)
+    app.add_middleware(WebGuard, public_url=s.public_url)
     app.state.engine, app.state.store, app.state.hub, app.state.settings = engine, store, hub, s
+    app.state.mesh = mesh
     app.state.restart_requested = False
     app.state.shutdown = None  # setzt hornet.cli: beendet den Server, danach wird mit neuer Konfiguration gestartet
 
     # -- Anmeldung -----------------------------------------------------------------------
     fails: dict[str, list[float]] = defaultdict(list)
+    FAILS_MAX_IPS = 2000
+
+    async def body_json(request: Request) -> dict:
+        try:
+            data = await request.json()
+        except Exception:
+            raise HTTPException(400, "Ungültige Anfrage (JSON erwartet)") from None
+        if not isinstance(data, dict):
+            raise HTTPException(400, "Ungültige Anfrage (JSON-Objekt erwartet)")
+        return data
 
     def is_authed(request: Request) -> bool:
         if security.check_session(s.access_token, request.cookies.get("hn_session")):
@@ -84,12 +99,19 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
     async def login(request: Request, response: Response):
         ip = request.client.host if request.client else "?"
         now = time.time()
+        if len(fails) > FAILS_MAX_IPS:   # Speicher begrenzen: abgelaufene Einträge entfernen, sonst die ältesten
+            for k in [k for k, v in fails.items() if not v or now - v[-1] > 600]:
+                del fails[k]
+            while len(fails) > FAILS_MAX_IPS:
+                fails.pop(next(iter(fails)))
         fails[ip] = [t for t in fails[ip] if now - t < 600]
         if len(fails[ip]) >= 10:
             raise HTTPException(429, "Zu viele Versuche – bitte in 10 Minuten erneut probieren")
         try:
             body = await request.json()
         except Exception:
+            body = {}
+        if not isinstance(body, dict):
             body = {}
         if not security.check_token(s.access_token, str(body.get("token", "")).strip()):
             fails[ip].append(now)
@@ -121,6 +143,8 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
         st["public_url"] = s.public_url
         st["webpush"] = hub.webpush.ready
         st["webpush_hint"] = "" if hub.webpush.ready else "Kontakt-E-Mail unter Einrichtung eintragen (oder https-Adresse der App)"
+        st["mesh"] = {"enabled": bool(mesh.transports), "problems": mesh_problems,
+                      "transports": [x.status() for x in mesh.transports.values()]}
         st["settings"] = {"alert_classes": s.alert_classes, "protected_classes": s.protected_classes,
                           "clip_pre_s": s.clip_pre_s, "clip_post_s": s.clip_post_s}
         return st
@@ -204,7 +228,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     @app.post("/api/mute", dependencies=[Depends(require_auth)])
     async def mute(request: Request):
-        body = await request.json()
+        body = await body_json(request)
         minutes = float(body.get("minutes", 60))
         return {"muted": True, "mute_until": engine.mute(min(max(minutes, 1), 60 * 24 * 7))}
 
@@ -219,7 +243,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     @app.put("/api/tuning", dependencies=[Depends(require_auth)])
     async def tuning_put(request: Request):
-        body = await request.json()
+        body = await body_json(request)
         return engine.set_tuning(conf_alert=body.get("conf_alert"), confirm_hits=body.get("confirm_hits"),
                                  event_gap_s=body.get("event_gap_s"))
 
@@ -232,7 +256,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     @app.post("/api/push/subscribe", dependencies=[Depends(require_auth)])
     async def push_sub(request: Request):
-        sub = await request.json()
+        sub = await body_json(request)
         if not isinstance(sub, dict) or not str(sub.get("endpoint", "")).startswith("https://") or "keys" not in sub:
             raise HTTPException(400, "Ungültiges Push-Abo")
         store.push_add(sub)
@@ -240,7 +264,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     @app.post("/api/push/unsubscribe", dependencies=[Depends(require_auth)])
     async def push_unsub(request: Request):
-        body = await request.json()
+        body = await body_json(request)
         store.push_remove(str(body.get("endpoint", "")))
         return {"ok": True}
 
@@ -249,6 +273,54 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
     async def sightings(refresh: bool = False):
         return await asyncio.to_thread(fetch_sightings, s, store, refresh)
 
+
+    # -- Funknetz --------------------------------------------------------------------------------------
+    @app.get("/api/mesh", dependencies=[Depends(require_auth)])
+    async def mesh_state():
+        st = mesh.status()
+        st["problems"] = mesh_problems
+        rows = store.mesh_list(60)
+        acks = store.mesh_ack_counts([r["ident"] for r in rows if r["direction"] == "out"])
+        for r in rows:
+            r["acks"] = acks.get(r["ident"], 0) if r["direction"] == "out" else None
+        st["messages"] = rows
+        return st
+
+    @app.get("/api/mesh/messages", dependencies=[Depends(require_auth)])
+    async def mesh_messages(limit: int = 100, offset: int = 0, direction: str = ""):
+        return store.mesh_list(limit, offset, direction or None)
+
+    @app.post("/api/mesh/test", dependencies=[Depends(require_auth)])
+    async def mesh_test():
+        if not mesh.transports:
+            raise HTTPException(409, "Kein Funkweg eingeschaltet (Einrichtung → Funknetz)")
+        ident = await asyncio.to_thread(mesh.send_test)
+        return {"ok": True, "ident": ident}
+
+    @app.get("/api/mesh/lora/ports", dependencies=[Depends(require_auth)])
+    async def mesh_ports():
+        def scan():
+            from serial.tools import list_ports
+            return [{"device": p.device, "name": p.description or "", "usb": f"{p.vid:04x}:{p.pid:04x}" if p.vid else ""}
+                    for p in list_ports.comports()]
+        try:
+            return await asyncio.to_thread(scan)
+        except Exception as e:
+            raise HTTPException(500, f"Anschlüsse konnten nicht gelistet werden: {e}")
+
+    @app.post("/api/mesh/freenet/invite", dependencies=[Depends(require_auth)])
+    async def mesh_invite(request: Request):
+        from .mesh.freenet import accept_invite
+        from .mesh.transport import TransportError
+        body = await body_json(request)
+        try:
+            out = await asyncio.to_thread(accept_invite, s.mesh_freenet_riverctl, str(body.get("code", "")),
+                                          s.mesh_freenet_node, s.data_dir / "river", str(body.get("nickname", "")))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except (TransportError, OSError) as e:
+            raise HTTPException(502, str(e))
+        return {"ok": True, "output": out}
 
     # -- Einrichtung -------------------------------------------------------------------------------
     @app.get("/api/setup", dependencies=[Depends(require_auth)])
@@ -260,16 +332,19 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     @app.put("/api/setup", dependencies=[Depends(require_auth)])
     async def setup_put(request: Request):
-        body = await request.json()
+        body = await body_json(request)
         try:
-            changed = await asyncio.to_thread(apply_updates, env_file, body.get("values") or {})
+            vals = body.get("values") or {}
+            if not isinstance(vals, dict):
+                raise ValueError("Ungültige Einstellungen")
+            changed = await asyncio.to_thread(apply_updates, env_file, vals)
         except ValueError as e:
             raise HTTPException(400, str(e))
         return {"changed": changed, "restart_required": bool(changed)}
 
     @app.post("/api/setup/camera-test", dependencies=[Depends(require_auth)])
     async def setup_camera(request: Request):
-        body = await request.json()
+        body = await body_json(request)
         try:
             return await asyncio.to_thread(probe_camera, str(body.get("source", "")), str(body.get("audio_device", "")), s.ffmpeg_bin)
         except ValueError as e:
@@ -286,7 +361,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
 
     @app.post("/api/setup/telegram", dependencies=[Depends(require_auth)])
     async def setup_telegram(request: Request):
-        body = await request.json()
+        body = await body_json(request)
         token = str(body.get("token", "")).strip() or parse_env_file(env_file).get("TELEGRAM_BOT_TOKEN", "")
         return await asyncio.to_thread(telegram_discover, token, s.telegram_api_base)
 
@@ -347,9 +422,7 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
         refresh = '<meta http-equiv="refresh" content="8">' if (not a.get("clip") and time.time() - a["ts"] < 120) else ""
         page = f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Hornissen-Alarm {alert_id}</title>{refresh}
-<style>body{{margin:0;font:16px/1.5 system-ui,sans-serif;background:#1c2620;color:#eef3ea}}
-main{{max-width:720px;margin:0 auto;padding:16px}}img,video{{width:100%;border-radius:10px;background:#000;margin:8px 0}}
-h1{{font-size:20px;margin:8px 0}}.hint{{opacity:.8}}small{{opacity:.7}}</style></head><body><main>
+<link rel="stylesheet" href="/assets/share.css"></head><body><main>
 <h1>{html.escape(a.get('label') or 'Alarm')} – {html.escape(a.get('camera') or '')}</h1>
 <small>{when} · {a.get('count') or 1} Tier(e) · Sicherheit {int((a.get('conf') or 0) * 100)} %</small>
 <img alt="Foto" src="/media/{alert_id}/snapshot.jpg{q}">{clip}
@@ -377,6 +450,9 @@ h1{{font-size:20px;margin:8px 0}}.hint{{opacity:.8}}small{{opacity:.7}}</style><
         session = None
         try:
             init = await websocket.receive_json()
+            if not isinstance(init, dict):
+                await websocket.close(code=1003)
+                return
             mime = str(init.get("mimeType", ""))
             device = str(init.get("device", ""))
             try:

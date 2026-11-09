@@ -51,6 +51,23 @@ SCHEMA: dict[str, dict] = {
     "OLLAMA_URL": {"t": "url"},
     "OLLAMA_MODEL": {"t": "str", "re": r"^[A-Za-z0-9._:/-]{0,80}$"},
     "RETENTION_DAYS": {"t": "int", "min": 1, "max": 3650},
+    # Funknetz
+    "MESH_STATION": {"t": "str", "re": r"^[^\x00-\x1f|@]{0,24}$"},
+    "MESH_SHARE_POSITION": {"t": "bool"},
+    "MESH_FORWARD": {"t": "bool"},
+    "MESH_ACK": {"t": "bool"},
+    "MESH_TRUSTED": {"t": "names"},
+    "MESH_LORA_ENABLED": {"t": "bool"},
+    "MESH_LORA_PORT": {"t": "port"},
+    "MESH_LORA_BAUD": {"t": "int", "min": 9600, "max": 921600},
+    "MESH_LORA_CHANNEL_IDX": {"t": "int", "min": 1, "max": 7},
+    "MESH_LORA_CHANNEL_NAME": {"t": "str", "re": r"^[A-Za-z0-9 _#.\-]{0,31}$"},
+    "MESH_LORA_CHANNEL_KEY": {"t": "str", "secret": True, "re": r"^[0-9a-fA-F]{32}$"},
+    "MESH_LORA_DUTY": {"t": "float", "min": 0.001, "max": 0.10},
+    "MESH_FREENET_ENABLED": {"t": "bool"},
+    "MESH_FREENET_RIVERCTL": {"t": "riverctl"},
+    "MESH_FREENET_ROOM": {"t": "room"},
+    "MESH_FREENET_NODE": {"t": "node"},
 }
 
 
@@ -82,13 +99,38 @@ def _check(key: str, val: str) -> str:
         if not re.match(r"^https?://[^\s/]+(/\S*)?$", val):
             raise ValueError(f"{key}: bitte eine Adresse mit http:// oder https:// angeben")
         return val.rstrip("/")
+    if t == "port":
+        from .mesh.lora import check_port
+        return check_port(val)
+    if t == "room":
+        from .mesh.freenet import check_room
+        return check_room(val)
+    if t == "node":
+        from .mesh.freenet import check_node
+        return check_node(val)
+    if t == "riverctl":
+        if not re.match(r"^[\w ./\\:\-]{1,260}$", val) or not re.match(r"^riverctl(\.exe)?$", re.split(r"[/\\]", val)[-1], re.I):
+            raise ValueError(f"{key}: nur das Programm „riverctl“ (ggf. mit Pfad) ist erlaubt")
+        return val
+    if t == "names":
+        names = [x.strip() for x in re.split(r"[,;]", val) if x.strip()]
+        for nme in names:
+            if not re.match(r"^[^\x00-\x1f|@]{1,24}$", nme):
+                raise ValueError(f"{key}: Stationsname '{nme[:30]}' ist nicht erlaubt")
+        return ",".join(names)
     if t == "int":
-        n = int(float(val.replace(",", ".")))
+        try:
+            n = int(float(val.replace(",", ".")))
+        except (ValueError, OverflowError):
+            raise ValueError(f"{key}: bitte eine Zahl angeben") from None
         if not spec["min"] <= n <= spec["max"]:
             raise ValueError(f"{key}: erlaubt sind {spec['min']} bis {spec['max']}")
         return str(n)
     if t == "float":
-        f = float(val.replace(",", "."))
+        try:
+            f = float(val.replace(",", "."))
+        except (ValueError, OverflowError):
+            raise ValueError(f"{key}: bitte eine Zahl angeben") from None
         if not spec["min"] <= f <= spec["max"]:
             raise ValueError(f"{key}: erlaubt sind {spec['min']} bis {spec['max']}")
         return f"{f:g}"

@@ -73,16 +73,16 @@ def _clip(value: str, max_bytes: int) -> str:
 
 
 def _no_links(value: str, max_bytes: int) -> str:
-    """Entfernt Link-artige Muster, bis sich nichts mehr ändert (Entfernen kann neue Muster zusammenfügen)."""
+    """Entfernt Link-artige Muster und kürzt – wiederholt, bis sich nichts mehr ändert. Entfernen und Kürzen
+    können beide neue Muster erzeugen (Reste fügen sich zusammen, ein Schnitt lässt „abc.de“ übrig)."""
     out = value
-    for _ in range(6):
-        nxt = " ".join(_LINK_RE.sub(" ", out).split())
+    for _ in range(8):
+        nxt = _clip(" ".join(_LINK_RE.sub(" ", out).split()), max_bytes).strip()
         if nxt == out:
-            break
+            return out
         out = nxt
-    else:  # nach 6 Runden noch Bewegung: Punkte und Doppelpunkte entfernen, dann kann kein Link mehr entstehen
-        out = " ".join(re.sub(r"[.:/]", " ", out).split())
-    return _clip(out, max_bytes).strip()
+    # Nach 8 Runden noch Bewegung: Punkte, Doppelpunkte und Schrägstriche entfernen – dann kann kein Link mehr entstehen.
+    return _clip(" ".join(re.sub(r"[.:/]", " ", out).split()), max_bytes).strip()
 
 
 def clean_text(value: str, max_bytes: int) -> str:

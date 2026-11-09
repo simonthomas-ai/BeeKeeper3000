@@ -79,6 +79,8 @@ class Store:
         self._mesh_adds = 0
         with self._lock:
             self._db.execute("PRAGMA journal_mode=WAL")
+            self._db.execute("PRAGMA synchronous=NORMAL")   # in WAL-Modus sicher gegen Programmabsturz, viel schneller
+            self._db.execute("PRAGMA busy_timeout=5000")
             self._db.executescript(SCHEMA)
             self._db.commit()
 
