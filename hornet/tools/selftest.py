@@ -42,7 +42,7 @@ def main() -> int:
     else:
         print(f"{WARN} Python {v.major}.{v.minor}: empfohlen ist 3.10 bis 3.13 (onnxruntime-Pakete)")
 
-    for mod in ("fastapi", "uvicorn", "httpx", "PIL", "numpy", "onnxruntime", "pywebpush"):
+    for mod in ("fastapi", "uvicorn", "httpx", "PIL", "numpy", "onnxruntime", "pywebpush", "serial"):
         try:
             m = __import__(mod)
             print(f"{OK} Paket {mod} {getattr(m, '__version__', '')}")
@@ -118,6 +118,37 @@ def main() -> int:
         chans.append("SMS")
     print(f"{OK if chans else WARN} Meldewege in der .env: {', '.join(chans) if chans else 'keine – nur die App zeigt Alarme (Einrichtung in der App)'}")
     print(f"{OK if s.public_url else WARN} Adresse für Links: {s.public_url or 'nicht gesetzt – Nachrichten enthalten keinen Link zu Foto/Video'}")
+
+    # Funknetz (nur prüfen, was eingeschaltet ist – ohne etwas zu senden)
+    if s.mesh_lora_enabled:
+        try:
+            from ..mesh.lora import check_port, find_port
+
+            port = check_port(s.mesh_lora_port or "auto")
+            port = find_port() if port == "auto" else port
+            if not Path(port).exists() and not port.upper().startswith("COM"):
+                raise OSError(f"{port} existiert nicht – Funkgerät angesteckt?")
+            print(f"{OK} Funknetz LoRa: Anschluss {port}")
+        except Exception as e:
+            print(f"{BAD} Funknetz LoRa: {e}")
+            bad += 1
+    if s.mesh_freenet_enabled:
+        try:
+            import socket
+            from urllib.parse import urlsplit
+
+            from ..mesh.freenet import check_node, resolve_riverctl
+
+            rc = resolve_riverctl(s.mesh_freenet_riverctl)
+            u = urlsplit(check_node(s.mesh_freenet_node))
+            with socket.create_connection((u.hostname, u.port or 7509), timeout=3):
+                pass
+            print(f"{OK} Funknetz Freenet: riverctl {rc}, Knoten {u.hostname}:{u.port} erreichbar")
+        except Exception as e:
+            print(f"{BAD} Funknetz Freenet: {e}")
+            bad += 1
+    if not (s.mesh_lora_enabled or s.mesh_freenet_enabled):
+        print(f"{WARN} Funknetz ausgeschaltet (optional) – Einrichtung in der App, Reiter „Einrichtung“.")
 
     print("\n" + ("Alles bereit." if not bad else f"{bad} Problem(e) gefunden – oben nachlesen."))
     return 1 if bad else 0
