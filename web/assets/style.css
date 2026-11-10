@@ -217,3 +217,8 @@ a.btn.primary { background: var(--ink); color: var(--bg); font-weight: 700; }
 .warn { color: var(--alarm); font-weight: 600; }
 ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
 button.linkish { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
+
+/* Ersatz für frühere Inline-Styles (die strenge Inhaltsrichtlinie sperrt style="…") */
+.span-23 { grid-column: 2 / 4; }
+.qr { width: 220px; max-width: 60vw; background: #fff; padding: 8px; border-radius: 8px; }
+.mt-1 { margin-top: 1rem; }

@@ -274,6 +274,7 @@ class MeshLink:
         if self._reader is not None and self._reader is not threading.current_thread():
             self._reader.join(timeout=2)
         self.dead.set()
+        self.waiting.set()                  # weckt den Abholer sofort, damit das Beenden nicht auf den Takt wartet
 
     def _read_loop(self) -> None:
         ser = self._ser
@@ -289,6 +290,7 @@ class MeshLink:
             for frame in self._parser.feed(data):
                 self._on_frame(frame)
         self.dead.set()
+        self.waiting.set()                  # Verbindung weg (Kabel gezogen): Abholer sofort informieren
 
     def _on_frame(self, f: bytes) -> None:
         if not f:
@@ -336,6 +338,7 @@ class MeshLink:
                 self._ser.flush()
             except Exception as e:
                 self.dead.set()
+                self.waiting.set()
                 raise LinkError(f"Schreiben zum Funkgerät fehlgeschlagen: {e}") from e
             while True:
                 left = deadline - time.monotonic()

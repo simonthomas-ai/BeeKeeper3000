@@ -184,8 +184,10 @@ window.addEventListener('pagehide', () => { if (S.running) stop(); });
 (async () => {
   const authed = await login();
   if (!authed) {
-    $('#login').innerHTML = '<p><b>Anmeldung fehlgeschlagen.</b> Diese Seite bitte über den Link bzw. QR-Code aus der ' +
-      'Einrichtung öffnen (Reiter „Einrichtung“ → „Handy als Kamera“).</p>';
+    const msg = document.createElement('p'), b = document.createElement('b');
+    b.textContent = 'Anmeldung fehlgeschlagen.';
+    msg.append(b, ' Diese Seite bitte über den Link bzw. QR-Code aus der Einrichtung öffnen (Reiter „Einrichtung“ → „Handy als Kamera“).');
+    $('#login').replaceChildren(msg);
     return;
   }
   $('#login').classList.add('hidden');

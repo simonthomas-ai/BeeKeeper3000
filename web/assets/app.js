@@ -9,6 +9,7 @@ function el(tag, attrs = {}, ...kids) {
     if (v === false || v == null) continue;
     if (k === 'class') n.className = v;
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k === 'style') n.style.cssText = v;   // über CSSOM: Inline-Attribut wäre durch die Inhaltsrichtlinie gesperrt
     else n.setAttribute(k, v === true ? '' : v);
   }
   for (const k of kids.flat()) n.append(k instanceof Node ? k : document.createTextNode(String(k)));
@@ -377,7 +378,7 @@ function renderChannels() {
       catch (x) { toast(x.message); }
       ev.target.disabled = false;
     } }, 'Testnachricht') : el('span'),
-    el('span', { class: 'muted small', style: 'grid-column: 2 / 4' }, c.configured ? c.detail + (c.text_only ? ' (nur Text)' : '') : 'nicht eingerichtet (oben unter Einrichtung)'))));
+    el('span', { class: 'muted small span-23' }, c.configured ? c.detail + (c.text_only ? ' (nur Text)' : '') : 'nicht eingerichtet (oben unter Einrichtung)'))));
   const t = st.tuning;
   $('#t-conf').value = t.conf_alert; $('#v-conf').textContent = pct(t.conf_alert);
   $('#t-hits').value = t.confirm_hits; $('#v-hits').textContent = t.confirm_hits;
@@ -437,7 +438,7 @@ async function refreshPushUi() {
 let knowledgeLoaded = false;
 async function loadKnowledge() {
   if (!knowledgeLoaded) {
-    try { $('#knowledge').innerHTML = await (await fetch('/assets/knowledge.html')).text(); knowledgeLoaded = true; }
+    try { const doc = new DOMParser().parseFromString(await (await fetch('/assets/knowledge.html')).text(), 'text/html'); $('#knowledge').replaceChildren(...doc.body.childNodes); knowledgeLoaded = true; }
     catch { $('#knowledge').textContent = 'Wissensseite nicht verfügbar (offline?).'; }
   }
   try {
@@ -653,7 +654,7 @@ function cameraExtra() {
       if (!r.ready) { pres.replaceChildren(el('p', { class: 'bad-t' }, r.reason)); }
       else {
         pres.replaceChildren(
-          el('img', { src: 'data:image/png;base64,' + r.qr_png_base64, alt: 'QR-Code zum Verbinden des Handys', style: 'width:220px;max-width:60vw;background:#fff;padding:8px;border-radius:8px' }),
+          el('img', { src: 'data:image/png;base64,' + r.qr_png_base64, alt: 'QR-Code zum Verbinden des Handys', class: 'qr' }),
           el('p', {}, 'Mit dem Handy scannen (Kamera-App) oder den Link direkt öffnen:'),
           el('p', { class: 'muted small' }, r.url),
           el('p', { class: 'muted small' }, 'Danach auf dem Handy „Kamera starten“ tippen. Der Verbindungsstatus erscheint im Reiter „Live“. ' +
@@ -664,7 +665,7 @@ function cameraExtra() {
   } }, 'QR-Code zum Verbinden anzeigen');
   const bUsePhone = el('button', { type: 'button', onclick: () => { $('#s-CAMERA_SOURCE').value = 'phone'; toast('Kamera-Quelle auf „Handy“ gesetzt – unten speichern, dann QR-Code anzeigen.'); } }, 'Handy als Kamera verwenden');
   return el('div', {}, el('div', { class: 'row' }, bDev, bTest), devs, res,
-    el('p', { class: 'muted small', style: 'margin-top:1rem' }, 'Kein Netzwerkkamera und keine Webcam am PC? Ein Handy (iPhone oder Android) kann als Kamera dienen – ohne App, über den Browser. Dafür braucht „Adresse der App“ unten eine https-Adresse.'),
+    el('p', { class: 'muted small mt-1' }, 'Kein Netzwerkkamera und keine Webcam am PC? Ein Handy (iPhone oder Android) kann als Kamera dienen – ohne App, über den Browser. Dafür braucht „Adresse der App“ unten eine https-Adresse.'),
     el('div', { class: 'row' }, bUsePhone, bPhone), pres);
 }
 function telegramExtra() {

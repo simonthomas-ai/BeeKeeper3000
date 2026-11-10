@@ -320,6 +320,17 @@ def test_stop_is_prompt_even_while_connected(dev):
     assert time.time() - s < 4
 
 
+def test_stop_and_link_loss_do_not_wait_for_the_poll_interval(dev):
+    t, _ = make_transport(dev, poll_s=30.0)          # Takt absichtlich lang: früher wartete das Beenden darauf
+    assert wait_for(lambda: t.connected)
+    t._link.close()                                  # Verbindung weg → Abholer muss sofort aufwachen
+    assert wait_for(lambda: not t.connected, timeout=1.5)
+    assert wait_for(lambda: t.connected, timeout=8)
+    s = time.time()
+    t.stop()
+    assert time.time() - s < 1.5
+
+
 # ── Gegenprobe mit der offiziellen Bibliothek „meshcore“ ───────────────────────────────────────────────────────
 def test_official_meshcore_library_talks_to_the_same_simulated_device(dev, monkeypatch):
     """Die Attrappe und der eigene Client sind nur dann glaubwürdig, wenn auch die offizielle Bibliothek mit der
