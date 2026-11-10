@@ -98,7 +98,7 @@ class Store:
         cols = ", ".join(f)
         qs = ", ".join("?" for _ in f)
         with self._lock:
-            cur = self._db.execute(f"INSERT INTO alerts ({cols}) VALUES ({qs})", list(f.values()))
+            cur = self._db.execute(f"INSERT INTO alerts ({cols}) VALUES ({qs})", list(f.values()))  # nosec B608 - Spaltennamen aus fester Positivliste, Werte als Parameter
             self._db.commit()
             return int(cur.lastrowid)
 
@@ -111,7 +111,7 @@ class Store:
                 f[k] = json.dumps(f[k], ensure_ascii=False)
         sets = ", ".join(f"{k}=?" for k in f)
         with self._lock:
-            self._db.execute(f"UPDATE alerts SET {sets} WHERE id=?", [*f.values(), alert_id])
+            self._db.execute(f"UPDATE alerts SET {sets} WHERE id=?", [*f.values(), alert_id])  # nosec B608 - Spaltennamen aus fester Positivliste, Werte als Parameter
             self._db.commit()
 
     def merge_delivery(self, alert_id: int, results: dict) -> None:
@@ -198,7 +198,7 @@ class Store:
         cols = ", ".join(f)
         qs = ", ".join("?" for _ in f)
         with self._lock:
-            cur = self._db.execute(f"INSERT INTO mesh_log ({cols}) VALUES ({qs})", list(f.values()))
+            cur = self._db.execute(f"INSERT INTO mesh_log ({cols}) VALUES ({qs})", list(f.values()))  # nosec B608 - Spaltennamen aus fester Positivliste, Werte als Parameter
             self._mesh_adds += 1
             if self._mesh_adds % MESH_LOG_TRIM_EVERY == 0:
                 self._trim_mesh_log()
@@ -211,7 +211,7 @@ class Store:
         _only(MESH_COLS, f)
         sets = ", ".join(f"{k}=?" for k in f)
         with self._lock:
-            self._db.execute(f"UPDATE mesh_log SET {sets} WHERE id=?", [*f.values(), row_id])
+            self._db.execute(f"UPDATE mesh_log SET {sets} WHERE id=?", [*f.values(), row_id])  # nosec B608 - Spaltennamen aus fester Positivliste, Werte als Parameter
             self._db.commit()
 
     def _trim_mesh_log(self) -> None:
@@ -239,7 +239,7 @@ class Store:
         qs = ",".join("?" for _ in ids)
         with self._lock:
             rows = self._db.execute(
-                f"SELECT ident, COUNT(*) c FROM mesh_log WHERE direction='in' AND typ='R' AND ident IN ({qs}) "
+                f"SELECT ident, COUNT(*) c FROM mesh_log WHERE direction='in' AND typ='R' AND ident IN ({qs}) "  # nosec B608 - Spaltennamen aus fester Positivliste, Werte als Parameter
                 "GROUP BY ident", ids).fetchall()
         return {r["ident"]: int(r["c"]) for r in rows}
 

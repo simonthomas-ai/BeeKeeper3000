@@ -34,8 +34,7 @@ NOTE_MAX_BYTES = 60
 # Zeichen, die nie in eine Meldung gehören: C0/C1-Steuerzeichen, unsichtbare und Richtungs-Umschalter
 # (Text umdrehen/verstecken), Tag-Zeichen, Ersatzzeichen, Zeilen-/Absatztrenner.
 _CTRL_RE = re.compile(
-    "[\u0000-\u001f\u007f-\u009f­؜᠎​-‏ -‮⁠-⁯﻿"
-    "￹-￻\ud800-\udfff\U000e0000-\U000e007f]")
+    "[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff\ufff9-\ufffb\ud800-\udfff\U000e0000-\U000e007f]")
 _LINK_RE = re.compile(
     r"(?i)(?:\b[a-z][a-z0-9+.\-]{1,12}://\S*|\bwww\.\S*|(?:[a-z0-9-]{1,63}\.){1,8}[a-z]{2,24}\b"
     r"|\b\d{1,3}(?:\.\d{1,3}){3}\b|\bmailto:\S*|\btel:\S*)")

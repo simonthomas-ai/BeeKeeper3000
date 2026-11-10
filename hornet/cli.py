@@ -43,7 +43,7 @@ def _base_url(s: Settings) -> str:
 
 def _alive(s: Settings) -> bool:
     try:
-        return httpx.get(_base_url(s) + "/api/health", timeout=2, verify=False).status_code == 200
+        return httpx.get(_base_url(s) + "/api/health", timeout=2, verify=False).status_code == 200  # nosec B501 - nur Selbstabfrage an 127.0.0.1, es wird nichts Geheimes gesendet
     except httpx.HTTPError:
         return False
 

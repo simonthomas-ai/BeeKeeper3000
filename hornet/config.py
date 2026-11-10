@@ -134,7 +134,7 @@ def _l(key: str) -> list[str]:
 @dataclass
 class Settings:
     # Server
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # nosec B104 - bewusst: Handy/PC im Heimnetz, geschützt durch Zugangsschlüssel (siehe Sicherheitsdoku)
     port: int = 8080
     public_url: str = ""
     access_token: str = ""
@@ -269,7 +269,7 @@ class Settings:
         if not data_dir.is_absolute():
             data_dir = ROOT / data_dir
         s = Settings(
-            host=_s("HOST", "0.0.0.0"),
+            host=_s("HOST", "0.0.0.0"),  # nosec B104
             port=_i("PORT", 8080),
             public_url=_s("PUBLIC_URL").rstrip("/"),
             access_token=_s("ACCESS_TOKEN"),
