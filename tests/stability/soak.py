@@ -71,17 +71,20 @@ def children_of(pid: int) -> list[int]:
 
 
 class Instance:
-    def __init__(self, root: Path, dev_path: str):
+    def __init__(self, root: Path, dev_path: str, src: Path = REPO, python: str = sys.executable):
         self.root, self.port = root, free_port()
+        self.src, self.python = src, python
         self.proc: subprocess.Popen | None = None
         self.dev_path = dev_path
         self.base = f"http://127.0.0.1:{self.port}"
 
     def prepare(self) -> None:
         for name in ("hornet", "web"):
-            shutil.copytree(REPO / name, self.root / name, ignore=shutil.ignore_patterns("__pycache__"))
-        shutil.copy(REPO / "hornet_run.py", self.root / "hornet_run.py")
-        (self.root / "models").symlink_to(REPO / "models")
+            shutil.copytree(self.src / name, self.root / name, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy(self.src / "hornet_run.py", self.root / "hornet_run.py")
+        (self.root / "models").symlink_to(self.src / "models")
+        if (self.src / "lib").is_dir():
+            (self.root / "lib").symlink_to(self.src / "lib")
         self.write_env()
 
     def write_env(self, extra: dict | None = None) -> None:
@@ -94,7 +97,7 @@ class Instance:
     def start(self, timeout=60) -> float:
         t0 = time.time()
         log = open(self.root / "run.log", "ab")
-        self.proc = subprocess.Popen([sys.executable, "-I", str(self.root / "hornet_run.py"), "run"], cwd=self.root,
+        self.proc = subprocess.Popen([self.python, "-I", str(self.root / "hornet_run.py"), "run"], cwd=self.root,
                                      stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True)
         while time.time() - t0 < timeout:
             if self.proc.poll() is not None:
@@ -317,10 +320,12 @@ def main() -> int:
     ap.add_argument("--flood", type=int, default=3000)
     ap.add_argument("--minutes", type=float, default=3)
     ap.add_argument("--keep", action="store_true")
+    ap.add_argument("--app-dir", default="", help="installierten app/-Ordner prüfen (zusammen mit --python)")
+    ap.add_argument("--python", default=sys.executable)
     a = ap.parse_args()
     root = Path(tempfile.mkdtemp(prefix="hornet-soak-"))
     dev = FakeMeshDevice(channels={1: ("hornet3000", CHAN_KEY)})
-    inst = Instance(root, dev.path)
+    inst = Instance(root, dev.path, Path(a.app_dir) if a.app_dir else REPO, a.python)
     inst.prepare()
     t0 = time.time()
     try:

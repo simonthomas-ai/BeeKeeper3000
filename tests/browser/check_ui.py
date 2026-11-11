@@ -62,15 +62,19 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--venv-python", default="/home/claude/venv/bin/python")
     ap.add_argument("--shots", default="")
+    ap.add_argument("--app-dir", default="", help="installierte app/-Ordner prüfen (mit --venv-python = mitgeliefertes Python)")
     a = ap.parse_args()
     shots = Path(a.shots) if a.shots else None
     if shots:
         shots.mkdir(parents=True, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix="hornet-ui-"))
+    src = Path(a.app_dir) if a.app_dir else REPO
     for n in ("hornet", "web"):
-        shutil.copytree(REPO / n, root / n, ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copy(REPO / "hornet_run.py", root / "hornet_run.py")
-    (root / "models").symlink_to(REPO / "models")
+        shutil.copytree(src / n, root / n, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy(src / "hornet_run.py", root / "hornet_run.py")
+    (root / "models").symlink_to(src / "models")
+    if a.app_dir:
+        (root / "lib").symlink_to(src / "lib")
     dev = mesh_device.FakeMeshDevice(channels={1: ("hornet3000", KEY)})
     port = free_port()
     env = {"HOST": "127.0.0.1", "PORT": str(port), "ACCESS_TOKEN": TOKEN, "CAMERA_NAME": "UI-Stand",
