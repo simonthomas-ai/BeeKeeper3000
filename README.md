@@ -6,6 +6,7 @@ Nur freie Software, keine Cloud nötig. Nichts im Programm ist Attrappe; Testatt
 
 * `hornet/` Programm (FastAPI, SQLite, ffmpeg) · `hornet/mesh/` Funknetz · `web/` Oberfläche · `models/` Erkennungsmodell
 * `docs/FUNKNETZ.md` Einrichtung Funknetz · `docs/SICHERHEIT.md` Schutzmaßnahmen und Grenzen · `docs/PRUEFSTATUS.md` was wirklich getestet wurde
+* ESP32-Kamera: eigenes Paket `Hornet3000-ESP32-Kamera-1.0.0.zip` (Firmware, Hardware- und Softwaredoku, Testbericht); Anbindung als Kamera-Quelle `http://IP:81/stream?t=SCHLÜSSEL`
 * `packaging/` Bauskripte der Installer (Linux/Windows/macOS) und des Update-Pakets (setzen die entpackten 1.1.0-Laufzeiten voraus, Pfade im Skript anpassen)
 
 ## Entwicklung

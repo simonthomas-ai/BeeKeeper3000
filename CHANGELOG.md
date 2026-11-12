@@ -9,6 +9,7 @@
 * Schutz vor Angriffen aus dem Browser (Herkunftsprüfung für schreibende Anfragen und WebSocket, Sec-Fetch-Site), strenge Inhaltsrichtlinie und Sicherheits-Kopfzeilen, begrenzte Anfragegrößen.
 * Zeitkonstante Vergleiche, signierte und ablaufende Freigabelinks, Begrenzung falscher Anmeldungen je Adresse, Einstellungsdatei nur für den Besitzer lesbar (0600), Datenordner 0700.
 * Strenge Prüfung aller Eingaben der Einrichtung (Typen, Bereiche, Muster), Schutz vor SQL-Spaltennamen-Einschleusung durch Erlaubnislisten.
+* Zugangsdaten der Kamera-Adresse (`?t=Schlüssel`, `Benutzer:Passwort@`) erscheinen nicht mehr in Fehlertexten (Kamera-Status, Telegram-Statusantwort, Einrichtungstest). Neu gebaut am 12.11.2026; wer die erste Fassung vom 11.11.2026 installiert hat, spielt das Update-Paket ein.
 **Sonstiges**
 * Bibliotheken: Pillow 13.0.0, certifi 2026.10.23; neu pyserial 3.5.
 * Behoben: siehe `PRUEFSTATUS.md`, Abschnitt 4.
