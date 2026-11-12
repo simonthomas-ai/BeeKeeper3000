@@ -14,7 +14,7 @@ from pathlib import Path
 
 import httpx
 
-from .camera import _NOWIN, find_ffmpeg, resolve_source, validate_source
+from .camera import _NOWIN, find_ffmpeg, redact, resolve_source, validate_source
 from .config import parse_env_file, write_env_values
 
 # key: (Art, geheim, Auswahl/Grenzen)
@@ -170,7 +170,8 @@ def apply_updates(env_path: Path, updates: dict[str, str | None]) -> list[str]:
 
 
 # ── Kamera prüfen ───────────────────────────────────────────────────────────────────────────
-def _friendly(err: str) -> str:
+def _friendly(err: str, source: str = "") -> str:
+    err = redact(err, source)
     low = err.lower()
     if "401" in low and "unauthorized" in low:
         return "Benutzername oder Passwort der Kamera stimmen nicht."
@@ -206,7 +207,7 @@ def probe_camera(source: str, audio_device: str = "", ffmpeg_bin: str = "") -> d
     err = r.stderr.decode("utf-8", "replace")
     jpeg = r.stdout if r.stdout[:2] == b"\xff\xd8" else b""
     if not jpeg:
-        return {"ok": False, "error": _friendly(err)}
+        return {"ok": False, "error": _friendly(err, source)}
     v = re.search(r"Stream #\d+:\d+[^\n]*?: Video: (\w+)[^\n]*?, (\d{2,5})x(\d{2,5})", err)
     a = re.search(r"Stream #\d+:\d+[^\n]*?: Audio: (\w+)[^\n]*?, (\d+) Hz, (\w+)", err)
     return {

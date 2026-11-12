@@ -19,11 +19,38 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
+from urllib.parse import parse_qsl, urlsplit
 
 from .config import Settings
 
 _NOWIN = {"creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)} if os.name == "nt" else {}
 SEG_RE = re.compile(r"seg_(\d{8})_(\d{6})\.ts$")
+_URL_RE = re.compile(r"(?P<scheme>[A-Za-z][A-Za-z0-9+.\-]*://)(?P<auth>[^/\s@?#]*@)?(?P<rest>[^\s?#]*)(?P<q>[?#]\S*)?")
+
+
+def _source_secrets(source: str) -> list[str]:
+    """Geheime Teile der eingerichteten Quelle: Passwort/Benutzer in der Adresse und alle Werte hinter dem „?“."""
+    out: list[str] = []
+    try:
+        u = urlsplit(source.strip())
+        out += [u.password or "", u.username or ""]
+        out += [v for _, v in parse_qsl(u.query, keep_blank_values=False)]
+        out.append(u.query)
+    except ValueError:
+        pass
+    return sorted({x for x in out if len(x) >= 4}, key=len, reverse=True)
+
+
+def redact(text: str, source: str = "") -> str:
+    """Entfernt Zugangsdaten aus Fehlertexten, die angezeigt, protokolliert oder verschickt werden:
+    Benutzer:Passwort in Adressen, alles hinter „?“ (Zugangsschlüssel), und wörtlich die geheimen Teile der Quelle."""
+    def sub(m: re.Match) -> str:
+        return m.group("scheme") + ("***@" if m.group("auth") else "") + m.group("rest") + ("?***" if m.group("q") else "")
+
+    text = _URL_RE.sub(sub, text or "")
+    for secret in _source_secrets(source):
+        text = text.replace(secret, "***")
+    return text
 
 
 def find_ffmpeg(configured: str = "") -> str:
@@ -174,7 +201,7 @@ class Camera:
                 cmd, spec = build_cmd(self.s, self.s.segments_dir)
                 self.source_label = spec.label
             except Exception as e:  # ungültige Quelle / ffmpeg fehlt
-                self.state, self.error = "error", str(e)
+                self.state, self.error = "error", redact(str(e), self.s.camera_source)
                 self._stop.wait(15)
                 continue
             got_frames_before = self.frames
@@ -183,7 +210,7 @@ class Camera:
             try:
                 self._proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0, **_NOWIN)
             except Exception as e:
-                self.state, self.error = "error", f"ffmpeg konnte nicht gestartet werden: {e}"
+                self.state, self.error = "error", redact(f"ffmpeg konnte nicht gestartet werden: {e}", self.s.camera_source)
                 self._stop.wait(15)
                 continue
             proc = self._proc
@@ -234,7 +261,7 @@ class Camera:
             for line in iter(proc.stderr.readline, b""):
                 txt = line.decode("utf-8", "replace").strip()
                 if txt:
-                    self._stderr.append(txt[:240])
+                    self._stderr.append(redact(txt, self.s.camera_source)[:240])
         except Exception:
             pass
 
@@ -299,6 +326,7 @@ class Camera:
         finally:
             lst.unlink(missing_ok=True)
         if r.returncode != 0 or not out_path.is_file() or out_path.stat().st_size == 0:
-            self._stderr.append("Clip-Erzeugung fehlgeschlagen: " + r.stderr.decode("utf-8", "replace")[-200:])
+            self._stderr.append("Clip-Erzeugung fehlgeschlagen: "
+                                + redact(r.stderr.decode("utf-8", "replace"), self.s.camera_source)[-200:])
             return None
         return out_path
