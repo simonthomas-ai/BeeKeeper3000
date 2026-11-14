@@ -12,7 +12,7 @@ def _local(ref: str) -> Path | None:
     ref = ref.split("#")[0].split("?")[0]
     if not ref.startswith("/") or ref.startswith("//") or ref in ("/", ""):
         return None
-    if ref.startswith(("/api/", "/share/", "/media/", "/phone")):
+    if ref.startswith(("/api/", "/share/", "/media/", "/phone", "/mobil/")):
         return None
     return WEB / ref.lstrip("/")
 

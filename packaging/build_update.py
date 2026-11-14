@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Baut Hornet3000-1.2.0-Update.zip aus dem Projektstand und den gestagten Paketen (assemble.py)."""
+"""Baut Hornet3000-1.3.0-Update.zip aus dem Projektstand und den gestagten Paketen (assemble.py)."""
 import hashlib
 import shutil
 import zipfile
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 PROJ = Path(__file__).resolve().parents[1]
 B = Path("/home/claude/build")
 OUT = Path("/home/claude/dist")
@@ -22,7 +22,7 @@ if ROOT.parent.exists():
     shutil.rmtree(ROOT.parent)
 ROOT.mkdir(parents=True)
 ign = shutil.ignore_patterns("__pycache__", "*.pyc")
-for n in ("hornet", "web", "docs"):
+for n in ("hornet", "web", "docs", "mobil"):          # mobil = Android-App zum Herunterladen
     shutil.copytree(app_of("lin") / n, ROOT / "app" / n, ignore=ign)
 shutil.copy(PROJ / "hornet_run.py", ROOT / "app/hornet_run.py")
 for k in KINDS:

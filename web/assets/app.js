@@ -664,9 +664,12 @@ function cameraExtra() {
     e.target.disabled = false;
   } }, 'QR-Code zum Verbinden anzeigen');
   const bUsePhone = el('button', { type: 'button', onclick: () => { $('#s-CAMERA_SOURCE').value = 'phone'; toast('Kamera-Quelle auf „Handy“ gesetzt – unten speichern, dann QR-Code anzeigen.'); } }, 'Handy als Kamera verwenden');
+  const bUsePush = el('button', { type: 'button', onclick: () => { $('#s-CAMERA_SOURCE').value = 'push'; toast('Kamera-Quelle auf „push“ gesetzt – unten speichern und neu starten. Danach schickt ein Altgerät seine Bilder (Android-App oder Seite /m).'); } }, 'Altgerät als Station verwenden („push“)');
   return el('div', {}, el('div', { class: 'row' }, bDev, bTest), devs, res,
     el('p', { class: 'muted small mt-1' }, 'Kein Netzwerkkamera und keine Webcam am PC? Ein Handy (iPhone oder Android) kann als Kamera dienen – ohne App, über den Browser. Dafür braucht „Adresse der App“ unten eine https-Adresse.'),
-    el('div', { class: 'row' }, bUsePhone, bPhone), pres);
+    el('div', { class: 'row' }, bUsePhone, bPhone), pres,
+    el('p', { class: 'muted small mt-1' }, `Altes Handy oder Tablet übrig (Android ab 2.2, iPhone ab iOS 9)? Quelle „push“ wählen: Das Gerät öffnet ${location.origin}/m im Browser – oder nutzt die Android-App „Hornet3000 Station“ – und schickt Einzelbilder. Die Android-App braucht kein https. Im Browser braucht die Kamera auf neueren Geräten https; iPhones zeigen Alarme ab iOS 9, liefern Kamerabilder aber erst ab iOS 11. Alarm-Anzeige geht auf allen. Einzelheiten: docs/MOBIL.md.`),
+    el('div', { class: 'row' }, bUsePush));
 }
 function telegramExtra() {
   const res = el('div', { 'aria-live': 'polite' });

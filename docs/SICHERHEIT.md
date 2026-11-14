@@ -1,4 +1,4 @@
-# Sicherheit (Hornet3000 1.2.0)
+# Sicherheit (Hornet3000 1.3.0)
 
 ## Was geschützt wird und wovor
 
@@ -29,6 +29,27 @@ und das Funknetz vor Fremdtext und Überflutung.
   aussehen (mit „-“ beginnen) oder Zeilenumbrüche enthalten, werden abgelehnt.
 
 **Funknetz**: siehe `FUNKNETZ.md` – striktes Format, Bereinigung, Mengenbegrenzung, begrenzte Warteschlangen.
+
+**Altgeräte-Station und Handy-Seite (neu in 1.3.0, Einzelheiten in `MOBIL.md`)**
+* Der Bildeingang `POST /api/station/frame` ist ein neuer Netzwerk-Eingang und verlangt wie alles den Zugangsschlüssel
+  (Cookie oder `Authorization: Bearer`). Falsche Schlüssel per Bearer werden wie Anmeldeversuche gezählt: nach 10 in
+  10 Minuten antwortet der Wächter dieser Adresse mit 429 – **auch auf richtige Schlüssel von derselben Adresse**, bis die Frist
+  abgelaufen ist (Grenze 2 oben gilt entsprechend).
+* Jedes Bild wird geprüft, **bevor** es jemand dekodiert: JPEG-Kennung, lesbarer Kopf, höchstens 4096 Pixel je Seite und
+  8 Megapixel (Schutz vor „Dekompressionsbomben“), Farbmodus RGB/Graustufen; größer als 1 MiB wird schon vom Webguard abgewiesen.
+* Höchstens 5 Bilder pro Sekunde (sonst 429 mit Wartezeit), nur **eine** Station aktiv (andere bekommen 409, bis die aktive
+  20 s schweigt), Clip-Puffer nach Alter und nach Bytes (24 MiB) begrenzt. Der Stationsname wird auf einfache Zeichen begrenzt.
+* Foto-Prüfung (`/api/mobile/check`): nur eine Auswertung gleichzeitig, löst nie einen Alarm aus.
+* Die Handy-Seite `/m` setzt Texte vom Wächter nur mit `textContent` ein und hält die strenge Inhaltsrichtlinie ein; der Schlüssel
+  aus einem QR-Link (`/m#k=…`) steht hinter dem `#` und geht nie an den Server oder in dessen Protokoll.
+* Die Android-App folgt keinen Weiterleitungen (der Schlüssel geht nie an Dritte), begrenzt Antworten in der Größe, hält den
+  Schlüssel aus Fehlermeldungen heraus und kann bei https das Zertifikat per SHA-256-Fingerabdruck festlegen. Der Schlüssel liegt im
+  privaten App-Speicher (Cloud-Datensicherung aus), nicht zusätzlich verschlüsselt.
+* Der Download der App (`/mobil/hornet3000-station.apk`) verlangt Anmeldung und liefert nur diese eine feste Datei. Die APK ist
+  mit dem Schlüssel des Projekts signiert; wer den Schlüsselspeicher besitzt, kann Updates signieren – sicher aufbewahren.
+* Geprüft: Pytest (Bildprüfung, Grenzen, Schlüssel-Sperre, Download), 104 Java-Prüfungen der App-Logik gegen den echten Wächter, echter
+  Browser, und ein Dauerlauf, in dem eine ehrliche Station neben mehreren Störern (Müll, Übergröße, fremde Stationen, Fluten) Bilder
+  liefert (Phase D von `tests/stability/soak.py`). **Nicht** geprüft: Verhalten auf echten Altgeräten.
 
 ## Bewusste Grenzen – bitte beachten
 

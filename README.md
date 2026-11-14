@@ -1,4 +1,4 @@
-# Hornet3000 Wächter 1.2.0 – Quellcode
+# Hornet3000 Wächter 1.3.0 – Quellcode
 
 Überwachung von Bienenständen gegen die Asiatische Hornisse (*Vespa velutina*): Kamera → Erkennung (YOLOv8, ONNX) →
 Alarm (Telegram, E-Mail, WhatsApp, SMS, Web-Push) → optional **Funknetz** (LoRa/MeshCore und Freenet/River) zwischen Stationen.

@@ -196,6 +196,10 @@ def probe_camera(source: str, audio_device: str = "", ffmpeg_bin: str = "") -> d
         return {"ok": False, "phone": True,
                 "error": "„Handy als Kamera“ lässt sich hier nicht testen – dafür unten „QR-Code anzeigen“ "
                         "verwenden und mit dem Handy verbinden. Der Verbindungsstatus erscheint dann im Reiter „Live“."}
+    if source.strip().lower() == "push":
+        return {"ok": False, "push": True,
+                "error": "„Station“ (push) lässt sich hier nicht testen – die Station (Android-App oder Handy-Seite /m) schickt "
+                        "ihre Bilder selbst. Der Verbindungsstatus erscheint im Reiter „Live“."}
     spec = resolve_source(source, audio_device)
     cmd = [find_ffmpeg(ffmpeg_bin), "-hide_banner", "-nostdin", *spec.inputs, "-map", spec.vmap, "-frames:v", "1",
            "-vf", "scale=960:-2", "-q:v", "4", "-f", "image2pipe", "-vcodec", "mjpeg", "pipe:1"]

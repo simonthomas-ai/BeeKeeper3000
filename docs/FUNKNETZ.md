@@ -1,4 +1,4 @@
-# Funknetz – Stationen melden sich gegenseitig (Hornet3000 1.2.0)
+# Funknetz – Stationen melden sich gegenseitig (Hornet3000 1.3.0)
 
 Sieht eine Station die Asiatische Hornisse, meldet sie das automatisch an die Nachbarstationen. Dafür gibt es zwei
 voneinander unabhängige Wege, die einzeln oder zusammen laufen können:

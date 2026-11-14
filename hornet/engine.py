@@ -21,6 +21,7 @@ from .camera import Camera
 from .config import Settings
 from .detector import Detection, YoloOnnx, iou
 from .phonecam import PhoneCamera
+from .pushcam import PushCamera
 from .imaging import LATIN, crop_around, display_name, draw_detections, to_jpeg
 from .notifiers import Hub
 from .store import Store
@@ -111,7 +112,8 @@ class Engine:
         self.bus = bus or EventBus()
         self.detector = detector
         self.model_error = ""
-        camera_cls = PhoneCamera if s.camera_source.strip().lower() == "phone" else Camera
+        _src = s.camera_source.strip().lower()
+        camera_cls = PhoneCamera if _src == "phone" else PushCamera if _src == "push" else Camera
         self.camera = camera_cls(s, self._on_frame)
         self._latest: tuple[bytes, float] | None = None
         self._latest_lock = threading.Lock()
@@ -410,8 +412,8 @@ class Engine:
         cam_info = {"name": self.s.camera_name, "online": cam.online, "state": cam.state, "error": cam.error,
                     "source": cam.source_label, "last_frame_age": round(time.time() - cam.last_frame_ts, 1)
                     if cam.last_frame_ts else None, "restarts": cam.restarts,
-                    "type": "phone" if isinstance(cam, PhoneCamera) else "stream"}
-        if isinstance(cam, PhoneCamera):
+                    "type": "phone" if isinstance(cam, PhoneCamera) else "push" if isinstance(cam, PushCamera) else "stream"}
+        if isinstance(cam, (PhoneCamera, PushCamera)):
             cam_info.update(cam.status_extra())
         return {
             "version": __version__,

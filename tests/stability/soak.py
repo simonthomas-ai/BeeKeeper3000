@@ -8,7 +8,8 @@ Was hier Attrappe ist: das Funkgerät (TESTATTRAPPE auf einem Pseudo-Terminal, t
 Phasen:  A  Start/Stopp-Zyklen (abwechselnd sauber beenden und hart abschießen), Datenbank danach prüfen
          B  Funk-Überflutung (gültige + kaputte Zeilen von vielen Stationen) bei gleichzeitigem Bedienbetrieb
          C  Dauerlauf mit gleichmäßigem Verkehr: Speicher, Dateihandles, Threads dürfen nicht wachsen
-Aufruf:  python tests/stability/soak.py [--cycles 8] [--flood 3000] [--minutes 3]
+         D  Station (Altgerät schickt Bilder) unter Beschuss: Müll, Übergröße, Fremdstationen, Fluten, falsche Schlüssel
+Aufruf:  python tests/stability/soak.py [--cycles 8] [--flood 3000] [--minutes 3] [--station-seconds 90]
 Ergebnis: JSON-Zeile je Phase und am Ende „SOAK: BESTANDEN“ bzw. Liste der Verstöße; Exitcode 0/1.
 """
 from __future__ import annotations
@@ -314,11 +315,132 @@ def phase_c(inst: Instance, dev: FakeMeshDevice, minutes: float) -> None:
         fail("Phase C: Datenbank nach sauberem Beenden nicht in Ordnung")
 
 
+def phase_d(src: Path, python: str, seconds: float) -> None:
+    """Station als Netzwerk-Eingang: Eine ehrliche Station liefert Bilder, während mehrere Störer mit gültigen, falschen,
+    übergroßen und fremden Bildern fluten. Erwartet: Programm bleibt oben, ehrliche Station kommt durch, Speicher/Handles/
+    Threads wachsen nicht, Oberfläche antwortet, danach nur Zählwerte im Rahmen; am Ende Datenbank in Ordnung."""
+    import io
+    import threading
+
+    from PIL import Image
+
+    root = Path(tempfile.mkdtemp(prefix="hornet-soak-d-"))
+    inst = Instance(root, "", src, python)
+    inst.prepare()
+    inst.write_env({"CAMERA_SOURCE": "push", "MESH_LORA_ENABLED": "false", "MESH_LORA_PORT": ""})
+    try:
+        inst.start()
+        im = Image.new("RGB", (640, 480), (90, 130, 70))
+        for x in range(0, 640, 20):
+            im.paste((x % 255, 180, 60), (x, 0, x + 8, 480))
+        b = io.BytesIO()
+        im.save(b, "JPEG", quality=75)
+        good = b.getvalue()
+        pid = inst.proc.pid
+        auth = {"Authorization": f"Bearer {TOKEN}"}
+        stop = threading.Event()
+        stats = {"ok": 0, "legit_try": 0, "codes": {}}
+        lock = threading.Lock()
+
+        def count(code):
+            with lock:
+                stats["codes"][code] = stats["codes"].get(code, 0) + 1
+
+        def honest():
+            c = httpx.Client(base_url=inst.base, timeout=10)
+            while not stop.is_set():
+                t = time.time()
+                stats["legit_try"] += 1
+                try:
+                    r = c.post("/api/station/frame", content=good, headers={**auth, "Content-Type": "image/jpeg", "X-Station": "Ehrlich"})
+                    if r.status_code == 200:
+                        stats["ok"] += 1
+                except httpx.HTTPError:
+                    pass
+                time.sleep(max(0, 0.4 - (time.time() - t)))
+            c.close()
+
+        def flooder(kind: int):
+            c = httpx.Client(base_url=inst.base, timeout=10)
+            junk = bytes(range(256)) * 40
+            huge = b"\xff\xd8\xff" + b"0" * (1 << 20)          # genau über der Grenze von 1 MiB
+            while not stop.is_set():
+                try:
+                    if kind == 0:      # gültige Bilder, andere Station (409) bzw. zu schnell (429)
+                        r = c.post("/api/station/frame", content=good, headers={**auth, "Content-Type": "image/jpeg", "X-Station": "Stoerer"})
+                    elif kind == 1:    # Müll mit JPEG-Anfang und Unsinn
+                        r = c.post("/api/station/frame", content=b"\xff\xd8\xff" + junk, headers={**auth, "Content-Type": "image/jpeg", "X-Station": "Ehrlich"})
+                    elif kind == 2:    # zu groß
+                        r = c.post("/api/station/frame", content=huge, headers={**auth, "Content-Type": "image/jpeg", "X-Station": "Ehrlich"})
+                    else:              # Abfragen und Fotoprüfung
+                        r = c.get("/api/mobile/poll", headers=auth) if kind == 3 else c.post(
+                            "/api/mobile/check", content=good, headers={**auth, "Content-Type": "image/jpeg"})
+                    count(r.status_code)
+                except httpx.HTTPError:
+                    count("fehler")
+                    time.sleep(0.05)
+
+        threads = [threading.Thread(target=honest)] + [threading.Thread(target=flooder, args=(k,)) for k in (0, 0, 1, 2, 3, 4)]
+        for t in threads:
+            t.daemon = True
+            t.start()
+        samples = []
+        slow = 0
+        c = inst.client()
+        end = time.time() + seconds
+        while time.time() < end:
+            t = time.time()
+            r = c.get("/api/status")
+            dt = time.time() - t
+            if r.status_code != 200 or dt > 3:
+                slow += 1
+            samples.append({"t": round(end - time.time()), "status_s": round(dt, 2), **proc_stats(pid)})
+            time.sleep(5)
+        stop.set()
+        for t in threads:
+            t.join(15)
+        st = c.get("/api/status").json()
+        cam = st["camera"]
+        print(json.dumps({"phase": "D", "ehrlich_ok": stats["ok"], "ehrlich_versuche": stats["legit_try"], "antworten": stats["codes"],
+                          "kamera": {k: cam.get(k) for k in ("type", "online", "station", "fps", "rejected")},
+                          "proben": samples[:: max(1, len(samples) // 6)] + [samples[-1]]}, ensure_ascii=False), flush=True)
+        if inst.proc.poll() is not None:
+            fail("Phase D: Programm ist abgestürzt")
+        if stats["ok"] < 0.6 * stats["legit_try"]:
+            fail(f"Phase D: ehrliche Station kam nur {stats['ok']} von {stats['legit_try']} Mal durch")
+        if slow > 1:
+            fail(f"Phase D: Oberfläche antwortete {slow} Mal zu langsam/fehlerhaft")
+        if stats["codes"].get("fehler", 0) > 0.05 * max(1, sum(v for v in stats["codes"].values())):
+            fail(f"Phase D: viele Verbindungsfehler: {stats['codes'].get('fehler')}")
+        first, last = samples[1] if len(samples) > 1 else samples[0], samples[-1]
+        if last["rss_mb"] and first["rss_mb"] and last["rss_mb"] - first["rss_mb"] > 120:
+            fail(f"Phase D: Speicher wuchs von {first['rss_mb']} auf {last['rss_mb']} MB")
+        if last["fds"] and first["fds"] and last["fds"] - first["fds"] > 8:
+            fail(f"Phase D: Dateihandles wuchsen von {first['fds']} auf {last['fds']}")
+        if last["threads"] and first["threads"] and last["threads"] - first["threads"] > 8:
+            fail(f"Phase D: Threads wuchsen von {first['threads']} auf {last['threads']}")
+        # falsche Schlüssel: die Sperre muss greifen (und das Programm oben bleiben)
+        bad = [httpx.post(inst.base + "/api/station/frame", content=good, headers={"Authorization": "Bearer falsch-falsch-falsch", "Content-Type": "image/jpeg"},
+                          timeout=10).status_code for _ in range(25)]
+        print(json.dumps({"phase": "D2", "falscher_schluessel": {str(k): bad.count(k) for k in sorted(set(bad))}}), flush=True)
+        if 429 not in bad or bad.count(401) > 12:
+            fail(f"Phase D: Sperre nach falschen Schlüsseln greift nicht: {bad}")
+        c.close()
+        dt, code = inst.stop(False)
+        if inst.db_check() != "ok":
+            fail("Phase D: Datenbank nach sauberem Beenden nicht in Ordnung")
+    finally:
+        if inst.proc and inst.proc.poll() is None:
+            inst.proc.kill()
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cycles", type=int, default=8)
     ap.add_argument("--flood", type=int, default=3000)
     ap.add_argument("--minutes", type=float, default=3)
+    ap.add_argument("--station-seconds", type=float, default=90, help="Dauer von Phase D (Station unter Beschuss), 0 = auslassen")
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--app-dir", default="", help="installierten app/-Ordner prüfen (zusammen mit --python)")
     ap.add_argument("--python", default=sys.executable)
@@ -332,6 +454,8 @@ def main() -> int:
         phase_a(inst, dev, a.cycles)
         phase_b(inst, dev, a.flood)
         phase_c(inst, dev, a.minutes)
+        if a.station_seconds > 0:
+            phase_d(Path(a.app_dir) if a.app_dir else REPO, a.python, a.station_seconds)
     except Exception as e:  # noqa: BLE001
         fail(f"Testlauf abgebrochen: {e!r}")
     finally:

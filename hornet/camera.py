@@ -108,7 +108,7 @@ def resolve_source(src: str, audio_device: str = "") -> SourceSpec:
     if Path(path).is_file():
         return SourceSpec(["-re", "-stream_loop", "-1", "-i", path], "0:v:0", "0:a:0?", "Videodatei")
     raise ValueError(
-        f"CAMERA_SOURCE '{src}' nicht erkannt. Erlaubt: phone | rtsp://… | dshow:Kameraname | v4l2:/dev/video0 | Dateipfad")
+        f"CAMERA_SOURCE '{src}' nicht erkannt. Erlaubt: phone | push | rtsp://… | dshow:Kameraname | v4l2:/dev/video0 | Dateipfad")
 
 
 ALLOWED_PREFIXES = ("rtsp://", "rtsps://", "http://", "https://", "rtmp://", "dshow:", "avfoundation:", "v4l2:",
@@ -123,9 +123,9 @@ def validate_source(src: str) -> str:
     if src.startswith("-") or "\n" in src or "\r" in src:
         raise ValueError("Ungültige Kamera-Quelle")
     low = src.lower()
-    if low in ("selftest", "phone") or low.startswith(ALLOWED_PREFIXES) or Path(src).is_file():
+    if low in ("selftest", "phone", "push") or low.startswith(ALLOWED_PREFIXES) or Path(src).is_file():
         return src
-    raise ValueError("Unbekannte Kamera-Quelle. Erlaubt: phone, rtsp://…, dshow:Kameraname, v4l2:/dev/video0, "
+    raise ValueError("Unbekannte Kamera-Quelle. Erlaubt: phone, push, rtsp://…, dshow:Kameraname, v4l2:/dev/video0, "
                      "avfoundation:0:0 oder der Pfad einer Videodatei")
 
 

@@ -1,5 +1,26 @@
 # Änderungen
 
+## 1.3.0 (14.11.2026)
+**Neu: alte Handys und Tablets nutzen** (Anleitung und ehrliche Prüfübersicht: `docs/MOBIL.md`)
+* **Android-App „Hornet3000 Station“** (laut Manifest ab Android 2.2): Kamera-Betrieb (Einzelbilder per HTTP), Alarm-Anzeige
+  (Ton, Vibration, Bild), Stumm/Testalarm, mehrere Kameras wählbar, https mit Zertifikat-Fingerabdruck. Gebaut ohne Gradle
+  (`android/`, Skript `build.sh`), signiert (v1+v2+v3), rund 95 KB. Der Wächter liefert die App nach Anmeldung zum Herunterladen aus
+  (Seite `/m`, Link „Android-App laden“).
+* **Handy-Seite `/m`** für alte iPhones (ab iOS 9) und Android-Browser: Alarm-Anzeige, Foto auswerten lassen, Kamera-Betrieb
+  (iPhone ab iOS 11 mit https). Reines ES5.
+* **Kamera-Quelle „push“**: Ein Altgerät schickt JPEG-Bilder an `POST /api/station/frame`; Clips entstehen aus den Einzelbildern.
+  Neue Schnittstellen: `/api/station/config`, `/api/station/frame`, `/api/mobile/poll`, `/api/mobile/check`.
+* Einrichtung: Knopf „Altgerät als Station verwenden („push“)“.
+**Sicherheit**
+* Bildeingang mit Kopfprüfung vor dem Dekodieren (Größe, Maße, Format), 5 Bilder/s, eine aktive Station, Begrenzung der Puffer,
+  Sperre nach falschen Bearer-Schlüsseln. Einzelheiten: `docs/SICHERHEIT.md`.
+**Prüfung**
+* Neu: Pytest-Tests der Station (31), Browsertest der Handy-Seite (37 Prüfungen), JVM-Test der App-Logik gegen den echten Wächter
+  (104 Prüfungen, `tests/android/run_protocol.py`), Phase D im Dauerlauf (Station unter Beschuss).
+* Nicht geprüft: die App auf einem echten Gerät oder Emulator; alte Browser nur nachgebildet.
+**Sonstiges**
+* Update-Paket (`Hornet3000-1.3.0-Update.zip`) aktualisiert Installationen 1.0.x bis 1.2.x.
+
 ## 1.2.0 (11.11.2026)
 **Neu**
 * Funknetz zwischen Stationen bei bestätigter Sichtung: LoRa/MeshCore (868 MHz, USB-Funkgerät) und/oder Freenet/River (privater, verschlüsselter Chatraum). Ab Werk aus.

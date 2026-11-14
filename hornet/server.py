@@ -7,6 +7,7 @@ import html
 import io
 import json
 import logging
+import threading
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -15,13 +16,16 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
 
 from . import __version__, mesh as mesh_pkg, security
 from .config import ROOT, Settings, ensure_access_token, ensure_env_file, ensure_private_dir, parse_env_file
 from .detector import YoloOnnx
 from .engine import Engine, EventBus
+from .imaging import display_name
 from .notifiers import Hub
 from .phonecam import FORMAT_BY_MIME, PhoneCamera
+from .pushcam import PushCamera, PushError, check_jpeg, clean_station
 from .setup_wizard import apply_updates, list_devices, probe_camera, read_config, telegram_discover
 from .sightings import fetch_sightings
 from .store import Store
@@ -30,6 +34,8 @@ from .webguard import WebGuard
 log = logging.getLogger("hornet.server")
 WEB = ROOT / "web"
 MEDIA_NAMES = {"snapshot.jpg": "image/jpeg", "clip.mp4": "video/mp4"}
+# Android-App zum Herunterladen für Altgeräte (liegt den Installern bei; im Quellcode-Paket nicht – dort selbst bauen, siehe android/)
+APK_PATH = ROOT / "mobil" / "Hornet3000-Station.apk"
 
 
 def load_detector(s: Settings) -> tuple[YoloOnnx | None, str]:
@@ -91,9 +97,28 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
         auth = request.headers.get("authorization", "")
         return auth.lower().startswith("bearer ") and security.check_token(s.access_token, auth[7:].strip())
 
+    def _note_fail(ip: str, now: float) -> None:
+        if len(fails) > FAILS_MAX_IPS:
+            for k in [k for k, v in fails.items() if not v or now - v[-1] > 600]:
+                del fails[k]
+            while len(fails) > FAILS_MAX_IPS:
+                fails.pop(next(iter(fails)))
+        fails[ip] = [t for t in fails.get(ip, []) if now - t < 600] + [now]
+
     async def require_auth(request: Request) -> None:
-        if not is_authed(request):
-            raise HTTPException(401, "Anmeldung erforderlich")
+        if security.check_session(s.access_token, request.cookies.get("hn_session")):
+            return
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            # Wie bei der Anmeldemaske: nach 10 falschen Schlüsseln in 10 Minuten sperren (Raten über „Bearer“ bremsen)
+            ip = request.client.host if request.client else "?"
+            now = time.time()
+            if len([t for t in fails.get(ip, []) if now - t < 600]) >= 10:
+                raise HTTPException(429, "Zu viele Versuche – bitte in 10 Minuten erneut probieren")
+            if security.check_token(s.access_token, auth[7:].strip()):
+                return
+            _note_fail(ip, now)
+        raise HTTPException(401, "Anmeldung erforderlich")
 
     @app.post("/api/login")
     async def login(request: Request, response: Response):
@@ -472,6 +497,100 @@ def create_app(s: Settings | None = None, *, start_engine: bool = True, detector
         finally:
             if session is not None:
                 cam.detach(session)
+
+    # -- Altgeräte: Station (Bilder per HTTP) und schlanke Handy-Schnittstelle ----------------------------
+    def _push_cam() -> PushCamera:
+        cam = engine.camera
+        if not isinstance(cam, PushCamera):
+            raise HTTPException(409, "Die Kamera-Quelle ist nicht „push“ – unter Einrichtung → Kamera als Quelle „push“ "
+                                     "eintragen und neu starten, dann kann eine Station Bilder schicken")
+        return cam
+
+    @app.get("/api/station/config", dependencies=[Depends(require_auth)])
+    async def station_config():
+        return _push_cam().config()
+
+    @app.post("/api/station/frame", dependencies=[Depends(require_auth)])
+    async def station_frame(request: Request):
+        cam = _push_cam()
+        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "image/jpeg":
+            raise HTTPException(415, "Content-Type image/jpeg erwartet")
+        data = await request.body()          # der WebGuard hat die Größe (1 MiB) schon begrenzt
+        try:
+            return cam.push(data, clean_station(request.headers.get("x-station")))
+        except PushError as e:
+            hdr = {"Retry-After": str(max(1, (e.retry_ms + 999) // 1000))} if e.retry_ms else None
+            raise HTTPException(e.status, e.detail, headers=hdr) from None
+
+    def _compact_alert(a: dict) -> dict:
+        return {"id": a["id"], "ts": a["ts"], "kind": a["kind"], "species": a.get("species"), "label": a.get("label"),
+                "count": a.get("count"),
+                "conf": a.get("conf"), "muted": bool(a.get("muted")),
+                "snapshot_url": f"/media/{a['id']}/snapshot.jpg" if a.get("snapshot") else None,
+                "clip_url": f"/media/{a['id']}/clip.mp4" if a.get("clip") else None}
+
+    @app.get("/api/mobile/poll", dependencies=[Depends(require_auth)])
+    async def mobile_poll(since: int = 0):
+        """Alles, was eine kleine Anzeige braucht, in einer kurzen Antwort (für alte Browser und Android 2.3+)."""
+        cam = engine.camera
+        rows = store.list_alerts(15, 0)
+        extra = cam.status_extra() if isinstance(cam, (PhoneCamera, PushCamera)) else {}
+        return {"v": 1, "now": time.time(), "version": __version__,
+                "camera": {"name": s.camera_name, "online": cam.online, "state": cam.state,
+                           "station": extra.get("station"), "fps": extra.get("fps")},
+                "muted": engine.is_muted(), "mute_until": engine.mute_until, "alarms_24h": store.count_alerts(time.time() - 86400),
+                "detections_now": len(engine.last_dets), "newest_id": rows[0]["id"] if rows else 0,
+                "apk": APK_PATH.is_file(),
+                "alerts": [_compact_alert(a) for a in rows if a["id"] > max(0, since)]}
+
+    check_lock = threading.Lock()
+
+    @app.post("/api/mobile/check", dependencies=[Depends(require_auth)])
+    async def mobile_check(request: Request):
+        """Einzelfoto prüfen (z. B. mit dem Handy am Köder aufgenommen): nur Auswertung, löst KEINEN Alarm aus."""
+        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "image/jpeg":
+            raise HTTPException(415, "Content-Type image/jpeg erwartet")
+        if engine.detector is None:
+            raise HTTPException(503, "Erkennungsmodell nicht geladen" + (f": {engine.model_error}" if engine.model_error else ""))
+        data = await request.body()
+        try:
+            w, h = check_jpeg(data)
+        except PushError as e:
+            raise HTTPException(e.status, e.detail) from None
+        if not check_lock.acquire(blocking=False):
+            raise HTTPException(429, "Es läuft schon eine Prüfung – gleich noch einmal versuchen", headers={"Retry-After": "2"})
+
+        def work():
+            try:
+                with Image.open(io.BytesIO(data)) as im:
+                    im.load()
+                    return engine.detector.detect(im.convert("RGB"), s.conf_min)
+            finally:
+                check_lock.release()
+        try:
+            dets = await asyncio.to_thread(work)
+        except Exception as e:
+            raise HTTPException(422, f"Bild nicht auswertbar ({type(e).__name__})") from None
+        out = []
+        for d in sorted(dets, key=lambda d: -d.conf)[:20]:
+            kind = "alarm" if d.name in s.alert_classes else "geschuetzt" if d.name in s.protected_classes else "andere"
+            out.append({**d.to_dict(), "name": display_name(d.name), "kind": kind})
+        hits = sorted(engine._classify(dets), key=lambda d: -d.conf)      # dieselbe Regel wie beim echten Alarm
+        return {"ok": True, "size": [w, h], "detections": out, "alarm_like": bool(hits),
+                "verdict": (f"{display_name(hits[0].name)} wahrscheinlich ({round(hits[0].conf * 100)} %)" if hits
+                            else "Keine Hornisse erkannt" if not out else "Nur Unsicheres/Anderes erkannt – bitte selbst prüfen")}
+
+    @app.get("/mobil/hornet3000-station.apk", include_in_schema=False, dependencies=[Depends(require_auth)])
+    async def station_apk():
+        """Die Android-App zum Installieren auf dem Altgerät (nur nach Anmeldung; fester Pfad, nichts vom Aufrufer im Dateinamen)."""
+        if not APK_PATH.is_file():
+            raise HTTPException(404, "Dieser Installation liegt keine Android-App bei (siehe docs/MOBIL.md: selbst bauen oder die APK-Datei kopieren)")
+        return FileResponse(APK_PATH, media_type="application/vnd.android.package-archive", filename="Hornet3000-Station.apk",
+                            headers={"Cache-Control": "no-store"})
+
+    @app.get("/m", include_in_schema=False)
+    async def mobile_page():
+        return FileResponse(WEB / "m.html", headers={"Cache-Control": "no-cache"})
 
     # -- PWA-Dateien --------------------------------------------------------------------------------
     @app.get("/", include_in_schema=False)

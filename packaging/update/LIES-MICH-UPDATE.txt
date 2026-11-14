@@ -1,11 +1,11 @@
-HORNET3000 – UPDATE VON 1.1.x AUF 1.2.0
-=======================================
+HORNET3000 – UPDATE VON 1.0.x/1.1.x/1.2.x AUF 1.3.0
+===================================================
 
-Für wen: Wer Hornet3000 1.0.x/1.1.x schon installiert hat und nur die Programmdateien ersetzen will. Einstellungen (.env),
+Für wen: Wer Hornet3000 1.0.x bis 1.2.x schon installiert hat und nur die Programmdateien ersetzen will. Einstellungen (.env),
 Alarme, Fotos, Videos und das Protokoll werden NICHT angefasst. Wer neu installiert, nimmt stattdessen den Installer.
 
-Was ersetzt wird: Programmcode (hornet), Oberfläche (web), Anleitungen, die Bibliotheken Pillow (13.0.0, behebt bekannte
-Schwachstellen) und certifi, dazu neu pyserial (Funkgerät). Python, ffmpeg, Erkennungsmodell und alle übrigen Bibliotheken
+Was ersetzt wird: Programmcode (hornet), Oberfläche (web), Anleitungen, die Android-App zum Herunterladen (Ordner mobil), die
+Bibliotheken Pillow (13.0.0, behebt bekannte Schwachstellen) und certifi, dazu pyserial (Funkgerät). Python, ffmpeg, Erkennungsmodell und alle übrigen Bibliotheken
 bleiben unverändert.
 
 So geht's
@@ -24,6 +24,6 @@ Was das Update tut
   · schlägt der Selbsttest fehl, wird der alte Stand AUTOMATISCH wiederhergestellt.
   Nur prüfen, nichts ändern:  python update.py --nur-pruefen   (mit dem Python der Installation)
 
-Ehrlicher Prüfstand: getestet mit einer echten 1.1.0-Linux-Installation (Erfolgsweg, Wiederholung auf 1.2.0, Rückfall bei
-Fehler, beschädigtes Paket). Windows und macOS: das Skript ist plattformunabhängig geschrieben (nur Standardbibliothek),
+Ehrlicher Prüfstand: getestet mit einer echten 1.1.0- und einer echten 1.2.0-Linux-Installation (Erfolgsweg, Wiederholung auf
+1.3.0, Rückfall bei Fehler, beschädigtes Paket). Windows und macOS: das Skript ist plattformunabhängig geschrieben (nur Standardbibliothek),
 dort aber nicht ausgeführt worden.

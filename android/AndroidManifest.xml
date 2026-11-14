@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hornet3000 Station: läuft ab Android 2.2 (API 8). Die Versionsnummern setzt build.sh aus hornet/__init__.py ein. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.hornet3000.station"
+    android:versionCode="@VERSIONCODE@"
+    android:versionName="@VERSION@">
+
+    <!-- targetSdk 28: neuere Android-Versionen (ab 15) installieren Apps mit Ziel < 24 nicht mehr; 28 vermeidet zugleich
+         die Einschränkungen für Hintergrund-Dienste, die diese App ohnehin nicht nutzt. -->
+    <uses-sdk android:minSdkVersion="8" android:targetSdkVersion="28" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Kamera ist nicht Pflicht: ohne Kamera lässt sich die App als Alarm-Anzeige nutzen. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:label="Hornet3000 Station"
+        android:icon="@drawable/icon"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name="org.hornet3000.station.MainActivity"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|screenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="org.hornet3000.station.StationActivity"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
+
+        <activity
+            android:name="org.hornet3000.station.AlarmActivity"
+            android:theme="@android:style/Theme.Black"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
+    </application>
+</manifest>

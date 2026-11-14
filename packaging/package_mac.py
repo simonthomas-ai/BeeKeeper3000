@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 B = Path("/home/claude/build")
 OUT = Path("/home/claude/dist")
 RCODESIGN = next((B / "tools").glob("apple-codesign-*/rcodesign"))

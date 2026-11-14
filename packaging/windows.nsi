@@ -1,12 +1,12 @@
 ; Hornet3000 Wächter – Windows-Installer (NSIS 3, Unicode). Keine Administratorrechte nötig.
-; Aufruf: makensis -DVERSION=1.2.0 -DSTAGE=<Ordner mit python\ und app\> -DICON=<hornet3000.ico> -DOUT=<Ausgabedatei> windows.nsi
+; Aufruf: makensis -DVERSION=1.3.0 -DSTAGE=<Ordner mit python\ und app\> -DICON=<hornet3000.ico> -DOUT=<Ausgabedatei> windows.nsi
 Unicode true
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
 
 !ifndef VERSION
-  !define VERSION "1.2.0"
+  !define VERSION "1.3.0"
 !endif
 !define NAME "Hornet3000 Wächter"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Hornet3000"

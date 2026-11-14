@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Baut die Installationsverzeichnisse für 1.2.0 (Linux, Windows, macOS arm64/x86_64) aus den geprüften
+"""Baut die Installationsverzeichnisse für 1.3.0 (Linux, Windows, macOS arm64/x86_64) aus den geprüften
 1.1.0-Laufzeiten (Python + Bibliotheken) und dem aktuellen Projektstand.
 
 Eingaben (außerhalb dieses Repos):  x110/<kind>/…  = entpackte 1.1.0-Pakete (Python-Laufzeit, Bibliotheken, ffmpeg)
@@ -12,8 +12,9 @@ import sys
 import zipfile
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 PROJ = Path(__file__).resolve().parents[1]
+APK_SRC = Path("/home/claude/dist/Hornet3000-Station-1.3.0.apk")
 B = Path("/home/claude/build")
 X = Path("/home/claude/x110")
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache")
@@ -84,10 +85,12 @@ def readme_text(old: str, kind: str) -> str:
     t = old.replace("HORNET3000 WÄCHTER 1.1.0", f"HORNET3000 WÄCHTER {VERSION}")
     t = t.replace("Hornet3000-1.1.0-", f"Hornet3000-{VERSION}-").replace("Hornet3000-Setup-1.1.0", f"Hornet3000-Setup-{VERSION}")
     sep = "────────────────────────────────────────────────────────────────────────\n"
-    new = (PROJ / "packaging/README-neu-1.2.0.txt").read_text(encoding="utf-8")
+    new = (PROJ / "packaging/README-neu-1.3.0.txt").read_text(encoding="utf-8")
     i = t.index(sep + "INSTALLATION (")
     t = t[:i] + new + t[i:]
-    extra = ("· Funknetz (1.2.0): Funknachrichten sind Fremdtext und werden streng geprüft und begrenzt. Bei Missbrauch\n"
+    extra = ("· Altgeräte (1.3.0): Alte Handys/Tablets liefern Bilder (Kamera-Quelle „push“) und zeigen Alarme an. Die Android-App\n"
+             "  (ab Android 2.2) lädt man auf der Seite /m des Wächters herunter. Mehr: docs/MOBIL.md.\n"
+             "· Funknetz (1.2.0): Funknachrichten sind Fremdtext und werden streng geprüft und begrenzt. Bei Missbrauch\n"
              "  den Funkschlüssel bzw. den River-Raum wechseln. Die Oberfläche ist standardmäßig im Heimnetz erreichbar\n"
              "  (HOST=0.0.0.0) und nur durch den Zugangsschlüssel geschützt – ohne HTTPS nicht ins Internet stellen;\n"
              "  nur für den eigenen Rechner: HOST=127.0.0.1 in der .env. Mehr: docs/SICHERHEIT.md.\n")
@@ -116,6 +119,11 @@ def stage(kind: str) -> Path:
     for f in sorted((PROJ / "docs").glob("*.md")):
         shutil.copy(f, app / "docs" / f.name)
     shutil.copy(PROJ / "CHANGELOG.md", app / "docs" / "CHANGELOG.md")
+    # Android-App zum Herunterladen für Altgeräte (der Wächter liefert sie nach Anmeldung aus; Quelle: android/, Signatur: eigener Schlüssel)
+    apk = APK_SRC
+    assert apk.is_file() and apk.stat().st_size > 50_000, f"Android-App fehlt: {apk}"
+    (app / "mobil").mkdir(exist_ok=True)
+    shutil.copy(apk, app / "mobil" / "Hornet3000-Station.apk")
     # Das Modell bleibt unverändert; Prüfsumme gegen das Projekt
     assert (app / "models/hornet_yolov8s.onnx").stat().st_size == (PROJ / "models/hornet_yolov8s.onnx").stat().st_size
     replace_lib(app / "lib", kind)
