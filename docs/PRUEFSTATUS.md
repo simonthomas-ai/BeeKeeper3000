@@ -1,4 +1,4 @@
-# Prüfstatus Hornet3000 1.2.0 (Stand 12.11.2026)
+# Prüfstatus Hornet3000 1.3.0 (Stand 14.11.2026)
 
 Diese Seite sagt ehrlich, **was wirklich ausgeführt wurde** und was nicht. „Attrappe“ bedeutet: ein Testwerkzeug ersetzt
 das fehlende Gerät; die Attrappen liegen nur in `tests/` (Quellcode-Paket) und sind nie Teil des Programms.
@@ -7,12 +7,16 @@ das fehlende Gerät; die Attrappen liegen nur in `tests/` (Quellcode-Paket) und 
 
 | Prüfung | Wie | Ergebnis |
 |---|---|---|
-| Automatische Tests, Entwicklungsumgebung (Python 3.13) | 241 Tests: Funkformat, Flusskontrolle, Dienst, LoRa-Anbindung gegen Geräte-Attrappe, Sicherheit, Server-Schnittstellen, Alarm→Funknetz, Schwärzung von Kamera-Zugangsdaten | 236 bestanden, 5 übersprungen (siehe Zeile Freenet) |
-| Dieselben Tests mit dem **mitgelieferten** Python 3.12 und genau den Bibliotheken des Pakets | wie oben | 235 bestanden, 6 übersprungen (die 5 Freenet-Echttests und der Abgleich mit der offiziellen MeshCore-Bibliothek, die nicht im Paket steckt) |
+| Automatische Tests, Entwicklungsumgebung (Python 3.13) | 275 Tests: Funkformat, Flusskontrolle, Dienst, LoRa-Anbindung gegen Geräte-Attrappe, Sicherheit, Server-Schnittstellen, Alarm→Funknetz, Schwärzung von Kamera-Zugangsdaten, **Station und Handy-Schnittstelle (31)** | 270 bestanden, 5 übersprungen (siehe Zeile Freenet) |
+| Dieselben Tests mit dem **mitgelieferten** Python 3.12 und genau den Bibliotheken des Pakets | wie oben | 269 bestanden, 6 übersprungen (die 5 Freenet-Echttests und der Abgleich mit der offiziellen MeshCore-Bibliothek, die nicht im Paket steckt) |
 | Freenet/River **echt** | echter Freenet-Knoten 0.2.154 und echtes `riverctl` 0.2.24, lokal auf dem Testrechner (kein Anschluss an das offene Freenet-Netz): Nachricht zwischen zwei Stationen, Alarm → Weiterleitung → Quittung, Fremdtext/Müll im Raum, Neustart nach abgeschossenem `riverctl`, Knoten nicht erreichbar | 5 von 5 bestanden |
 | LoRa/MeshCore | eigene Anbindung gegen eine **Geräte-Attrappe** (Pseudo-Terminal), Rahmenformat zusätzlich gegen die Leseroutine und Befehle der offiziellen Python-Bibliothek `meshcore` 2.3.17 abgeglichen (dabei wurde ein Antwortcode der Attrappe korrigiert) | bestanden – **an echter Funkhardware nicht getestet** |
-| Echter Browser (Chromium, Playwright) | alle Reiter inkl. Funknetz, Handy-Seite, keine Verstöße gegen die Inhaltsrichtlinie, Angriff von fremder Webseite (Cross-Site-Anfrage mit Cookie) wird abgewiesen, Eingabeprüfung der Einrichtung; auch gegen die **installierte** Linux-Fassung | 25 Prüfungen bestanden |
-| Dauerlauf mit dem **echten Programm als eigenem Prozess** (echte Erkennung, ffmpeg-Testquelle, SQLite) | 8 Start/Stopp-Zyklen (abwechselnd sauber beenden und `kill -9`), danach Datenbankprüfung; Flut von 3000 gültigen und ungültigen Funkmeldungen von 60 „Stationen“ plus Leitungsstörungen bei laufender Bedienung; 3 Minuten Dauerverkehr | bestanden: Datenbank nach jedem Abschuss in Ordnung, kein Kindprozess (ffmpeg) bleibt übrig, Bedienung antwortet in höchstens 0,01 s, Speicher/Dateihandles/Threads konstant (336 MB / 18 / 14), Testalarm nach der Flut funktioniert |
+| Echter Browser (Chromium, Playwright) | alle Reiter inkl. Funknetz, Handy-Seite (alt), keine Verstöße gegen die Inhaltsrichtlinie, Angriff von fremder Webseite (Cross-Site-Anfrage mit Cookie) wird abgewiesen, Eingabeprüfung der Einrichtung; auch gegen die **installierte** Linux-Fassung | 25 Prüfungen bestanden |
+| **Handy-Seite `/m` im echten Browser** (Chromium mit iPhone-9-Kennung, 320 px Breite, Testkamera TESTATTRAPPE) | Anmeldung, Station sendet Bilder an den echten Wächter, Erkennung wertet sie aus, Foto-Auswertung, Alarm mit Ton, Stumm, App-Download, keine Inhaltsrichtlinien-Verstöße; zweiter Durchgang mit **entfernten** modernen Browserfunktionen (fetch, Promise, classList …) als Nachbildung alter Browser | 37 Prüfungen bestanden. Echte alte iPhones/Android-Browser: nicht geprüft |
+| **Android-App, Netzwerk- und Ablaufteil** (`android/test`, `tests/android/run_protocol.py`) | dieselben Java-Quelldateien wie in der APK, in der JVM **gegen den echten Wächter** (HTTP und HTTPS mit Fingerabdruck, eigener Prozess): Eingabeprüfung, JSON, falscher Schlüssel, 409/429/413/415, Ausfall und Wiederkehr (TCP-Zwischenstück als Attrappe), Stationswechsel, Testalarm, Stumm, Bild der Meldung; absichtlich schlechter Mini-Server (Weiterleitung, übergroße/kaputte Antwort) | 104 Prüfungen bestanden |
+| **Android-App, Bau und Aufbau** | Übersetzung gegen die Systembibliotheken von Android 2.2/2.3/4.0/4.1 (jede zu neue Funktion wäre ein Fehler), Dex-Umsetzung, `aapt dump badging` (Mindestversion 8, Ziel 28, Berechtigungen Internet/Kamera/Vibration), `apksigner verify` (v1, v2, v3), `zipalign` | bestanden |
+| Dauerlauf mit dem **echten Programm als eigenem Prozess** (echte Erkennung, ffmpeg-Testquelle, SQLite) | 8 Start/Stopp-Zyklen (abwechselnd sauber beenden und `kill -9`), danach Datenbankprüfung; Flut von 3000 gültigen und ungültigen Funkmeldungen von 60 „Stationen“ plus Leitungsstörungen bei laufender Bedienung; 3 Minuten Dauerverkehr | bestanden: Datenbank nach jedem Abschuss in Ordnung, kein Kindprozess (ffmpeg) bleibt übrig, Bedienung antwortet in höchstens 0,01 s, Speicher/Dateihandles/Threads konstant (337 MB / 18 / 13), Testalarm nach der Flut funktioniert |
+| Dauerlauf **Phase D: Station unter Beschuss** (neu) | eine ehrliche Station sendet 90 s lang Bilder, während sechs Störer gleichzeitig Müll, übergroße Bilder, gültige Bilder einer Fremdstation, Abfragen und Foto-Auswertungen fluten; danach 25 falsche Schlüssel | bestanden (gegen die Linux-Fassung mit mitgelieferten Bibliotheken): alle 226 Bilder der ehrlichen Station kamen an (Takt 2,5 Bilder/s), Programm blieb oben, Oberfläche antwortete in höchstens 0,03 s, Speicher/Dateihandles/Threads blieben nach dem Anlauf konstant (411 MB / 18 / 5), Störer wurden abgewiesen (u. a. 22 459× 409, 11 107× 400, 5 174× 413); nach 10 falschen Schlüsseln Sperre mit 429, Datenbank in Ordnung |
 | Dasselbe gegen den **installierten** Linux-Installer | 6 Zyklen, 3000er Flut, 2 Minuten | bestanden, gleiche Werte |
 | Linux-Installer | in leerem Benutzerverzeichnis installiert: Selbsttest, Start, Anmeldung, Dateirechte (`.env` 0600, Datenordner 0700), Sicherheits-Kopfzeilen, Aktualisierung | bestanden |
 | Update-Paket | an einer **echten 1.1.0-Installation** (laufend, mit Alarm und eigener `.env`): Erfolgsweg, Einstellungen und Alarm erhalten, zweiter Aufruf „schon aktuell“, Paket mit Programmfehler → automatischer Rückfall auf 1.1.0, beschädigtes Paket → Abbruch ohne Änderung, falsches Python → abgelehnt, nur prüfen | bestanden |
@@ -26,12 +30,23 @@ das fehlende Gerät; die Attrappen liegen nur in `tests/` (Quellcode-Paket) und 
 * **LoRa an echter Funkhardware.** Weder Reichweite noch Sendezeit-Verhalten noch das Zusammenspiel mit echter
   MeshCore-Firmware sind erprobt. Die Sendezeit-Begrenzung (Standard 1 %) ist nach der Semtech-Formel berechnet, aber nicht gemessen.
 * **Freenet im offenen Netz.** Getestet wurde ein lokaler Knoten. Freenet ist noch Alpha-Software; Verbindungszeiten im offenen Netz sind unbekannt.
+* **Die Android-App wurde nie auf einem Gerät oder Emulator ausgeführt.** Kamera-Vorschau, Bildschirme, Ton, Vibration und das
+  Verhalten auf einzelnen Geräten sind nur gebaut und gelesen. Dass sie „ab Android 2.2“ läuft, folgt aus dem Bau gegen die
+  Systembibliothek von Android 2.2 und dem Manifest – es ist **berechnet, nicht erprobt**. Besonders unsicher: Kamera-Treiber
+  sehr alter Geräte (Vorschaugrößen, NV21), TLS 1.2 auf Android 4.1 – 4.4, das Verhalten beim Sperren des Bildschirms.
+* **Alte iPhones und alte Android-Browser** wurden nur im modernen Chromium nachgebildet (moderne Funktionen entfernt, iPhone-Kennung).
+  Echtes iOS 9/10, Safari-Eigenheiten (Ton erst nach Berührung, Kamera erst ab iOS 11) beruhen auf Herstellerangaben.
+* **Eine iPhone-App gibt es nicht** (Mac, Xcode und Apple-Entwicklerkonto nötig); iPhones nutzen die Handy-Seite.
 * **Windows und macOS wurden nie ausgeführt** (kein Windows-/Mac-Rechner verfügbar). Windows-Installer (NSIS) und macOS-Zips sind gebaut und
   strukturell geprüft (Inhalt, Versionen, Signaturen). Das Update-Skript ist plattformunabhängig geschrieben, lief aber nur unter Linux.
 * **Eine ernsthafte Penetrationsprüfung durch Dritte hat es nicht gegeben.** „Bulletproof“ im Sinne von „nicht angreifbar“
   kann niemand ehrlich versprechen; geprüft wurden die bekannten Angriffswege (siehe `SICHERHEIT.md`).
 
 ## 3. Bewusste Grenzen (keine Fehler)
+
+* Die Station (Altgerät) arbeitet nur im **Vordergrund** und mit eingeschaltetem Bildschirm; es gibt keinen Hintergrunddienst und keine
+  Benachrichtigung bei geschlossener App. Das Bild wird nicht gedreht. Es ist immer nur eine Station aktiv.
+* Nach 10 falschen Bearer-Schlüsseln in 10 Minuten antwortet der Wächter dieser Adresse mit 429 – auch auf richtige Schlüssel von derselben Adresse.
 
 * Wer den Kanalschlüssel bzw. den River-Raum kennt, kann Meldungen im Namen jeder Station senden oder Alarme unterdrücken.
   Schlüssel nur an vertraute Imker geben, bei Missbrauch wechseln.
@@ -41,6 +56,11 @@ das fehlende Gerät; die Attrappen liegen nur in `tests/` (Quellcode-Paket) und 
 * Nach einer Leitungsstörung zwischen Rechner und Funkgerät baut das Programm die Verbindung selbst neu auf; das kann bis zu etwa 6 Sekunden dauern.
 
 ## 4. Beim Testen gefundene und behobene Fehler (Auswahl)
+
+* Handy-Seite: Ein Anmelde-Link `/m#k=…` reagierte nicht, wenn die Seite schon geladen war (nur die Adresse nach dem `#` änderte sich) → auf `hashchange` reagiert (Browsertest).
+* Handy-Seite: Nach der ersten Abfrage zeigte die Meldungsliste nur noch die neuesten Meldungen, weil der Server nur Neueres liefert → Liste wird zusammengeführt (Browsertest).
+* Android-App: Ein Bild über 1 MiB hätte der Wächter mitten im Senden abgebrochen; es wäre als Netzwerkfehler erschienen → wird lokal als „zu groß“ erkannt, die nächste Aufnahme stärker komprimiert.
+* Android-App: Der Schlüsselspeicher-Aufruf des Bauskripts las das Passwort zweimal aus derselben Datei → Passwort über die Umgebung übergeben (beim ersten Bauversuch aufgefallen).
 
 * Ungültiger Port (z. B. 99999) für den Freenet-Knoten wurde in der Einrichtung akzeptiert → Bereichsprüfung.
 * Textbereinigung war nach dem Kürzen nicht stabil (zweite Bereinigung änderte das Ergebnis) → Bereinigung idempotent gemacht, getestet.
