@@ -110,7 +110,7 @@ def rm(p: Path) -> None:
 
 
 LIB_PARTS = ("PIL", "pillow.libs", "pillow-*.dist-info", "Pillow-*.dist-info", "certifi", "certifi-*.dist-info",
-             "serial", "pyserial-*.dist-info")
+             "serial", "pyserial-*.dist-info", "opentelemetry", "opentelemetry_api-*.dist-info")
 APP_PARTS = ("hornet", "web", "docs", "mobil", "hornet_run.py", "README.txt", "LICENSES.txt")
 
 
@@ -158,6 +158,7 @@ def install_new(app: Path) -> None:
     unwheel(next((HERE / "wheels" / pillow_wheel_kind()).glob("pillow-*.whl")), lib)
     unwheel(next((HERE / "wheels" / "pure").glob("certifi-*.whl")), lib)
     unwheel(next((HERE / "wheels" / "pure").glob("pyserial-*.whl")), lib)
+    unwheel(next((HERE / "wheels" / "pure").glob("opentelemetry_api-*.whl")), lib)
     for d in app.glob("hornet/**/__pycache__"):
         shutil.rmtree(d, ignore_errors=True)
 
