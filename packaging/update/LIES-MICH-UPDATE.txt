@@ -5,7 +5,7 @@ Für wen: Wer Hornet3000 1.0.x bis 1.2.x schon installiert hat und nur die Progr
 Alarme, Fotos, Videos und das Protokoll werden NICHT angefasst. Wer neu installiert, nimmt stattdessen den Installer.
 
 Was ersetzt wird: Programmcode (hornet), Oberfläche (web), Anleitungen, die Android-App zum Herunterladen (Ordner mobil), die
-Bibliotheken Pillow (13.0.0, behebt bekannte Schwachstellen) und certifi, dazu pyserial (Funkgerät). Python, ffmpeg, Erkennungsmodell und alle übrigen Bibliotheken
+Bibliotheken Pillow (13.0.0, behebt bekannte Schwachstellen) und certifi, dazu pyserial (Funkgerät) und opentelemetry-api 1.45.2 (behebt eine neue Meldung). Python, ffmpeg, Erkennungsmodell und alle übrigen Bibliotheken
 bleiben unverändert.
 
 So geht's
