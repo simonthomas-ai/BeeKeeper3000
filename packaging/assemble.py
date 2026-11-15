@@ -3,9 +3,9 @@
 1.1.0-Laufzeiten (Python + Bibliotheken) und dem aktuellen Projektstand.
 
 Eingaben (außerhalb dieses Repos):  x110/<kind>/…  = entpackte 1.1.0-Pakete (Python-Laufzeit, Bibliotheken, ffmpeg)
-                                    build/wheels/…  = frisch geladene Wheels: Pillow 13.0.0 je Plattform, certifi, pyserial
+                                    build/wheels/…  = frisch geladene Wheels: Pillow 13.0.0 je Plattform, certifi, pyserial, opentelemetry-api 1.45.2
 Ausgabe:  build/stage_<kind>/ (python/ + app/ bzw. Hornet3000/-Ordner für macOS)
-Nichts wird erfunden: ersetzt werden nur hornet/, web/, hornet_run.py, README, LICENSES und die drei Bibliotheken."""
+Nichts wird erfunden: ersetzt werden nur hornet/, web/, hornet_run.py, README, LICENSES und vier Bibliotheken."""
 import re
 import shutil
 import sys
@@ -53,6 +53,10 @@ def replace_lib(lib: Path, kind: str) -> None:
     for p in list(lib.glob("certifi")) + list(lib.glob("certifi-*.dist-info")):
         shutil.rmtree(p)
     unwheel(PURE["certifi"], lib)
+    # opentelemetry-api (Abhängigkeit von FastAPI; 1.45.1 hat die Meldung CVE-2026-126360, behoben in 1.45.2)
+    for p in list(lib.glob("opentelemetry")) + list(lib.glob("opentelemetry_api-*.dist-info")):
+        shutil.rmtree(p)
+    unwheel(PURE["opentelemetry_api"], lib)
     # pyserial (neu in 1.2.0, Funkgerät)
     for p in list(lib.glob("serial")) + list(lib.glob("pyserial-*.dist-info")):
         shutil.rmtree(p)

@@ -20,6 +20,7 @@
 * Nicht geprüft: die App auf einem echten Gerät oder Emulator; alte Browser nur nachgebildet.
 **Sonstiges**
 * Update-Paket (`Hornet3000-1.3.0-Update.zip`) aktualisiert Installationen 1.0.x bis 1.2.x.
+* Bibliothek `opentelemetry-api` 1.45.1 → 1.45.2 (Meldung CVE-2026-126360: Zeitaufwand bei manipulierten `traceparent`-Kopfzeilen; Hornet3000 liest solche Kopfzeilen nicht, trotzdem aktualisiert).
 
 ## 1.2.0 (11.11.2026)
 **Neu**
