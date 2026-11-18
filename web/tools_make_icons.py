@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Erzeugt die PWA-Icons (Wabe mit Alarmzelle). Einmalig ausgeführt; Ergebnis liegt in web/assets/icons."""
 import math
 from pathlib import Path

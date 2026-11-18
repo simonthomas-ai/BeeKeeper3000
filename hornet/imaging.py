@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Bildhilfen (nur Pillow): Erkennungsrahmen einzeichnen, Ausschnitt schneiden, JPEG erzeugen."""
 from __future__ import annotations
 

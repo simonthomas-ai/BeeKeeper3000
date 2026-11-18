@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Handy als Kamera: Empfängt den fortlaufenden MediaRecorder-Bytestrom eines Telefon-Browsers
 (WebSocket, siehe server.py) und reicht ihn an ffmpeg weiter – als wäre es eine normale Videoquelle.
 

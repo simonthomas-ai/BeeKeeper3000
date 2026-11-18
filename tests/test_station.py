@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Station (Altgerät schickt JPEG-Bilder) und schlanke Handy-Schnittstelle. Echte App, echter Speicher, echte Bildprüfung."""
 import io
 import shutil

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Erzeugt die Start-Symbole der Android-App (res/drawable*/icon.png): Sechseck (Wabe) in Bernstein mit dunklen Streifen.
 Eigene Gestaltung. Aufruf im Ordner android/:  python3 tools/make_icons.py"""
 import math

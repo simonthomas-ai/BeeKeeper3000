@@ -1,7 +1,7 @@
-# Hornet3000 Wächter 1.3.0 – Quellcode
+# Hornet3000 Wächter 1.3.1 – Quellcode
 
 Überwachung von Bienenständen gegen die Asiatische Hornisse (*Vespa velutina*): Kamera → Erkennung (YOLOv8, ONNX) →
-Alarm (Telegram, E-Mail, WhatsApp, SMS, Web-Push) → optional **Funknetz** (LoRa/MeshCore und Freenet/River) zwischen Stationen.
+Alarm (Telegram, WhatsApp, SMS, Web-Push) → optional **Funknetz** (LoRa/MeshCore und Freenet/River) zwischen Stationen.
 Nur freie Software, keine Cloud nötig. Nichts im Programm ist Attrappe; Testattrappen liegen ausschließlich in `tests/`.
 
 * `hornet/` Programm (FastAPI, SQLite, ffmpeg) · `hornet/mesh/` Funknetz · `web/` Oberfläche · `models/` Erkennungsmodell
@@ -21,3 +21,17 @@ python hornet_run.py run                  # starten, Oberfläche auf Port 8080
 Echt-Tests gegen Freenet (brauchen `freenet` und `riverctl` im selben Ordner):
 `HORNET_REAL_FREENET=1 HORNET_RIVERCTL=/pfad/riverctl python -m pytest tests/test_freenet_real.py`
 Dauerlauf mit echtem Prozess: `python tests/stability/soak.py` · Browserprüfung: `python3 tests/browser/check_ui.py` (Playwright).
+
+## Lizenz
+
+Der eigene Programmcode (Wächter, Handy-Seite, Android-App, Skripte, Tests, Texte) steht unter der
+**GNU General Public License, Version 3 oder neuer (GPL-3.0-or-later)**. Der Lizenztext liegt in der Datei `LICENSE`.
+Jede und jeder darf die Software kostenlos nutzen, ändern und weitergeben, auch andere Imker-Initiativen, solange
+Weitergaben unter denselben Bedingungen erfolgen. Die Quelltexte tragen die Kennung `SPDX-License-Identifier: GPL-3.0-or-later`,
+der Urhebervermerk lautet „Hornet3000-Mitwirkende“.
+
+Mitgelieferte Bausteine Dritter behalten ihre eigenen Lizenzen (Erkennungsmodell GPL-3.0, ffmpeg-Build GPL-3.0, Schriften SIL OFL 1.1,
+Python-Bibliotheken je nach Paket); sie sind in `LICENSES.txt` im Programmordner aufgeführt.
+
+Die Software wurde von einer künstlichen Intelligenz hergestellt (Claude, Anthropic PBC) und ohne Gewähr abgegeben,
+soweit das Gesetz es zulässt. Siehe auch `docs/PRUEFSTATUS.md` für das, was wirklich getestet wurde.

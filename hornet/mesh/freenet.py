@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Freenet-Weg: River-Raum über das Kommandozeilenprogramm `riverctl` und einen Freenet-Knoten auf dem eigenen Rechner.
 
   Empfangen  riverctl message stream <Raum> --format json   (läuft dauerhaft, JSON je Zeile)

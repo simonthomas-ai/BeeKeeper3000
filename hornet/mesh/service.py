@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Funknetz-Dienst: verbindet Alarme mit den Übertragungswegen.
 
 Senden:   `announce()` stellt eine Sichtung in die Warteschlange; ein Sender-Thread verteilt sie an alle

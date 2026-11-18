@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Erkennungs- und Alarmlogik.
 
 Ablauf:  Kamera -> Detektor -> Bestätigung (k von n Bildern) -> Ereignis (ein Alarm je Besuch)

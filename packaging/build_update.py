@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Baut Hornet3000-1.3.0-Update.zip aus dem Projektstand und den gestagten Paketen (assemble.py)."""
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
+"""Baut Hornet3000-1.3.1-Update.zip aus dem Projektstand und den gestagten Paketen (assemble.py)."""
 import hashlib
 import shutil
 import zipfile
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 PROJ = Path(__file__).resolve().parents[1]
 B = Path("/home/claude/build")
 OUT = Path("/home/claude/dist")
@@ -25,6 +27,7 @@ ign = shutil.ignore_patterns("__pycache__", "*.pyc")
 for n in ("hornet", "web", "docs", "mobil"):          # mobil = Android-App zum Herunterladen
     shutil.copytree(app_of("lin") / n, ROOT / "app" / n, ignore=ign)
 shutil.copy(PROJ / "hornet_run.py", ROOT / "app/hornet_run.py")
+shutil.copy(PROJ / "LICENSE", ROOT / "app/LICENSE")
 for k in KINDS:
     (ROOT / "platform" / k).mkdir(parents=True)
     for f in ("README.txt", "LICENSES.txt"):

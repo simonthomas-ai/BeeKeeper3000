@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Sichtungen der Asiatischen Hornisse in der Umgebung des Bienenstands aus GBIF (offene Biodiversitätsdaten).
 
 GBIF bündelt u. a. iNaturalist, observation.org und weitere Meldeportale. Die Abfrage braucht keinen Schlüssel.

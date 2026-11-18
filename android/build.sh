@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 # Baut die Android-App „Hornet3000 Station“ OHNE Gradle/Android Studio – nur mit den Debian/Ubuntu-Paketen
 #   sudo apt install default-jdk-headless aapt apksigner zipalign dalvik-exchange android-sdk-platform-23
 # Aufruf (im Ordner android/):   ./build.sh [Schlüsselspeicher.keystore Passwortdatei]

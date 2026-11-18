@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Hornet3000 – Update einer vorhandenen Installation (1.0/1.1.x/1.2.x) auf 1.3.0, ohne Einstellungen und Daten anzufassen.
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
+"""Hornet3000 – Update einer vorhandenen Installation (1.0/1.1.x/1.2.x/1.3.x) auf 1.3.1, ohne Einstellungen und Daten anzufassen.
 
 Aufruf mit dem Python DER INSTALLATION (nicht mit dem System-Python):
     <Installationsordner>/python/bin/python3 update.py            (Linux, macOS)
@@ -25,7 +27,7 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-NEW = "1.3.0"
+NEW = "1.3.1"
 
 
 def say(msg: str) -> None:
@@ -111,7 +113,7 @@ def rm(p: Path) -> None:
 
 LIB_PARTS = ("PIL", "pillow.libs", "pillow-*.dist-info", "Pillow-*.dist-info", "certifi", "certifi-*.dist-info",
              "serial", "pyserial-*.dist-info", "opentelemetry", "opentelemetry_api-*.dist-info")
-APP_PARTS = ("hornet", "web", "docs", "mobil", "hornet_run.py", "README.txt", "LICENSES.txt")
+APP_PARTS = ("hornet", "web", "docs", "mobil", "hornet_run.py", "README.txt", "LICENSES.txt", "LICENSE")
 
 
 def cp(src: Path, dst: Path) -> None:
@@ -149,6 +151,7 @@ def install_new(app: Path) -> None:
         rm(app / name)
         shutil.copytree(HERE / "app" / name, app / name)
     shutil.copy2(HERE / "app" / "hornet_run.py", app / "hornet_run.py")
+    shutil.copy2(HERE / "app" / "LICENSE", app / "LICENSE")
     for name in ("README.txt", "LICENSES.txt"):          # je Betriebssystem/Architektur eigene Fassung
         shutil.copy2(HERE / "platform" / pillow_wheel_kind() / name, app / name)
     lib = app / "lib"
@@ -181,10 +184,10 @@ def main() -> int:
     old = installed_version(app)
     say(f"Installierte Version: {old}")
     if old == NEW:
-        say("Diese Installation ist schon auf dem Stand 1.3.0. Nichts zu tun.")
+        say("Diese Installation ist schon auf dem Stand 1.3.1. Nichts zu tun.")
         return 0
-    if not re.match(r"^1\.[012]\.", old):
-        say("Dieses Update ist nur für 1.0.x bis 1.2.x gedacht. Bitte stattdessen den Installer 1.3.0 verwenden.")
+    if not re.match(r"^1\.[0123]\.", old):
+        say("Dieses Update ist nur für 1.0.x bis 1.3.x gedacht. Bitte stattdessen den Installer 1.3.1 verwenden.")
         return 2
     say("Prüfe das Paket …")
     verify_payload()
@@ -210,7 +213,7 @@ def main() -> int:
         if r.returncode != 0 or "Alles bereit" not in out:
             raise RuntimeError("Selbsttest fehlgeschlagen:\n" + out[-1500:])
         if installed_version(app) != NEW:
-            raise RuntimeError("Version nach dem Einspielen nicht 1.3.0")
+            raise RuntimeError("Version nach dem Einspielen nicht 1.3.1")
     except Exception as e:  # noqa: BLE001
         say(f"\nFEHLER: {e}\nStelle den alten Stand wieder her …")
         restore(app, sich)

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Verteiler: schickt einen Alarm parallel über alle konfigurierten Kanäle."""
 from __future__ import annotations
 

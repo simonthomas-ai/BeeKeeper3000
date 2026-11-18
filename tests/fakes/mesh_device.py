@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """TESTATTRAPPE – nur für Tests, gehört nicht zum Programm.
 
 Simuliert ein MeshCore-Funkgerät im Companion-Modus auf einem Pseudo-Terminal (pty). Es spricht die Rahmen so,

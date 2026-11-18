@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later · SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende */
 /* Service Worker: Offline-Hülle, Web-Push-Alarme. Medien und API werden nie zwischengespeichert
    (außer der Alarmliste als Offline-Fallback). */
 const CACHE = 'hornet3000-v3';

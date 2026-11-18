@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Webserver: PWA, JSON-API, Live-Bild (MJPEG), Server-Sent Events, Medien und teilbare Alarm-Seiten."""
 from __future__ import annotations
 

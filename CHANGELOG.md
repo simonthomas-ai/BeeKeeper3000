@@ -1,5 +1,18 @@
 # Änderungen
 
+## 1.3.1 (18.11.2026)
+**Lizenz** (keine Funktionsänderung)
+* Der gesamte eigene Programmcode steht jetzt ausdrücklich unter **GPL-3.0-or-later**: Datei `LICENSE` im Quellcode und in jedem
+  Paket (Linux, Windows, macOS, Update), Hinweis am Anfang von `LICENSES.txt`, Kennung `SPDX-License-Identifier` in allen Quelltexten.
+  Urhebervermerk: „Hornet3000-Mitwirkende“.
+**Behoben**
+* Windows-Deinstallation: Der Ordner `app\mobil` (Android-App zum Herunterladen) blieb zurück → wird entfernt.
+* README: Der Alarmweg „E-Mail“ stand fälschlich in der Liste, im Programm gibt es ihn nicht → entfernt.
+**Sonstiges**
+* Update-Paket (`Hornet3000-1.3.1-Update.zip`) aktualisiert Installationen 1.0.x bis 1.3.0 und legt `LICENSE` ab.
+* Die Android-App ist unverändert (gleiche Datei wie 1.3.0, App-Version 1.3.0); in den Quelltexten kamen nur Lizenzkommentare dazu.
+* Programmcode und Funktion sind sonst unverändert gegenüber 1.3.0.
+
 ## 1.3.0 (14.11.2026)
 **Neu: alte Handys und Tablets nutzen** (Anleitung und ehrliche Prüfübersicht: `docs/MOBIL.md`)
 * **Android-App „Hornet3000 Station“** (laut Manifest ab Android 2.2): Kamera-Betrieb (Einzelbilder per HTTP), Alarm-Anzeige

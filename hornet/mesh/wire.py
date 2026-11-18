@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Nachrichtenformat H3K1 für das Funknetz zwischen den Stationen (LoRa/MeshCore und Freenet/River).
 
 Eine Meldung ist eine einzige Textzeile:

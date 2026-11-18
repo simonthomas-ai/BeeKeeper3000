@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Statische Prüfung der Oberfläche: alles, was verlinkt ist, existiert; nichts, was die strenge CSP sperren würde."""
 import re
 from pathlib import Path

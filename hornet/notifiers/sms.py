@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """SMS über 'SMS Gateway for Android' (capcom6, Apache-2.0): das eigene Android-Handy versendet die SMS
 über die eigene SIM-Karte – keine Anbietergebühren außer dem Mobilfunktarif.
 

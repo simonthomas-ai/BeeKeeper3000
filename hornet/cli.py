@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Programmsteuerung:  run | open | stop | selftest | token
 
   run       Server im Vordergrund starten (Neustart nach Änderungen in der Einrichtung inklusive)

@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Browser-Prüfung der Handy-Seite /m mit echtem Chromium (Playwright) gegen das ECHTE Programm als eigenen Prozess.
 
 Echt: Server, Erkennungsmodell, Datenbank, Anmeldung, Alarmkette (Testalarm), Foto-Auswertung, Bildannahme der Station.

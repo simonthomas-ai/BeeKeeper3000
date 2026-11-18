@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 # Hornet3000 Waechter - wird von makeself nach dem Entpacken im Payload-Ordner ausgefuehrt.
 set -e
 
@@ -12,7 +14,7 @@ for arg in "$@"; do
     --target) : ;;
     --service) DO_SERVICE=1 ;;
     --help|-h)
-      echo "Verwendung: sh Hornet3000-1.3.0-linux-x86_64.run [-- --target ORDNER] [--service]"
+      echo "Verwendung: sh Hornet3000-1.3.1-linux-x86_64.run [-- --target ORDNER] [--service]"
       echo "  --target ORDNER   Zielordner (Standard: $DEFAULT_TARGET)"
       echo "  --service         richtet einen systemd-Benutzerdienst ein (dauerhafter Betrieb)"
       exit 0
@@ -111,5 +113,5 @@ if [ "$PATH_OK" = "0" ]; then
   echo "   $BIN_DIR/hornet3000 open"
 fi
 echo " Naechster Schritt:  in der App den Reiter „Einrichtung“ oeffnen (Kamera, Telegram, ...)"
-echo " Neu in 1.3.0: Alte Handys/Tablets als Kamera oder Alarm-Anzeige, Android-App (siehe docs/MOBIL.md im Programmordner)"
+echo " Neu in 1.3.1: Lizenz GPL-3.0-or-later (Datei LICENSE im Programmordner). Neu in 1.3.0: Alte Handys/Tablets als Kamera oder Alarm-Anzeige, Android-App (siehe docs/MOBIL.md)"
 echo "============================================================"

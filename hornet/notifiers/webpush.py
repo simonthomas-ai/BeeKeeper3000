@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Web-Push für die PWA (VAPID). Funktioniert nur über HTTPS (oder http://localhost)."""
 from __future__ import annotations
 

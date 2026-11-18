@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """WhatsApp: offizielle Cloud-API von Meta (Text, Foto, Video) oder CallMeBot (nur Text, privat/kostenlos)."""
 from __future__ import annotations
 

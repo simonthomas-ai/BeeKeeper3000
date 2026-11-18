@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """YOLOv8/YOLOv10-ONNX-Detektor ohne OpenCV (nur onnxruntime + numpy + Pillow).
 
 OpenCV wird bewusst nicht benutzt: cv2 stürzt auf manchen Rechnern/Python-Versionen mit

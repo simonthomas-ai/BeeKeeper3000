@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Zeigt die an diesem Rechner erkannten Kameras/Mikrofone:  python -m hornet.tools.list_devices"""
 from __future__ import annotations
 

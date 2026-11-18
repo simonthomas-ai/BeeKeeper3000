@@ -1,10 +1,10 @@
-HORNET3000 – UPDATE VON 1.0.x/1.1.x/1.2.x AUF 1.3.0
-===================================================
+HORNET3000 – UPDATE VON 1.0.x/1.1.x/1.2.x/1.3.0 AUF 1.3.1
+====================================================
 
-Für wen: Wer Hornet3000 1.0.x bis 1.2.x schon installiert hat und nur die Programmdateien ersetzen will. Einstellungen (.env),
+Für wen: Wer Hornet3000 1.0.x bis 1.3.0 schon installiert hat und nur die Programmdateien ersetzen will. Einstellungen (.env),
 Alarme, Fotos, Videos und das Protokoll werden NICHT angefasst. Wer neu installiert, nimmt stattdessen den Installer.
 
-Was ersetzt wird: Programmcode (hornet), Oberfläche (web), Anleitungen, die Android-App zum Herunterladen (Ordner mobil), die
+Was ersetzt wird: Programmcode (hornet), Oberfläche (web), Anleitungen, die Lizenzdatei (LICENSE), die Android-App zum Herunterladen (Ordner mobil), die
 Bibliotheken Pillow (13.0.0, behebt bekannte Schwachstellen) und certifi, dazu pyserial (Funkgerät) und opentelemetry-api 1.45.2 (behebt eine neue Meldung). Python, ffmpeg, Erkennungsmodell und alle übrigen Bibliotheken
 bleiben unverändert.
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Selbsttest:  python -m hornet.tools.selftest   (nach der Installation und nach jeder Änderung der .env)
 
 Prüft Python, Pakete, ffmpeg, Modell, Demo-Kamera und – falls in der .env eingetragen – die echte Kamera.

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """LoRa-Weg: Funkgerät mit MeshCore-Firmware (Companion-Modus) über USB-Seriell.
 
 Der Client spricht das Companion-Protokoll von MeshCore selbst (nur pyserial nötig):

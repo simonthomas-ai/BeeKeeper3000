@@ -1,4 +1,11 @@
 ────────────────────────────────────────────────────────────────────────
+NEU IN 1.3.1
+────────────────────────────────────────────────────────────────────────
+· LIZENZ: Der gesamte eigene Programmcode steht unter der GNU General Public License, Version 3 oder neuer (GPL-3.0-or-later).
+  Jede und jeder darf ihn kostenlos nutzen, ändern und weitergeben. Der Lizenztext liegt als Datei LICENSE im Programmordner.
+  Sonst ist 1.3.1 funktionsgleich mit 1.3.0 (Windows-Deinstallation entfernt jetzt auch den Ordner mobil).
+
+────────────────────────────────────────────────────────────────────────
 NEU IN 1.3.0
 ────────────────────────────────────────────────────────────────────────
 · ALTE HANDYS UND TABLETS NUTZEN: Android-App „Hornet3000 Station“ (läuft laut Manifest ab Android 2.2, Baujahr 2010) und

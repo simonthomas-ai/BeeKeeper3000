@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Konfiguration aus .env / Umgebungsvariablen. Keine Abhängigkeiten außer der Standardbibliothek."""
 from __future__ import annotations
 

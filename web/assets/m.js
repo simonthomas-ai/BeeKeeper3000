@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later · SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende */
 /* Hornet3000 Mobil – bewusst reines ES5 ohne Bibliotheken (läuft ab iOS 9 / Android 4.0-Browser).
    Kein fetch, kein Promise (außer wo der Browser es für die Kamera selbst verlangt), keine Pfeilfunktionen,
    kein let/const, kein classList. Alle Texte vom Server werden mit textContent eingesetzt (kein innerHTML). */

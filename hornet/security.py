@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Zugangsschutz: Sitzungs-Cookie und signierte, zeitlich begrenzte Links für einzelne Alarme.
 
 Alle Vergleiche laufen über Bytes (hmac.compare_digest wirft bei str mit Nicht-ASCII-Zeichen einen TypeError –

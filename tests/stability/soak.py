@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Stabilitätstest mit dem ECHTEN Programm als eigenem Prozess (nicht Teil des Programms, nicht in pytest).
 
 Was hier echt ist:   Programmprozess (uvicorn, Engine, ffmpeg-Kamera „selftest“, echtes ONNX-Modell, SQLite,

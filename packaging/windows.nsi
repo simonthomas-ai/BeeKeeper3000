@@ -1,12 +1,12 @@
 ; Hornet3000 Wächter – Windows-Installer (NSIS 3, Unicode). Keine Administratorrechte nötig.
-; Aufruf: makensis -DVERSION=1.3.0 -DSTAGE=<Ordner mit python\ und app\> -DICON=<hornet3000.ico> -DOUT=<Ausgabedatei> windows.nsi
+; Aufruf: makensis -DVERSION=1.3.1 -DSTAGE=<Ordner mit python\ und app\> -DICON=<hornet3000.ico> -DOUT=<Ausgabedatei> windows.nsi
 Unicode true
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
 
 !ifndef VERSION
-  !define VERSION "1.3.0"
+  !define VERSION "1.3.1"
 !endif
 !define NAME "Hornet3000 Wächter"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Hornet3000"
@@ -73,6 +73,7 @@ Section "Hornet3000 Wächter (erforderlich)" SecMain
   RMDir /r "$INSTDIR\app\web"
   RMDir /r "$INSTDIR\app\models"
   RMDir /r "$INSTDIR\app\docs"
+  RMDir /r "$INSTDIR\app\mobil"
   SetOutPath "$INSTDIR\python"
   File /r "${STAGE}/python/*.*"
   SetOutPath "$INSTDIR\app"
@@ -135,9 +136,11 @@ Section "Uninstall"
   RMDir /r "$INSTDIR\app\web"
   RMDir /r "$INSTDIR\app\models"
   RMDir /r "$INSTDIR\app\docs"
+  RMDir /r "$INSTDIR\app\mobil"
   Delete "$INSTDIR\app\hornet_run.py"
   Delete "$INSTDIR\app\README.txt"
   Delete "$INSTDIR\app\LICENSES.txt"
+  Delete "$INSTDIR\app\LICENSE"
   Delete "$INSTDIR\hornet3000.ico"
   Delete "$INSTDIR\Uninstall.exe"
   ${If} ${FileExists} "$INSTDIR\app\.env"

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later · SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende */
 'use strict';
 /* Hornet3000 – Handy-Kamera. Nimmt Bild und Ton mit den Bordmitteln des Browsers auf (getUserMedia +
    MediaRecorder) und sendet sie fortlaufend an den eigenen Server. Keine App, keine Installation. */

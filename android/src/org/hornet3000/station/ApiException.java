@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 package org.hornet3000.station;
 
 /** Fehler bei einem Aufruf des Wächters. status 0 = keine Verbindung / Netzwerkfehler, sonst der HTTP-Status. */

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Optionale zweite Prüfung durch eine Bild-KI (Claude oder lokales Ollama-Modell).
 
 Wichtig: Die Prüfung kann einen Alarm nur *einordnen* (bestätigt / widerspricht / unklar) – sie unterdrückt

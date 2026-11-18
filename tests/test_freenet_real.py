@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Echt-Tests gegen einen echten lokalen Freenet-Knoten und das echte riverctl (nichts davon ist simuliert).
 
 Nur mit  HORNET_REAL_FREENET=1 HORNET_RIVERCTL=/pfad/zu/riverctl  (der Knoten `freenet` liegt daneben).

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """LoRa-Client gegen die TESTATTRAPPE eines MeshCore-Geräts (pty) – keine echte Hardware."""
 import asyncio
 import random

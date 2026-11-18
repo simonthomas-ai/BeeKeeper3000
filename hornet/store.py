@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """SQLite-Speicher: Alarme, Einstellungen, Push-Abos. Thread-sicher über ein Lock."""
 from __future__ import annotations
 

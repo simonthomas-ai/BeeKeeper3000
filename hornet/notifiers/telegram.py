@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Telegram-Bot: Alarm mit Foto und Video (mit Ton) + Befehle /status /foto /stumm /laut."""
 from __future__ import annotations
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Baut die Installationsverzeichnisse für 1.3.0 (Linux, Windows, macOS arm64/x86_64) aus den geprüften
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
+"""Baut die Installationsverzeichnisse für 1.3.1 (Linux, Windows, macOS arm64/x86_64) aus den geprüften
 1.1.0-Laufzeiten (Python + Bibliotheken) und dem aktuellen Projektstand.
 
 Eingaben (außerhalb dieses Repos):  x110/<kind>/…  = entpackte 1.1.0-Pakete (Python-Laufzeit, Bibliotheken, ffmpeg)
@@ -12,7 +14,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 PROJ = Path(__file__).resolve().parents[1]
 APK_SRC = Path("/home/claude/dist/Hornet3000-Station-1.3.0.apk")
 B = Path("/home/claude/build")
@@ -66,6 +68,11 @@ def replace_lib(lib: Path, kind: str) -> None:
     # pyserial: Teile anderer Betriebssysteme werden nie geladen, bleiben aber (klein) im Paket
 
 
+EIGENE_LIZENZ = ("Eigener Programmcode (Hornet3000 Wächter, Handy-Seite, Android-App): GNU General Public License, Version 3 oder neuer\n"
+                 "(GPL-3.0-or-later). Jede und jeder darf ihn kostenlos nutzen, ändern und weitergeben. Der Lizenztext liegt in der\n"
+                 "Datei LICENSE.\n\n")
+
+
 def licenses_text(old: str, lib: Path) -> str:
     """LICENSES.txt: Versionszeile, Paketliste (aus den dist-info) und Zusatzhinweise neu."""
     rows = []
@@ -82,6 +89,9 @@ def licenses_text(old: str, lib: Path) -> str:
     head, _, tail = old.partition("Python-Pakete (Lizenzangaben aus den Paketen)\n")
     _, _, tail2 = tail.partition("\n\nNicht enthalten")
     head = head.replace("1.1.0", VERSION)
+    alt = "Dieses Paket enthält Software Dritter. Es gelten deren jeweilige Lizenzen."
+    assert alt in head, "LICENSES.txt: Einleitung nicht gefunden"
+    head = head.replace(alt, EIGENE_LIZENZ + alt.replace("enthält Software", "enthält außerdem Software"))
     return head + "Python-Pakete (Lizenzangaben aus den Paketen)\n" + "\n".join(rows) + "\n\nNicht enthalten" + tail2
 
 
@@ -89,7 +99,7 @@ def readme_text(old: str, kind: str) -> str:
     t = old.replace("HORNET3000 WÄCHTER 1.1.0", f"HORNET3000 WÄCHTER {VERSION}")
     t = t.replace("Hornet3000-1.1.0-", f"Hornet3000-{VERSION}-").replace("Hornet3000-Setup-1.1.0", f"Hornet3000-Setup-{VERSION}")
     sep = "────────────────────────────────────────────────────────────────────────\n"
-    new = (PROJ / "packaging/README-neu-1.3.0.txt").read_text(encoding="utf-8")
+    new = (PROJ / "packaging/README-neu-1.3.1.txt").read_text(encoding="utf-8")
     i = t.index(sep + "INSTALLATION (")
     t = t[:i] + new + t[i:]
     extra = ("· Altgeräte (1.3.0): Alte Handys/Tablets liefern Bilder (Kamera-Quelle „push“) und zeigen Alarme an. Die Android-App\n"
@@ -119,6 +129,7 @@ def stage(kind: str) -> Path:
         shutil.rmtree(app / name)
         shutil.copytree(PROJ / name, app / name, ignore=IGNORE)
     shutil.copy(PROJ / "hornet_run.py", app / "hornet_run.py")
+    shutil.copy(PROJ / "LICENSE", app / "LICENSE")
     (app / "docs").mkdir(exist_ok=True)
     for f in sorted((PROJ / "docs").glob("*.md")):
         shutil.copy(f, app / "docs" / f.name)
@@ -139,6 +150,7 @@ def stage(kind: str) -> Path:
         top = dst / "Hornet3000"
         shutil.copy(app / "README.txt", top / "README.txt")
         shutil.copy(app / "LICENSES.txt", top / "LICENSES.txt")
+        shutil.copy(app / "LICENSE", top / "LICENSE")
         (top / "Hornet3000.app/Contents/Resources/VERSION").write_text(VERSION, encoding="utf-8")
     for d in dst.rglob("__pycache__"):
         shutil.rmtree(d, ignore_errors=True)

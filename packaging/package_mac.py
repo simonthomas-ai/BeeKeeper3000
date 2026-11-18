@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """macOS: setzt Version in die App-Bundles, ergänzt „laufendes Programm vor dem Ersetzen beenden“ in den Startskripten,
 signiert jede Mach-O-Datei neu ad-hoc (rcodesign; für Apple Silicon zwingend, sonst verweigert der Kernel den Start)
 und packt je Architektur ein Zip. Ausgangspunkt: build/stage_mac_*/Hornet3000 (von assemble.py gebaut).
@@ -9,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 B = Path("/home/claude/build")
 OUT = Path("/home/claude/dist")
 RCODESIGN = next((B / "tools").glob("apple-codesign-*/rcodesign"))

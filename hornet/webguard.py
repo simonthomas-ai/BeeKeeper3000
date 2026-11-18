@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Schutzschicht vor der gesamten Webanwendung (reines ASGI, keine Abhängigkeit).
 
   * Größenlimit für Anfragen (Standard 1 MiB) – auch bei Chunked-Übertragung ohne Content-Length.

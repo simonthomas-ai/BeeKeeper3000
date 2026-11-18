@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later · SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende */
     :root { --bg:#121915; --ink:#e9efe4; --ink-2:#a9b8ac; --line:#2e3c34; --calm:#6fbf86; --calm-bg:#1f3326;
             --warn:#f2b31f; --warn-bg:#3a2f10; --alarm:#ff7a3d; --alarm-bg:#3a1e10; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }

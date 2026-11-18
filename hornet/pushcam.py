@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Station als Kamera: Ein Altgerät (Android-App, Handy-Webseite, Tablet, kleiner Rechner …) schickt einzelne
 JPEG-Bilder per HTTP (POST /api/station/frame) an den Wächter – als wäre es eine normale Kamera.
 

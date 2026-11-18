@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Einrichtung in der App: Einstellungen prüfen und in die .env schreiben, Kamera testen, Telegram-Chats finden.
 
 Alle Funktionen hier sind echte Prüfungen gegen echte Geräte/Dienste (ffmpeg, Kamera, Telegram) – keine Simulation.

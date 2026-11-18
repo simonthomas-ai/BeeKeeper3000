@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Prüft den Netzwerk- und Ablaufteil der Android-App (reines Java) gegen das ECHTE Programm.
 
 Ablauf: Das Programm (Wächter) wird als eigener Prozess gestartet – einmal per HTTP, einmal per HTTPS mit selbst erzeugtem

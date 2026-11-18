@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later · SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende */
 /* Hornet3000 Mobil: bewusst einfach (keine Variablen, kein Flex/Grid, nur Standard-Eigenschaften mit -webkit-Vorsatz) –
    damit es auch auf Android 4.x und iOS 9 ordentlich aussieht. */
 * { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
