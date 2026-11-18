@@ -1,0 +1,52 @@
+<!--seite titel="Start" beschreibung="Hornet3000 Wächter: freie Software, die Imker per Kamera und Foto-Alarm vor der Asiatischen Hornisse warnt. Unentgeltlich, ohne Werbung, ohne Gewinnabsicht." nav="start"-->
+<section class="hero" aria-labelledby="titel">
+<h1 id="titel">Die Asiatische Hornisse am Bienenstand früh bemerken</h1>
+<p class="lead">Hornet3000 Wächter ist eine freie Software für Imker. Eine Kamera am Flugloch, eine Erkennung auf Ihrem eigenen Rechner und ein Alarm mit Foto und Ton auf Ihr Handy – damit Sie nicht erst Tage später merken, dass <em>Vespa velutina</em> Ihre Bienen jagt.</p>
+<ul class="versprechen" aria-label="Unsere Zusagen">
+<li>Unentgeltlich</li>
+<li>Ohne Werbung</li>
+<li>Ohne Konto</li>
+<li>Kein Tracking</li>
+</ul>
+<p class="knoepfe">
+<a class="knopf" href="download.html">Zum Download – Version {{ software.version }}</a>
+<a class="knopf zweit" href="anleitung.html">Kurzanleitung lesen</a>
+</p>
+</section>
+
+<h2 id="so">So arbeitet der Wächter</h2>
+<ol class="schritte">
+<li><strong>Kamera am Flugloch</strong>Eine Netzwerkkamera, eine Webcam oder ein altes Handy liefert das Bild. Ein Rechner im Heimnetz oder ein kleiner Server nimmt es entgegen.</li>
+<li><strong>Erkennung auf Ihrem Rechner</strong>Ein Erkennungsmodell (YOLOv8, ONNX) prüft mehrmals pro Sekunde, ob eine Asiatische Hornisse im Bild ist. Die Europäische Hornisse, die streng geschützt ist, löst keinen Alarm aus.</li>
+<li><strong>Alarm mit Foto und Ton</strong>Bestätigt sich der Fund über mehrere Bilder, kommen sofort Foto und Text per Telegram, WhatsApp, SMS oder Benachrichtigung der App. Wenig später folgt ein Video mit Ton.</li>
+</ol>
+
+<h2 id="dazu">Was dazugehört</h2>
+<div class="karten">
+<div class="karte">
+<h3>Läuft bei Ihnen</h3>
+<p>Installer für Linux, Windows und macOS. Die Bilder bleiben auf Ihrem Rechner und verlassen ihn nur über die Meldewege, die Sie selbst einrichten.</p>
+</div>
+<div class="karte">
+<h3>Alte Handys weiterverwenden</h3>
+<p>Ein Android-Gerät ab Version 2.2 kann als Kamera oder Alarm-Anzeige dienen. iPhones ab iOS 9 nutzen eine Webseite des Wächters. Eine iPhone-App gibt es nicht.</p>
+</div>
+<div class="karte">
+<h3>Stationen untereinander</h3>
+<p>Optional melden sich Stände bei einer bestätigten Sichtung gegenseitig: per LoRa-Funk (868 MHz) oder über Freenet. Beides ist ab Werk ausgeschaltet.</p>
+</div>
+<div class="karte">
+<h3>Offen und nachprüfbar</h3>
+<p>Der Quellcode liegt dem Download bei, samt Tests und Bauskripten. Welche Prüfungen wirklich liefen, steht bei jeder Datei auf der <a href="download.html">Download-Seite</a>.</p>
+</div>
+</div>
+
+<aside class="box offen" aria-labelledby="offen">
+<h2 id="offen">Bitte ehrlich einordnen</h2>
+<p>Der Wächter ist ein Hilfsmittel. Er kann ein Tier übersehen und er kann Fehlalarm geben. Er ersetzt nicht den regelmäßigen Blick auf Ihre Völker und keine Fachauskunft zur Art.</p>
+<p>Auf einem frischen Linux-Konto wurde die Software installiert, gestartet und im Dauerlauf geprüft. Die Pakete für Windows und macOS, die Android-App, das Funknetz mit echter Funkhardware und die ESP32-Kamera wurden dagegen noch nie auf echten Geräten ausgeführt. Einzelheiten auf der <a href="download.html">Download-Seite</a>, rechtliche Folgen im <a href="haftung.html">Haftungsausschluss</a>.</p>
+</aside>
+
+<h2 id="gemein">Gemeinwohl statt Gewinn</h2>
+<p>Wir geben die Software unentgeltlich ab, zeigen keine Werbung, verlangen keine Anmeldung und sammeln auf dieser Website keine Nutzerdaten. Warum wir das so machen und wie Sie mithelfen können, steht unter <a href="gemeinwohl.html">Gemeinwohl</a>.</p>
+<p class="klein">Aktuelle Version {{ software.version }}, veröffentlicht am {{ software.stand_de }}.</p>

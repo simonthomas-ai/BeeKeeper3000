@@ -1,0 +1,47 @@
+<!--seite titel="Hinweise für Imker" beschreibung="Hornissen sicher bestimmen und melden, Kamera und Datenschutz am Bienenstand, und was die Software nach außen sendet." nav="hinweise"-->
+<h1>Hinweise für Imker</h1>
+<p class="lead">Drei Dinge gehören zum Betrieb dazu: die Art sicher bestimmen, die Kamera datenschutzgerecht aufstellen und wissen, welche Daten das Programm verlassen. Das sind allgemeine Hinweise und keine Rechtsberatung.</p>
+
+<section aria-labelledby="art">
+<h2 id="art">Erst die Art bestätigen, dann handeln</h2>
+<p>Die Europäische Hornisse (<em>Vespa crabro</em>) ist besonders geschützt. Sie darf nicht getötet werden und ihre Nester dürfen nicht zerstört werden (<a href="https://www.gesetze-im-internet.de/bnatschg_2009/__7.html" rel="noopener noreferrer">§ 7</a> und § 44 Bundesnaturschutzgesetz). Der Wächter erkennt sie und löst für sie keinen Alarm aus, kann sich aber irren.</p>
+<p>Die Asiatische Hornisse (<em>Vespa velutina</em>) ist eine invasive Art. Entfernen Sie Nester nicht selbst ohne Fachkenntnis, sondern lassen Sie das über die zuständige Behörde oder eine Fachfirma klären.</p>
+<p>In Nordrhein-Westfalen melden Sie Funde über das <a href="https://neobiota.naturschutzinformationen.nrw.de" rel="noopener noreferrer">Neobiota-Portal des Landes</a> oder bei der unteren Naturschutzbehörde Ihres Kreises. In anderen Bundesländern ist die jeweilige Naturschutzbehörde zuständig.</p>
+</section>
+
+<section aria-labelledby="kamera">
+<h2 id="kamera">Kamera und Datenschutz am Bienenstand</h2>
+<p>Wer die Kamera betreibt, ist für die Aufnahmen verantwortlich. Sobald darauf Menschen erkennbar sind (Nachbarn, Spaziergänger, Besuch), gilt das Datenschutzrecht. Die Aufsichtsbehörden haben dazu eine <a href="https://datenschutzkonferenz-online.de/media/oh/20200903_oh_v%C3%BC_dsk.pdf" rel="noopener noreferrer">Orientierungshilfe zur Videoüberwachung</a> veröffentlicht. Daraus folgt für den Bienenstand:</p>
+<ul>
+<li><strong>Nur Ihr Grundstück, nur das Flugloch.</strong> Richten Sie die Kamera so aus, dass keine Nachbargrundstücke, Wege oder Straßen im Bild sind. Wer öffentlichen Raum filmt, kann sich nicht auf die Ausnahme für rein private Tätigkeiten berufen.</li>
+<li><strong>Kurz speichern.</strong> Das Programm löscht Aufnahmen standardmäßig nach 90 Tagen (<code>RETENTION_DAYS</code> in der Datei <code>.env</code>). Die Aufsichtsbehörden halten bei Videoaufzeichnungen in der Regel bis zu 72 Stunden für vertretbar. Stellen Sie die Frist kürzer ein, wenn Menschen ins Bild geraten können.</li>
+<li><strong>Ton nur, wenn nötig.</strong> Liefert die Kamera Ton, nimmt das Programm ihn in den Alarm-Videos mit auf. Das Aufnehmen des nichtöffentlich gesprochenen Wortes kann strafbar sein (§ 201 Strafgesetzbuch). Schalten Sie den Ton an der Kamera ab, wenn dort Gespräche aufgenommen werden könnten.</li>
+<li><strong>Hinweisschild.</strong> Kann ein Bereich betreten werden, den die Kamera erfasst, ist ein Hinweis nach Art. 13 DSGVO nötig. Besser ist, die Kamera so zu stellen, dass das gar nicht vorkommt.</li>
+<li><strong>Alarmbilder sind Daten.</strong> Foto und Video gehen an die Meldewege, die Sie einrichten (siehe Tabelle). Sind Personen darauf, gelangen sie dorthin.</li>
+</ul>
+</section>
+
+<section aria-labelledby="daten">
+<h2 id="daten">Was das Programm nach außen sendet</h2>
+<p>Wir erhalten keine Daten: Das Programm hat keine Fernmeldung (Telemetrie) und fragt nicht selbst nach Updates. Es verbindet sich nur mit Diensten, die Sie einrichten:</p>
+<div class="tabbox" tabindex="0" role="region" aria-label="Datenflüsse der Software">
+<table class="tab">
+<thead><tr><th scope="col">Funktion</th><th scope="col">Was gesendet wird</th><th scope="col">An wen</th></tr></thead>
+<tbody>
+<tr><th scope="row">Telegram</th><td>Foto, Text, Video</td><td>Telegram; nur wenn Sie Telegram einrichten</td></tr>
+<tr><th scope="row">WhatsApp</th><td>Foto, Video und Text über die Meta Cloud-API; über CallMeBot nur Text</td><td>Meta bzw. CallMeBot; nur wenn eingerichtet</td></tr>
+<tr><th scope="row">SMS</th><td>Text</td><td>Das SMS-Gateway, das Sie wählen (Handy im eigenen Netz oder Cloud-Dienst)</td></tr>
+<tr><th scope="row">Benachrichtigung der App</th><td>Kurze Mitteilung</td><td>Push-Dienst des Browser-Herstellers; nur wenn Sie sie einschalten</td></tr>
+<tr><th scope="row">KI-Prüfung (optional)</th><td>Bildausschnitt und Gesamtbild des Fundes</td><td>Anthropic, nur wenn Sie einen Anthropic-Schlüssel eintragen. Mit lokalem Ollama bleibt alles bei Ihnen</td></tr>
+<tr><th scope="row">Sichtungen in der Umgebung</th><td>Eine Suchanfrage mit einem Rechteck um Ihren eingetragenen Standort; daraus lässt sich der Standort ablesen</td><td>GBIF (öffentliche Artdatenbank); nur wenn Sie einen Standort eintragen</td></tr>
+<tr><th scope="row">Funknetz (ab Werk aus)</th><td>Stationsname, Zahl der Tiere, Sicherheit, ggf. grob gerundeter Standort und kurze Notiz</td><td>Teilnehmer Ihres LoRa-Kanals bzw. Ihres privaten Freenet-Raums</td></tr>
+</tbody>
+</table>
+</div>
+<p>Mit den genannten Diensten schließen Sie selbst ein Nutzungsverhältnis. Deren Datenschutzbestimmungen gelten, und Sie sind für die Weitergabe der Aufnahmen verantwortlich.</p>
+</section>
+
+<section aria-labelledby="zugang">
+<h2 id="zugang">Zugang sichern</h2>
+<p>Die Oberfläche ist standardmäßig im Heimnetz erreichbar und nur durch den Zugangsschlüssel geschützt. Stellen Sie sie ohne https nicht ins Internet. Zugangsdaten (Telegram-Token, Passwörter, API-Schlüssel) liegen im Klartext in der Datei <code>.env</code> im Programmordner; sichern Sie den Rechner entsprechend. Mehr dazu in <code>docs/SICHERHEIT.md</code> im Programmordner.</p>
+</section>

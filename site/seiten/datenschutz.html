@@ -1,0 +1,97 @@
+<!--seite titel="Datenschutzerklärung" beschreibung="Datenschutzerklärung dieser Website nach DSGVO: keine Cookies, kein Tracking, keine Fremdinhalte; Hosting, Server-Protokolle, Kontakt und Ihre Rechte." nav="datenschutz"-->
+<h1>Datenschutzerklärung</h1>
+<p class="lead">Diese Website kommt ohne Cookies, Tracking und Inhalte fremder Anbieter aus. Hier erfahren Sie, welche wenigen Daten trotzdem anfallen und welche Rechte Sie haben.</p>
+
+<div class="recht">
+<section aria-labelledby="verantwortlich">
+<h2 id="verantwortlich">1. Verantwortlicher</h2>
+<address>
+{{ betreiber.name }}<br>
+{{ betreiber.adresse_text }}<br>
+E-Mail: <a href="mailto:{{ betreiber.email }}">{{ betreiber.email }}</a>{% if betreiber.telefon %}<br>
+Telefon: {{ betreiber.telefon }}{% endif %}
+</address>
+<p>Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist {{ betreiber.name }} (Angaben oben). Einen Datenschutzbeauftragten haben wir nicht benannt.</p>
+</section>
+
+<section aria-labelledby="ueberblick">
+<h2 id="ueberblick">2. Überblick</h2>
+<ul>
+<li>Keine Cookies, keine Webanalyse, kein Tracking, keine Werbung.</li>
+<li>Kein JavaScript, keine eingebetteten Karten, Videos oder Soziale-Medien-Schaltflächen.</li>
+<li>Schriften, Bilder und Stile liegen auf unserem Server. Ihr Browser lädt nichts von anderen Anbietern nach.</li>
+<li>Kein Konto, keine Anmeldung und kein Formular. Zum Herunterladen müssen Sie nichts angeben.</li>
+</ul>
+<p>Weil wir keine Informationen auf Ihrem Endgerät speichern oder daraus auslesen, brauchen wir keine Einwilligung. Deshalb gibt es kein Cookie-Banner.</p>
+</section>
+
+<section aria-labelledby="hosting">
+<h2 id="hosting">3. Hosting und Server-Protokolle</h2>
+<p>Diese Website liegt bei {{ website.hoster_name }}, {{ website.hoster_anschrift }}, {{ website.hoster_land }} (Hoster). Wenn Sie eine Seite aufrufen, übermittelt Ihr Browser technisch notwendige Daten an den Server. Der Server verarbeitet dabei:</p>
+<ul>
+<li>die IP-Adresse{% if website.ip_kuerzen %} (im Zugriffsprotokoll vor dem Speichern gekürzt, sodass sie in der Regel keiner Person mehr zugeordnet werden kann; im Fehlerprotokoll, das nur bei technischen Störungen Einträge erhält, kann sie vollständig stehen und wird nach derselben Frist gelöscht){% endif %},</li>
+<li>Datum und Uhrzeit des Aufrufs,</li>
+<li>die aufgerufene Datei und den Antwortcode,</li>
+<li>die übertragene Datenmenge,</li>
+<li>die Browserkennung (User-Agent) und, falls Ihr Browser sie sendet, die zuvor besuchte Adresse.</li>
+</ul>
+<p><strong>Zweck:</strong> Auslieferung der Website, Stabilität und Abwehr von Angriffen. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (unser berechtigtes Interesse an einem sicheren und störungsfreien Betrieb). <strong>Speicherdauer:</strong> Die Protokolle {{= website.logfiles_text }}.</p>
+<p>Der Hoster verarbeitet die Daten in unserem Auftrag. Mit ihm besteht ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO. Wir selbst übermitteln keine Daten gezielt in Länder außerhalb des Europäischen Wirtschaftsraums.</p>
+</section>
+
+<section aria-labelledby="download">
+<h2 id="download">4. Download der Software</h2>
+{% if downloads.extern %}<p>Die Dateien werden von {{ downloads.anbieter.name }}, {{ downloads.anbieter.anschrift }} bereitgestellt. Wenn Sie eine Datei herunterladen, verbindet sich Ihr Gerät mit diesem Anbieter und übermittelt ihm technisch notwendige Daten, insbesondere Ihre IP-Adresse. Wie der Anbieter sie verarbeitet, steht in <a href="{{ downloads.anbieter.datenschutz_url }}" rel="noopener noreferrer">dessen Datenschutzerklärung</a>. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (unser Interesse, die Software bereitzustellen).</p>
+{% else %}<p>Die Download-Dateien liegen auf demselben Server wie diese Seiten. Es gelten die Angaben unter „Hosting und Server-Protokolle“. Wir erfahren dabei nicht, wer Sie sind, und führen keine Liste der Downloads nach Personen.</p>
+{% endif %}</section>
+
+<section aria-labelledby="kontakt">
+<h2 id="kontakt">5. Kontakt per E-Mail{% if betreiber.telefon %} oder Telefon{% endif %}</h2>
+<p>Wenn Sie uns schreiben{% if betreiber.telefon %} oder anrufen{% endif %}, verarbeiten wir Ihre Angaben (zum Beispiel Name, E-Mail-Adresse und den Inhalt Ihrer Nachricht), um Ihre Anfrage zu beantworten. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (Interesse an der Beantwortung von Anfragen), bei vertragsnahen Anfragen Art. 6 Abs. 1 lit. b DSGVO. Wir löschen die Angaben, sobald die Anfrage erledigt ist, es sei denn, eine gesetzliche Aufbewahrungspflicht steht dem entgegen. Wir geben sie nicht weiter.</p>
+<p>E-Mails sind auf dem Transportweg häufig nicht durchgehend verschlüsselt und können mitgelesen werden. Schicken Sie uns deshalb keine vertraulichen Angaben.</p>
+</section>
+
+<section aria-labelledby="links">
+<h2 id="links">6. Links auf andere Seiten</h2>
+<p>Wenn Sie einen Link zu einer anderen Website anklicken, verlassen Sie unsere Seite. Ab dann gilt die Datenschutzerklärung des anderen Anbieters. Vorher werden keine Daten an ihn übertragen.</p>
+</section>
+
+<section aria-labelledby="software">
+<h2 id="software">7. Die Software selbst</h2>
+<p>Die Software läuft auf Ihrem eigenen Rechner. Sie sendet keine Nutzungsdaten an uns und fragt nicht selbst nach Updates. Wir erhalten also keine Aufnahmen, Standorte oder Zugangsdaten. Welche Dienste Sie selbst anbinden können und was dabei übertragen wird, steht unter <a href="hinweise.html#daten">Hinweise für Imker</a>. Für diese Verarbeitung sind Sie verantwortlich.</p>
+</section>
+
+<section aria-labelledby="rechte">
+<h2 id="rechte">8. Ihre Rechte</h2>
+<p>Sie haben gegenüber uns die folgenden Rechte, soweit wir Daten über Sie verarbeiten:</p>
+<ul>
+<li>Auskunft über Ihre Daten (Art. 15 DSGVO),</li>
+<li>Berichtigung unrichtiger Daten (Art. 16 DSGVO),</li>
+<li>Löschung (Art. 17 DSGVO),</li>
+<li>Einschränkung der Verarbeitung (Art. 18 DSGVO),</li>
+<li>Datenübertragbarkeit (Art. 20 DSGVO),</li>
+<li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO).</li>
+</ul>
+<aside class="box" aria-labelledby="widerspruch">
+<h3 id="widerspruch">Widerspruchsrecht</h3>
+<p>Soweit wir Daten auf Grundlage berechtigter Interessen (Art. 6 Abs. 1 lit. f DSGVO) verarbeiten, können Sie aus Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit widersprechen. Wir verarbeiten die Daten dann nicht mehr, es sei denn, wir können zwingende schutzwürdige Gründe nachweisen.</p>
+</aside>
+<p>Schreiben Sie uns dazu formlos an <a href="mailto:{{ betreiber.email }}">{{ betreiber.email }}</a>. Wir entscheiden nicht automatisiert über Sie und erstellen keine Profile.</p>
+</section>
+
+<section aria-labelledby="aufsicht">
+<h2 id="aufsicht">9. Beschwerderecht</h2>
+<p>Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren (Art. 77 DSGVO), insbesondere in dem Mitgliedstaat Ihres gewöhnlichen Aufenthalts oder des Orts des mutmaßlichen Verstoßes. Für uns zuständig ist:</p>
+<address>
+{{ aufsicht.name }}<br>
+{{ aufsicht.anschrift }}<br>
+Telefon: {{ aufsicht.telefon }}<br>
+<a href="{{ aufsicht.web }}" rel="noopener noreferrer">{{ aufsicht.web }}</a>
+</address>
+</section>
+
+<section aria-labelledby="stand">
+<h2 id="stand">10. Aktualität</h2>
+<p>Wir passen diese Erklärung an, wenn sich die Website ändert. Stand: {{ seite.stand_de }}.</p>
+</section>
+</div>

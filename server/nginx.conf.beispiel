@@ -1,0 +1,100 @@
+# BEISPIEL für den Betrieb der Hornet3000-Website mit nginx (reine Dateien, keine Programmlogik).
+#
+# So verwenden:
+#   1. Diese Datei nach /etc/nginx/conf.d/hornet3000.conf kopieren (liegt im Kontext „http“).
+#   2. ihre-domain.de, den Zertifikatspfad und den Pfad /var/www/hornet3000 durch Ihre echten Werte ersetzen.
+#   3. Den Inhalt von public/ (siehe README) nach /var/www/hornet3000 kopieren.
+#   4. nginx -t && systemctl reload nginx
+#   5. In config.json eintragen, was hier wirklich eingestellt ist:
+#        website.ip_kuerzen   true, wenn der Abschnitt „IP-Adresse kürzen“ unten aktiv ist
+#        website.logfiles_tage  Aufbewahrungsdauer; muss zur logrotate-Datei passen (logrotate.beispiel)
+#      Der Baukasten schreibt genau diese Angaben in die Datenschutzerklärung.
+#
+# Diese Datei wurde mit nginx 1.24 auf Syntax und Verhalten geprüft (tests/test_server.py). Ihr Hoster kann andere
+# Voraussetzungen haben; wenn Sie einen Webspace ohne eigene nginx-Konfiguration nutzen, übernehmen Sie sinngemäß
+# die Kopfzeilen (Abschnitt „Sicherheits-Kopfzeilen“) und fragen Sie den Hoster nach Protokollierung und Löschfrist.
+
+# ---- IP-Adresse kürzen (Datenschutz) -------------------------------------------------------------------------------
+# IPv4: letztes Byte auf 0 (203.0.113.77 -> 203.0.113.0). IPv6: nur die ersten 32 Bit (2001:db8:: ).
+# Alles andere wird als „unbekannt“ protokolliert. Die volle Adresse landet so nicht im Zugriffsprotokoll.
+map $remote_addr $ip_gekuerzt {
+    ~(?P<ip>\d+\.\d+\.\d+)\.\d+$                                   $ip.0;
+    "~^(?P<ip>[0-9a-fA-F]{1,4}:[0-9a-fA-F]{1,4}):"                  $ip::;
+    default                                                         unbekannt;
+}
+
+# Zugriffsprotokoll mit gekürzter Adresse. Gespeichert werden nur die in der Datenschutzerklärung genannten Angaben.
+log_format hornet3000 '$ip_gekuerzt - [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"';
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ihre-domain.de www.ihre-domain.de;
+    server_tokens off;
+    access_log /var/log/nginx/hornet3000-access.log hornet3000;
+    return 301 https://ihre-domain.de$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ihre-domain.de;
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/ihre-domain.de/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ihre-domain.de/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    root /var/www/hornet3000;
+    index index.html;
+    charset utf-8;
+    autoindex off;
+
+    access_log /var/log/nginx/hornet3000-access.log hornet3000;
+
+    # ---- Sicherheits-Kopfzeilen -------------------------------------------------------------------------------------
+    # Hinweis: add_header in einem „location“-Block würde diese Kopfzeilen dort aufheben. Deshalb steht hier nur server-weit
+    # etwas; die Unterordner unten setzen keine eigenen Kopfzeilen.
+    add_header Content-Security-Policy "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()" always;
+    # HSTS erst einschalten, wenn https dauerhaft funktioniert (die Browser merken sich das ein Jahr lang).
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # Die Website braucht nur Lesezugriffe.
+    if ($request_method !~ ^(GET|HEAD)$) {
+        return 405;
+    }
+
+    error_page 404 /404.html;
+    location = /404.html { internal; }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # Versteckte Dateien nie ausliefern.
+    location ~ /\. {
+        return 404;
+    }
+
+    # Download-Dateien: Dateitypen setzen; kein Ordnerinhalt.
+    location /downloads/ {
+        types {
+            application/vnd.android.package-archive  apk;
+            application/zip                          zip;
+            text/plain                               txt;
+            application/octet-stream                 run exe;
+        }
+        default_type application/octet-stream;
+        try_files $uri =404;
+    }
+}
+
+# ---- Fehlerprotokoll ---------------------------------------------------------------------------------------------------
+# Das Fehlerprotokoll von nginx (meist /var/log/nginx/error.log, in /etc/nginx/nginx.conf eingestellt) kann bei Störungen
+# die vollständige IP-Adresse enthalten. Stellen Sie dort die Stufe „crit“ ein („error_log /var/log/nginx/error.log crit;“)
+# und lassen Sie es mit derselben Frist rotieren (logrotate.beispiel). Die Datenschutzerklärung weist darauf hin.
+#
+# Wenn Sie GAR NICHT protokollieren wollen (website.logfiles_tage = 0): in beiden server-Blöcken „access_log off;“ setzen.

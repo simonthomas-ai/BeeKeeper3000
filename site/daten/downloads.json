@@ -1,0 +1,36 @@
+{
+  "gruppen": [
+    {"id": "rechner", "titel": "Für Ihren Rechner (Wächter)", "text": "Der Wächter läuft auf einem Rechner im Heimnetz oder auf einem kleinen Server. Wählen Sie die Datei für Ihr System."},
+    {"id": "altgeraet", "titel": "Für alte Handys und Tablets", "text": "Alte Geräte können als Kamera oder als Alarm-Anzeige dienen. Voraussetzung ist ein laufender Wächter."},
+    {"id": "weitere", "titel": "Update, Quellcode und Zubehör", "text": "Für vorhandene Installationen, zum Nachprüfen und für den Bau eigener Kameras."}
+  ],
+  "dateien": [
+    {"id": "linux", "gruppe": "rechner", "name": "Hornet3000-{v}-linux-x86_64.run", "titel": "Linux (64 Bit)",
+     "text": "Installer ohne Administratorrechte, mit Python, ffmpeg und Erkennungsmodell. Für Debian 10 und neuer, Ubuntu 20.04 und neuer und ähnliche Systeme (glibc ab 2.28). Start mit „sh Dateiname“, danach „hornet3000 open“.",
+     "pruefung": {"stufe": "getestet", "text": "Auf einem frischen Benutzerkonto installiert und gestartet, Selbsttest, Dauerlauf, Browser-Prüfung und Update von 1.1.0 und 1.2.0 aus bestanden."}},
+    {"id": "windows", "gruppe": "rechner", "name": "Hornet3000-Setup-{v}.exe", "titel": "Windows 10 und 11 (64 Bit)",
+     "text": "Installer ohne Administratorrechte. Start über das Startmenü.",
+     "pruefung": {"stufe": "gebaut", "text": "Gebaut und Inhalt geprüft. Nie auf einem Windows-Rechner ausgeführt."}},
+    {"id": "mac-arm", "gruppe": "rechner", "name": "Hornet3000-{v}-macos-arm64.zip", "titel": "macOS mit Apple-Chip (M1 und neuer)",
+     "text": "Entpacken, dann „Hornet3000.app“ starten. Die Programmdateien sind selbst signiert, aber nicht von Apple beglaubigt.",
+     "pruefung": {"stufe": "gebaut", "text": "Gebaut, Signatur und Inhalt geprüft. Nie auf einem Mac ausgeführt."}},
+    {"id": "mac-intel", "gruppe": "rechner", "name": "Hornet3000-{v}-macos-x86_64.zip", "titel": "macOS mit Intel-Prozessor",
+     "text": "Entpacken, dann „Hornet3000.app“ starten. Die Programmdateien sind selbst signiert, aber nicht von Apple beglaubigt.",
+     "pruefung": {"stufe": "gebaut", "text": "Gebaut, Signatur und Inhalt geprüft. Nie auf einem Mac ausgeführt."}},
+    {"id": "apk", "gruppe": "altgeraet", "name": "Hornet3000-Station-{v}.apk", "titel": "Android-App „Hornet3000 Station“ (ab Android 2.2)",
+     "text": "Macht ein altes Android-Gerät zur Kamera (Station) oder zur Alarm-Anzeige. Sie können die App auch vom laufenden Wächter laden (Seite /m). Für iPhones gibt es keine App: Sie öffnen die Seite /m des Wächters im Browser (ab iOS 9).",
+     "pruefung": {"stufe": "gebaut", "text": "Netzwerkteil gegen den echten Wächter geprüft, Bau gegen die Systembibliothek von Android 2.2 und Signatur geprüft. Nie auf einem Gerät oder Emulator gestartet; „ab Android 2.2“ ist berechnet, nicht erprobt."}},
+    {"id": "update", "gruppe": "weitere", "name": "Hornet3000-{v}-Update.zip", "titel": "Update von Version 1.0, 1.1 oder 1.2",
+     "text": "Aktualisiert eine vorhandene Installation. Vor dem Einspielen entsteht eine Sicherung; schlägt etwas fehl, wird automatisch zurückgesetzt. Einstellungen und Aufnahmen bleiben erhalten.",
+     "pruefung": {"stufe": "teils", "text": "An echten Linux-Installationen von 1.1.0 und 1.2.0 getestet, auch die Fehlerfälle. Der Weg für Windows und macOS wurde nicht ausgeführt."}},
+    {"id": "quellcode", "gruppe": "weitere", "name": "Hornet3000-{v}-quellcode.zip", "titel": "Quellcode",
+     "text": "Programmcode mit Tests, Bauskripten (auch für die Android-App), Dokumentation und Erkennungsmodell."},
+    {"id": "esp32", "gruppe": "weitere", "name": "Hornet3000-ESP32-Kamera-1.0.0.zip", "titel": "ESP32-Kamera",
+     "text": "Firmware und Unterlagen für eine kleine ESP32-Kamera am Bienenstand.",
+     "pruefung": {"stufe": "gebaut", "text": "Nie auf echter ESP32-Hardware ausgeführt."}},
+    {"id": "liesmich", "gruppe": "weitere", "name": "LIES-MICH-{v}.txt", "titel": "Übersicht und Prüfstand (Textdatei)",
+     "text": "Was neu ist, was geprüft wurde und was nicht."},
+    {"id": "summen", "gruppe": "weitere", "name": "SHA256SUMS-{v}.txt", "titel": "Prüfsummen",
+     "text": "SHA-256-Summen aller Dateien zum Abgleich.", "ohne_summe": true}
+  ]
+}

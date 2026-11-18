@@ -1,0 +1,61 @@
+{
+  "betreiber": {
+    "initiative": "",
+    "rechtsform": "",
+    "name": "",
+    "vertretungsberechtigt": "",
+    "strasse": "",
+    "plz": "",
+    "ort": "",
+    "land": "Deutschland",
+    "email": "",
+    "telefon": "",
+    "kontakt_alternative": "",
+    "register": "",
+    "registernummer": "",
+    "ust_id": "",
+    "gemeinnuetzig_anerkannt": null,
+    "gemeinnuetzig_nachweis": ""
+  },
+  "website": {
+    "adresse": "",
+    "hoster_name": "",
+    "hoster_anschrift": "",
+    "hoster_land": "",
+    "avv_abgeschlossen": false,
+    "logfiles_tage": null,
+    "ip_kuerzen": null
+  },
+  "downloads": {
+    "quelle_ordner": "",
+    "basis_url": "downloads/",
+    "anbieter": {
+      "name": "",
+      "anschrift": "",
+      "datenschutz_url": ""
+    }
+  },
+  "software": {
+    "version": "1.3.0",
+    "stand": "2026-11-15",
+    "apk_zertifikat_sha256": "42d20a90d479439bf4fcaed1a053bbbc41ac501baf9f11df7716ecf6de377883"
+  },
+  "lizenz": {
+    "eigener_code": "",
+    "text_url": ""
+  },
+  "ki": {
+    "system": "Claude",
+    "anbieter": "Anthropic PBC",
+    "modelle": "u. a. Claude Sonnet 5.5"
+  },
+  "aufsicht": {
+    "name": "Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen",
+    "anschrift": "Kavalleriestraße 2–4, 40213 Düsseldorf",
+    "telefon": "0211 38424-0",
+    "web": "https://www.ldi.nrw.de"
+  },
+  "seite": {
+    "stand": "2026-11-17"
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>{{ seite.titel }} – Hornet3000 Wächter</title>
+<meta name="description" content="{{ seite.beschreibung }}">
+{% if seite.kanonisch %}<link rel="canonical" href="{{ seite.kanonisch }}">
+{% endif %}<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+{% if vorschau %}<div class="vorschau" role="note">VORSCHAU – nicht veröffentlichen. Rot markierte Stellen sind noch nicht ausgefüllt.</div>
+{% endif %}<header class="kopf">
+<div class="huelle">
+<a class="marke-logo" href="index.html"><img src="assets/favicon.svg" alt="" width="42" height="42"><span>Hornet3000 Wächter<small>{{ betreiber.anzeige }}</small></span></a>
+<nav aria-label="Hauptmenü">
+<ul class="nav">
+<li><a href="index.html"{% if nav.start %} aria-current="page"{% endif %}>Start</a></li>
+<li><a href="download.html"{% if nav.download %} aria-current="page"{% endif %}>Download</a></li>
+<li><a href="anleitung.html"{% if nav.anleitung %} aria-current="page"{% endif %}>Kurzanleitung</a></li>
+<li><a href="hinweise.html"{% if nav.hinweise %} aria-current="page"{% endif %}>Hinweise für Imker</a></li>
+<li><a href="gemeinwohl.html"{% if nav.gemeinwohl %} aria-current="page"{% endif %}>Gemeinwohl</a></li>
+</ul>
+</nav>
+</div>
+</header>
+<main id="inhalt" class="huelle">

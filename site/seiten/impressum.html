@@ -1,0 +1,46 @@
+<!--seite titel="Impressum" beschreibung="Impressum und Anbieterkennzeichnung nach § 5 DDG, mit Angabe, dass die Software von einer künstlichen Intelligenz hergestellt wurde." nav="impressum"-->
+<h1>Impressum</h1>
+<div class="recht">
+<section aria-labelledby="anbieter">
+<h2 id="anbieter">Angaben nach § 5 Digitale-Dienste-Gesetz (DDG)</h2>
+<address>
+<strong>{{ betreiber.name }}</strong><br>
+{{ betreiber.rechtsform }}<br>
+{{ betreiber.adresse_text }}
+</address>
+{% if betreiber.ist_juristisch %}<p>Vertretungsberechtigt: {{ betreiber.vertretungsberechtigt }}</p>
+{% endif %}{% if betreiber.hat_register %}<p>Register: {{ betreiber.register }}, Registernummer: {{ betreiber.registernummer }}</p>
+{% endif %}{% if betreiber.ust_id %}<p>Umsatzsteuer-Identifikationsnummer: {{ betreiber.ust_id }}</p>
+{% endif %}</section>
+
+<section aria-labelledby="kontakt">
+<h2 id="kontakt">Kontakt</h2>
+<p>E-Mail: <a href="mailto:{{ betreiber.email }}">{{ betreiber.email }}</a>{% if betreiber.telefon %}<br>
+Telefon: {{ betreiber.telefon }}{% endif %}{% if betreiber.kontakt_alternative %}<br>
+{{ betreiber.kontakt_alternative }}{% endif %}</p>
+</section>
+
+<section aria-labelledby="gemeinwohl">
+<h2 id="gemeinwohl">Gemeinwohl, keine Gewinnabsicht</h2>
+{% if betreiber.gemeinnuetzig %}<p>Wir sind als gemeinnützig anerkannt: {{ betreiber.gemeinnuetzig_nachweis }}.</p>
+{% else %}<p>Wir verfolgen mit der Software und dieser Website keine Gewinnabsicht. Eine förmliche Anerkennung als gemeinnützig durch das Finanzamt besteht nicht; wir nennen uns daher nicht gemeinnützig im steuerrechtlichen Sinn.</p>
+{% endif %}</section>
+
+<section aria-labelledby="ki">
+<h2 id="ki">Hersteller der Software und Einsatz künstlicher Intelligenz</h2>
+<p><strong>Die Software wurde von einer künstlichen Intelligenz hergestellt.</strong> Programmcode, Tests, Dokumentation und die Texte dieser Website sind ganz überwiegend von dem KI-System {{ ki.system }} des Anbieters {{ ki.anbieter }} erzeugt worden ({{ ki.modelle }}). Das gilt für Hornet3000 Wächter, die Android-App „Hornet3000 Station“ und die ESP32-Kamera.</p>
+<p>Im technischen Sinn ist damit die KI die Herstellerin der Software. Im rechtlichen Sinn ist {{ betreiber.name }} der Anbieter: {{ betreiber.name }} hat Ziele und Anforderungen vorgegeben, die Arbeit angeleitet, Ergebnisse prüfen lassen und entscheidet über die Veröffentlichung und die Bereitstellung auf dieser Website.</p>
+<ul>
+<li>Eine KI ist keine Rechtsperson. Sie kann weder Vertragspartnerin sein noch haften. Ansprechpartner für alles, was diese Website und die Software betrifft, ist {{ betreiber.name }} (Anschrift und Kontakt stehen oben).</li>
+<li>{{ ki.anbieter }} betreibt weder diese Website noch bietet es die Software an. Die Nennung bedeutet keine Prüfung, Freigabe oder Empfehlung durch {{ ki.anbieter }}.</li>
+<li>KI-Systeme machen Fehler, auch solche, die automatische Tests nicht aufdecken. Welche Prüfungen für welche Datei tatsächlich stattgefunden haben, steht auf der <a href="download.html">Download-Seite</a>. Eine Gewähr für Fehlerfreiheit gibt es nicht, siehe <a href="haftung.html">Haftungsausschluss</a>.</li>
+<li>Die Erkennung der Hornissen nutzt zudem selbst ein KI-Modell (Objekterkennung YOLOv8, trainiert im Projekt vespCV/hornet3000). Es meldet Insektenfunde und trifft keine Entscheidungen über Personen.</li>
+</ul>
+</section>
+
+<section aria-labelledby="weiteres">
+<h2 id="weiteres">Weitere Angaben</h2>
+<p>Haftung und Nutzungshinweise: <a href="haftung.html">Haftungsausschluss</a>. Umgang mit Daten: <a href="datenschutz.html">Datenschutzerklärung</a>. Lizenzen der Software und der Bausteine Dritter: <a href="lizenzen.html">Lizenzen</a>.</p>
+<p class="klein">Stand: {{ seite.stand_de }}</p>
+</section>
+</div>

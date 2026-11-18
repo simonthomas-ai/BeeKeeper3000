@@ -1,0 +1,39 @@
+<!--seite titel="Kurzanleitung" beschreibung="Hornet3000 Wächter in wenigen Schritten einrichten: installieren, Kamera verbinden, Meldeweg einrichten, Testalarm auslösen." nav="anleitung"-->
+<h1>Kurzanleitung</h1>
+<p class="lead">Vom Download bis zum Testalarm. Die ausführliche Anleitung liegt nach der Installation im Programmordner (<code>README.txt</code> und der Ordner <code>docs</code>).</p>
+
+<ol class="schritte">
+<li><strong>Herunterladen und prüfen</strong>Datei für Ihr System auf der <a href="download.html">Download-Seite</a> laden und die Prüfsumme vergleichen.</li>
+<li><strong>Installieren</strong>Linux: <code>sh Hornet3000-{{ software.version }}-linux-x86_64.run</code>, dann <code>hornet3000 open</code>. Windows: Installer starten, keine Administratorrechte nötig, Start über das Startmenü. macOS: ZIP entpacken und <code>Hornet3000.app</code> öffnen.</li>
+<li><strong>Kamera verbinden</strong>In der Oberfläche unter „Einrichtung“: Netzwerkkamera per RTSP-Adresse oder Webcam am Rechner, dann „Verbindung testen“. Sie sehen ein echtes Bild und ob die Kamera Ton liefert.</li>
+<li><strong>Meldeweg einrichten</strong>Empfohlen ist Telegram: in Telegram den Bot <code>@BotFather</code> öffnen, <code>/newbot</code> senden, den Token in die App kopieren, dem Bot <code>/start</code> schreiben und „Bot prüfen und Chats suchen“ wählen.</li>
+<li><strong>Speichern, neu starten, Testalarm</strong>„Speichern und neu starten“, dann im Reiter „Live“ den Testalarm auslösen. Es kommen Foto und Text, kurz darauf ein Video.</li>
+<li><strong>Die ersten Wochen beobachten</strong>Prüfen Sie jeden Alarm am Foto und stellen Sie die Erkennungsschwelle nach. Ein verpasstes Tier und ein Fehlalarm sind möglich.</li>
+<li><strong>Zugang absichern</strong>Die Oberfläche ist durch den Zugangsschlüssel geschützt (<code>hornet3000 token</code> zeigt ihn). Stellen Sie sie ohne https nicht ins Internet.</li>
+</ol>
+
+<section aria-labelledby="alt">
+<h2 id="alt">Alte Handys und Tablets nutzen</h2>
+<div class="karten">
+<div class="karte">
+<h3>Android ab Version 2.2</h3>
+<p>Die App „Hornet3000 Station“ lässt sich vom laufenden Wächter laden: Adresse des Wächters im Browser des Geräts öffnen, dort <code>/m</code> anhängen und „Android-App laden“ wählen. Die App kann als Kamera (Station) oder als Alarm-Anzeige mit Ton, Vibration und Bild dienen.</p>
+</div>
+<div class="karte">
+<h3>iPhone und iPad</h3>
+<p>Es gibt keine iPhone-App. Stattdessen öffnen Sie dieselbe Seite <code>/m</code> des Wächters im Browser. Alarm-Anzeige und Foto-Auswertung gehen ab iOS 9, die Kamera erst ab iOS 11 und nur über eine https-Adresse.</p>
+</div>
+</div>
+<p class="klein">Die Android-App wurde noch nie auf einem Gerät gestartet; „ab Android 2.2“ ist aus dem Bau gegen die Systembibliothek berechnet, nicht erprobt. Bitte probieren Sie sie zuerst an einem Gerät am Schreibtisch aus und melden Sie uns das Ergebnis.</p>
+</section>
+
+<section aria-labelledby="hilfe">
+<h2 id="hilfe">Wenn etwas nicht geht</h2>
+<ul>
+<li><code>hornet3000 selftest</code> zeigt, was fehlt (ffmpeg, Modell, Kamera, Meldewege).</li>
+<li>Das Protokoll liegt in <code>data/hornet.log</code> im Programmordner.</li>
+<li>„Kamera nicht erreichbar“: unter „Einrichtung“ zeigt „Verbindung testen“ die Ursache.</li>
+<li>Port belegt: in der Datei <code>.env</code> <code>PORT=8081</code> (oder einen anderen freien Port) setzen.</li>
+</ul>
+<p>Fragen und Rückmeldungen: <a href="mailto:{{ betreiber.email }}">{{ betreiber.email }}</a></p>
+</section>

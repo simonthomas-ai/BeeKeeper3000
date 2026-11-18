@@ -1,0 +1,30 @@
+<!--seite titel="Gemeinwohl" beschreibung="Warum Hornet3000 Wächter unentgeltlich und ohne Gewinnabsicht angeboten wird und wie Imker mithelfen können." nav="gemeinwohl"-->
+<h1>Gemeinwohl statt Gewinn</h1>
+<p class="lead">Honigbienen bestäuben Obst, Raps und Wiesenblumen. Wer sie schützt, nützt allen. Deshalb steht Hornet3000 Wächter unentgeltlich zur Verfügung.</p>
+
+<h2 id="zusagen">Was wir zusagen</h2>
+<div class="karten">
+<div class="karte"><h3>Unentgeltlich</h3><p>Die Software kostet nichts. Es gibt keine bezahlte Fassung, kein Abo und keine versteckten Gebühren.</p></div>
+<div class="karte"><h3>Ohne Werbung</h3><p>Weder auf dieser Website noch in der Software.</p></div>
+<div class="karte"><h3>Ohne Konto, ohne Tracking</h3><p>Sie laden herunter, ohne sich anzumelden. Diese Website setzt keine Cookies. Die Software schickt uns keine Daten.</p></div>
+<div class="karte"><h3>Offen</h3><p>Der Quellcode liegt jedem Download bei. Sie dürfen prüfen, wie die Software arbeitet, und sie nach den Bedingungen der <a href="lizenzen.html">Lizenz</a> weitergeben.</p></div>
+</div>
+
+<h2 id="wer">Wer dahintersteht</h2>
+<p>Hinter dieser Website steht {{ betreiber.anzeige }}. Wir verfolgen keine Gewinnabsicht. Wer im Einzelnen verantwortlich ist, steht im <a href="impressum.html">Impressum</a>. Software und Texte sind mit Hilfe einer künstlichen Intelligenz entstanden, auch das steht dort offen.</p>
+{% if betreiber.gemeinnuetzig %}<p>Wir sind als gemeinnützig anerkannt: {{ betreiber.gemeinnuetzig_nachweis }}.</p>
+{% endif %}
+<h2 id="mithelfen">So können Sie mithelfen</h2>
+<p>Die Software lebt von Rückmeldungen aus echten Bienenständen. Besonders gebraucht werden Erfahrungen mit den Teilen, die wir nicht auf echter Hardware ausprobieren konnten:</p>
+<ul>
+<li>Windows- und macOS-Installer auf echten Rechnern,</li>
+<li>die Android-App auf alten Geräten (welche Version, welches Gerät, was ging),</li>
+<li>LoRa-Funk mit zwei echten Geräten und die ESP32-Kamera,</li>
+<li>Fotos und Fälle, in denen die Erkennung falsch lag.</li>
+</ul>
+<p>Schreiben Sie uns an <a href="mailto:{{ betreiber.email }}">{{ betreiber.email }}</a>. Schicken Sie bitte keine Fotos, auf denen Menschen erkennbar sind.</p>
+
+<aside class="box offen" aria-labelledby="grenzen">
+<h2 id="grenzen">Was wir nicht versprechen</h2>
+<p>Wir versprechen keine Fehlerfreiheit, keine Auskunft im Einzelfall und keine ständige Erreichbarkeit. Wir sind keine Behörde und keine Rechtsberatung. Wie weit unsere Haftung reicht, steht im <a href="haftung.html">Haftungsausschluss</a>.</p>
+</aside>
