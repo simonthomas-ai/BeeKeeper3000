@@ -1,0 +1,49 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later · SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende */
+/* Hornet3000 Mobil: bewusst einfach (keine Variablen, kein Flex/Grid, nur Standard-Eigenschaften mit -webkit-Vorsatz) –
+   damit es auch auf Android 4.x und iOS 9 ordentlich aussieht. */
+* { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+html, body { margin: 0; padding: 0; }
+body { background: #14201a; color: #e9efe4; font: 17px/1.45 Helvetica, Arial, sans-serif; padding-bottom: 40px; }
+a { color: #8fd6a4; }
+#top { padding: 12px 14px; background: #0d1511; border-bottom: 1px solid #2e3c34; overflow: hidden; }
+#logo { font-weight: bold; font-size: 20px; }
+.pill { float: right; padding: 2px 10px; border-radius: 12px; background: #2e3c34; font-size: 14px; margin-top: 2px; }
+.pill.ok { background: #2f7a49; }
+.pill.bad { background: #a8431c; }
+h2 { font-size: 17px; margin: 18px 14px 6px; color: #a9b8ac; text-transform: uppercase; letter-spacing: 1px; }
+.box { margin: 8px 12px; padding: 10px 12px; background: #1d2b23; border: 1px solid #2e3c34; border-radius: 8px; }
+.small { font-size: 14px; color: #b9c6bb; }
+p { margin: 6px 0; }
+.bad { color: #ff9a6c; }
+.good { color: #8fd6a4; }
+.hidden { display: none !important; }
+input[type=text], input[type=password] { width: 100%; font-size: 17px; padding: 10px; margin: 6px 0; border: 1px solid #44574c; border-radius: 6px;
+  background: #0d1511; color: #e9efe4; }
+input[type=file] { width: 100%; font-size: 15px; margin: 6px 0; color: #e9efe4; }
+.btn { display: block; width: 100%; margin: 8px 0; padding: 13px 10px; font-size: 17px; font-weight: bold; color: #0d1511; background: #8fd6a4;
+  border: 0; border-radius: 8px; }
+.btn:active { background: #6fbf86; }
+.btn.ghost { background: #2e3c34; color: #e9efe4; }
+.btn.danger { background: #ff9a6c; }
+.buttons { margin: 8px 12px; }
+.buttons .btn { margin: 6px 0; }
+.banner { margin: 8px 12px; padding: 10px 12px; border-radius: 8px; background: #5b2a12; border: 1px solid #ff7a3d; }
+.banner.info { background: #1d2b23; border-color: #6fbf86; }
+.alarm { margin: 8px 12px; padding: 14px; border-radius: 10px; background: #b3350c; border: 3px solid #ffd2b8; text-align: center; }
+.alarm.upd { background: #7a5a0a; border-color: #f2b31f; }
+.alarm.tst { background: #1c4d7a; border-color: #8ec4f2; }
+.alarm.flash { background: #ff5a1f; }
+#alarm-title { font-size: 26px; font-weight: bold; }
+#alarm-text { font-size: 18px; margin: 6px 0 10px; }
+#alarm-img { max-width: 100%; border-radius: 6px; margin-bottom: 8px; }
+.list { list-style: none; margin: 8px 12px; padding: 0; }
+.list li { margin: 0 0 8px; padding: 8px 10px; background: #1d2b23; border: 1px solid #2e3c34; border-radius: 8px; overflow: hidden; }
+.list li.new { border-left: 6px solid #ff7a3d; }
+.list li.upd { border-left: 6px solid #f2b31f; }
+.list li.tst { border-left: 6px solid #8ec4f2; }
+.list img { float: right; width: 84px; height: 64px; margin-left: 8px; border-radius: 4px; background: #0d1511; }
+.stage { margin: 8px 0; background: #000; border-radius: 8px; overflow: hidden; }
+.stage video { width: 100%; display: block; }
+.foot { text-align: center; margin-top: 20px; }
+.ok-t { color: #8fd6a4; font-weight: bold; }
+.det { margin: 3px 0; }

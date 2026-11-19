@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hornet3000 Wächter</title>
+  <meta name="description" content="Meldet die Asiatische Hornisse am Bienenstock sofort mit Foto und Ton.">
+  <meta name="theme-color" content="#e4ebdd" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121915" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Hornet3000">
+  <link rel="preload" href="/assets/fonts/bitter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <header class="head">
+    <div class="top">
+      <img src="/assets/icons/favicon.svg" alt="" width="28" height="28">
+      <b>Hornet3000 Wächter</b>
+      <span class="conn" id="conn"><span class="dot" id="conn-dot"></span><span id="conn-txt">verbinde …</span></span>
+    </div>
+    <div id="alarmbar" role="alert" hidden>
+      <img id="ab-img" alt="Foto der Erkennung">
+      <div>
+        <div class="t" id="ab-title"></div>
+        <div class="s" id="ab-sub"></div>
+      </div>
+      <div class="acts">
+        <button id="ab-open">Ansehen</button>
+        <button id="ab-close">Schließen</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="login" hidden>
+      <h1>Anmelden</h1>
+      <p class="muted">Den Zugangsschlüssel findest du in der Datei <code>.env</code> (Zeile <code>ACCESS_TOKEN</code>) und beim Start im Konsolenfenster.</p>
+      <form id="login-form">
+        <label class="f">Zugangsschlüssel
+          <input type="password" id="token" autocomplete="current-password" required>
+        </label>
+        <button class="primary" type="submit">Anmelden</button>
+        <p id="login-err" class="bad-t" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <section class="view" id="v-live" aria-labelledby="h-live">
+      <div class="layout two">
+        <div>
+          <div class="hero" id="hero">
+            <div class="cell">
+              <svg viewBox="0 0 100 100" aria-hidden="true">
+                <polygon class="hexfill" points="27,8 73,8 96,50 73,92 27,92 4,50"/>
+                <polygon class="core" points="38,30 62,30 74,50 62,70 38,70 26,50"/>
+              </svg>
+            </div>
+            <div>
+              <h1 id="h-live" aria-live="polite">Verbinde …</h1>
+              <p class="meta muted" id="hero-sub"></p>
+            </div>
+          </div>
+          <div class="live" id="live-block">
+            <img id="live-img" alt="Live-Bild vom Flugloch">
+            <div class="chip"><span class="dot ok"></span>Live</div>
+            <div class="empty" id="live-empty">Warte auf das Kamerabild …</div>
+          </div>
+          <div class="row" id="setup-cta" hidden><a class="btn primary" href="#einrichtung">Einrichtung starten</a></div>
+          <div class="chips" id="chips" aria-live="polite"></div>
+          <div class="controls" id="controls">
+            <select id="mute-sel" aria-label="Alarme stumm schalten">
+              <option value="">Alarme stumm schalten …</option>
+              <option value="30">30 Minuten</option>
+              <option value="120">2 Stunden</option>
+              <option value="720">12 Stunden</option>
+            </select>
+            <button id="btn-unmute" hidden>Wieder scharf schalten</button>
+            <button id="btn-test">Test-Alarm auslösen</button>
+            <button id="btn-sound" aria-pressed="false">Alarmton: aus</button>
+            <button id="btn-wake" aria-pressed="false">Bildschirm wach halten</button>
+          </div>
+        </div>
+        <aside aria-labelledby="h-recent">
+          <h2 id="h-recent">Zuletzt gemeldet</h2>
+          <ol class="list" id="recent"></ol>
+          <p class="muted" id="recent-empty">Noch keine Meldung. Sobald eine Asiatische Hornisse am Stock erkannt wird, erscheint sie hier.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="v-alarme" aria-labelledby="h-alarme">
+      <h1 id="h-alarme">Alarme</h1>
+      <p class="muted small">Tippen öffnet Foto, Video mit Ton und den Zustellstatus je Meldeweg.</p>
+      <ol class="list" id="alerts"></ol>
+      <p class="muted" id="alerts-empty" hidden>Noch keine Alarme gespeichert.</p>
+    </section>
+
+    <section class="view" id="v-funk" aria-labelledby="h-funk">
+      <h1 id="h-funk">Funknetz</h1>
+      <p class="muted small">Die Stationen melden sich gegenseitig, wenn eine Asiatische Hornisse gesehen wurde – über LoRa-Funk (MeshCore) und/oder Freenet. Meldungen anderer Stationen sind ungeprüft; sie ersetzen nie den eigenen Blick auf den Bienenstand.</p>
+      <div id="funk-off" class="panel" hidden>
+        <p>Das Funknetz ist ausgeschaltet. Unter <a href="#einrichtung">Einrichtung → Funknetz</a> lassen sich LoRa und Freenet unabhängig voneinander einschalten.</p>
+      </div>
+      <div class="panel" id="funk-ways"></div>
+      <div class="row"><button id="btn-funk-test" class="primary">Funknetz-Test senden</button><span class="muted small" id="funk-test-note"></span></div>
+      <h2 class="sect">Protokoll</h2>
+      <ol class="list" id="funk-log"></ol>
+      <p class="muted" id="funk-log-empty" hidden>Noch keine Funkmeldungen.</p>
+      <h2 class="sect">Bekannte Stationen</h2>
+      <ul class="plain" id="funk-stations"></ul>
+    </section>
+
+    <section class="view" id="v-einrichtung" aria-labelledby="h-einrichtung">
+      <h1 id="h-einrichtung">Einrichtung</h1>
+      <p class="muted" id="setup-intro">Trage hier Kamera und Meldewege ein. Jede Angabe lässt sich sofort prüfen. Gespeichert wird in der Datei <code>.env</code> im Programmordner.</p>
+      <div id="setup-forms"></div>
+      <div class="panel savebar">
+        <button id="btn-save" class="primary">Speichern und neu starten</button>
+        <p class="muted small" id="save-note">Das Programm startet dabei kurz neu (ca. 10 Sekunden).</p>
+      </div>
+
+      <h2 class="sect">Prüfen und feinjustieren</h2>
+      <div class="panel">
+        <h3>Benachrichtigung auf diesem Gerät</h3>
+        <p class="muted" id="push-info">Prüfe Unterstützung …</p>
+        <div class="row"><button id="btn-push" class="primary" hidden>Auf diesem Gerät aktivieren</button></div>
+      </div>
+      <div class="panel">
+        <h3>Telegram, WhatsApp, SMS</h3>
+        <div id="channels"></div>
+      </div>
+      <div class="panel">
+        <h3>Empfindlichkeit</h3>
+        <label class="f">Erkennungsschwelle: <b id="v-conf"></b>
+          <input type="range" id="t-conf" min="0.30" max="0.95" step="0.01">
+          <span class="muted small">Höher = weniger Fehlalarme, aber ein Tier kann übersehen werden.</span>
+        </label>
+        <label class="f">Bestätigung: <b id="v-hits"></b> Treffer in den letzten Bildern
+          <input type="range" id="t-hits" min="1" max="8" step="1">
+        </label>
+        <label class="f">Neuer Alarm erst nach Pause von
+          <select id="t-gap">
+            <option value="120">2 Minuten</option>
+            <option value="300">5 Minuten</option>
+            <option value="900">15 Minuten</option>
+            <option value="1800">30 Minuten</option>
+          </select>
+        </label>
+        <button id="btn-tune" class="primary">Speichern</button>
+      </div>
+      <div class="panel">
+        <h3>Anlage</h3>
+        <dl class="kv" id="sys"></dl>
+        <button id="btn-logout">Abmelden</button>
+      </div>
+    </section>
+
+    <section class="view know" id="v-wissen" aria-labelledby="h-wissen">
+      <div id="knowledge"><p class="muted">Lade …</p></div>
+      <div class="panel">
+        <h2>Gemeldete Sichtungen in der Umgebung</h2>
+        <div id="sightings"><p class="muted">Lade …</p></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Bereiche">
+    <a href="#live" data-tab="live">Live</a>
+    <a href="#alarme" data-tab="alarme">Alarme<span class="badge" id="badge" hidden>0</span></a>
+    <a href="#funk" data-tab="funk">Funknetz<span class="badge" id="badge-funk" hidden>0</span></a>
+    <a href="#einrichtung" data-tab="einrichtung">Einrichtung</a>
+    <a href="#wissen" data-tab="wissen">Wissen</a>
+  </nav>
+
+  <dialog id="detail" aria-labelledby="d-title">
+    <div class="in">
+      <button class="close" id="d-close" aria-label="Schließen">Schließen</button>
+      <h2 id="d-title"></h2>
+      <p class="muted small" id="d-sub"></p>
+      <img id="d-img" alt="Foto der Erkennung">
+      <div id="d-video-wrap"></div>
+      <dl class="kv" id="d-kv"></dl>
+      <div class="row">
+        <button id="d-copy">Link zum Teilen kopieren</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Hornet3000 – Handy-Kamera</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#121915">
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/phone.css">
+</head>
+<body>
+  <h1>Hornet3000 – Handy als Kamera</h1>
+  <main>
+    <div id="login" class="panel">
+      <p>Anmeldung läuft …</p>
+    </div>
+
+    <div id="app" class="hidden">
+      <div class="stage">
+        <video id="preview" autoplay playsinline muted></video>
+        <div class="badge"><span class="dot" id="dot"></span><span id="badge-text">getrennt</span></div>
+      </div>
+
+      <div id="precheck" class="panel warn">
+        <p><b>Vor dem Aufstellen:</b></p>
+        <ul>
+          <li>Handy ans Ladekabel anschließen – die Aufnahme läuft dauerhaft.</li>
+          <li>Diese Seite muss im <b>Vordergrund</b> bleiben (nicht sperren, nicht wegwechseln). Browser im Hintergrund
+            pausieren die Kamera – das ist eine Einschränkung des Betriebssystems, keine Fehlfunktion dieser Seite.</li>
+          <li>WLAN in Reichweite des Aufstellorts prüfen.</li>
+        </ul>
+      </div>
+
+      <div class="row">
+        <button id="btn-start">Kamera starten</button>
+        <button id="btn-stop" class="danger hidden">Beenden</button>
+      </div>
+      <div class="row">
+        <button id="btn-flip" class="ghost hidden">Kamera wechseln</button>
+      </div>
+
+      <p class="muted" id="codec-info"></p>
+      <div class="stats" id="stats"></div>
+
+      <div id="err" class="panel bad hidden"></div>
+    </div>
+  </main>
+  <p class="foot muted">Diese Seite gehört zu deiner eigenen Hornet3000-Anlage und sendet Bild und Ton ausschließlich
+    an deinen Server.</p>
+  <script src="/assets/phone.js" defer></script>
+</body>
+</html>

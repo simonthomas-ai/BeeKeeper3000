@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hornet3000">
+<meta name="robots" content="noindex">
+<title>Hornet3000 Mobil</title>
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="stylesheet" href="/assets/m.css">
+</head>
+<body>
+<div id="top"><span id="logo">Hornet3000</span> <span id="conn" class="pill">…</span></div>
+
+<div id="msg" class="banner hidden"></div>
+
+<div id="login" class="box hidden">
+  <p>Zugangsschlüssel des Wächters eingeben (steht beim Start im Programmfenster bzw. unter Einrichtung).</p>
+  <input id="tok" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="Zugangsschlüssel">
+  <button id="btn-login" class="btn">Anmelden</button>
+  <p id="login-err" class="bad"></p>
+</div>
+
+<div id="app" class="hidden">
+  <div id="alarm" class="alarm hidden">
+    <div id="alarm-title"></div>
+    <div id="alarm-text"></div>
+    <img id="alarm-img" alt="" class="hidden">
+    <button id="btn-ack" class="btn">Quittieren</button>
+  </div>
+
+  <div class="box" id="cam"><b>Kamera:</b> <span id="cam-state">…</span></div>
+  <div class="box small" id="stats">…</div>
+
+  <div class="buttons">
+    <button id="btn-mute" class="btn">Stumm 1 h</button>
+    <button id="btn-unmute" class="btn hidden">Ton an</button>
+    <button id="btn-test" class="btn">Testalarm</button>
+  </div>
+
+  <h2>Alarmton dieses Geräts</h2>
+  <div class="box small">
+    <p id="snd-state">Alte iPhones und Android-Geräte spielen Töne erst nach einer Berührung. Einmal tippen:</p>
+    <button id="btn-snd" class="btn">Alarmton aktivieren (spielt kurz)</button>
+    <p class="small">Gerät ans Ladekabel, Bildschirm nicht sperren (Einstellungen → Anzeige → Automatische Sperre „Nie“), Seite im Vordergrund lassen.</p>
+  </div>
+
+  <h2>Foto prüfen</h2>
+  <div class="box">
+    <p class="small">Insekt fotografieren – der Wächter wertet das Bild aus. Es wird <b>kein Alarm</b> ausgelöst.</p>
+    <input id="photo" type="file" accept="image/*" capture="environment">
+    <div id="check-res" class="small"></div>
+  </div>
+
+  <h2>Dieses Gerät als Kamera</h2>
+  <div class="box">
+    <p class="small" id="st-hint">Der Wächter muss unter Einrichtung die Kamera-Quelle <b>push</b> haben.</p>
+    <label class="small" for="st-name">Name der Station</label>
+    <input id="st-name" type="text" maxlength="40" value="Handy" autocapitalize="off" autocorrect="off">
+    <div id="st-stage" class="stage hidden"><video id="st-video" autoplay muted playsinline webkit-playsinline></video></div>
+    <button id="btn-st" class="btn">Kamera starten</button>
+    <button id="btn-st-flip" class="btn ghost hidden">Kamera wechseln</button>
+    <div id="st-stats" class="small"></div>
+    <p class="small">Gerät ans Ladekabel, Bildschirm an, Seite im Vordergrund. Auf iPhones ab iOS 11 und neuen Android-Geräten braucht die Kamera
+      eine https-Adresse; alte Android-Geräte (bis etwa Android 4.4) erlauben sie auch über http.</p>
+  </div>
+
+  <h2>Letzte Meldungen</h2>
+  <ul id="alerts" class="list"><li class="small">Noch nichts geladen …</li></ul>
+
+  <p id="apk" class="small hidden">Android-Gerät? <a href="/mobil/hornet3000-station.apk">Android-App „Hornet3000 Station“ laden</a> (ab Android 2.2; Installation aus „Unbekannten Quellen“ erlauben).</p>
+
+  <p class="small foot"><a href="/" id="lnk-full">Volle Oberfläche</a> · <a href="#" id="lnk-out">Abmelden</a> · <span id="ver"></span></p>
+</div>
+<canvas id="cv" class="hidden"></canvas>
+<script src="/assets/m.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+HORNET3000 – UPDATE VON 1.0.x/1.1.x/1.2.x/1.3.0 AUF 1.3.1
+====================================================
+
+Für wen: Wer Hornet3000 1.0.x bis 1.3.0 schon installiert hat und nur die Programmdateien ersetzen will. Einstellungen (.env),
+Alarme, Fotos, Videos und das Protokoll werden NICHT angefasst. Wer neu installiert, nimmt stattdessen den Installer.
+
+Was ersetzt wird: Programmcode (hornet), Oberfläche (web), Anleitungen, die Lizenzdatei (LICENSE), die Android-App zum Herunterladen (Ordner mobil), die
+Bibliotheken Pillow (13.0.0, behebt bekannte Schwachstellen) und certifi, dazu pyserial (Funkgerät) und opentelemetry-api 1.45.2 (behebt eine neue Meldung). Python, ffmpeg, Erkennungsmodell und alle übrigen Bibliotheken
+bleiben unverändert.
+
+So geht's
+  1. Dieses Zip entpacken (egal wohin).
+  2. Linux/macOS:  sh Update-Linux-macOS.sh          Windows: Update-Windows.bat doppelklicken
+     (Installation woanders?  Ordner angeben, in dem „python“ und „app“ liegen:  sh Update-Linux-macOS.sh /pfad
+      bzw.  Update-Windows.bat "D:\Pfad".)  Standardorte: Linux ~/.local/share/hornet3000 ·
+      macOS ~/Library/Application Support/Hornet3000 · Windows %LOCALAPPDATA%\Programs\Hornet3000
+  3. Danach Hornet3000 wie gewohnt starten.
+
+Was das Update tut
+  · prüft zuerst alle Dateien des Pakets gegen MANIFEST.sha256 (beschädigtes Paket → Abbruch vor jeder Änderung),
+  · beendet das laufende Programm,
+  · sichert die zu ersetzenden Teile in app/sicherung-<alte Version>-<Datum>/,
+  · spielt die neuen Dateien ein und führt den Selbsttest aus,
+  · schlägt der Selbsttest fehl, wird der alte Stand AUTOMATISCH wiederhergestellt.
+  Nur prüfen, nichts ändern:  python update.py --nur-pruefen   (mit dem Python der Installation)
+
+Ehrlicher Prüfstand: getestet mit einer echten 1.1.0- und einer echten 1.2.0-Linux-Installation (Erfolgsweg, Wiederholung auf
+1.3.0, Rückfall bei Fehler, beschädigtes Paket). Windows und macOS: das Skript ist plattformunabhängig geschrieben (nur Standardbibliothek),
+dort aber nicht ausgeführt worden.

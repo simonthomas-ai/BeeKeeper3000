@@ -1,0 +1,56 @@
+<h1 id="h-wissen">Wissen: Asiatische Hornisse am Bienenstand</h1>
+<p class="muted small">Recherchestand 20.09.2026, Schwerpunkt NRW. Regeln und Ansprechpartner ändern sich – bei Zweifeln die untere Naturschutzbehörde fragen.</p>
+
+<div class="warnbox">
+  <b>Erst bestimmen, dann handeln.</b> Die Europäische Hornisse (<i>Vespa crabro</i>) ist besonders geschützt und fliegt häufig ebenfalls an Bienenständen.
+  Nester der Asiatischen Hornisse dürfen in NRW nur von geschulten Personen entfernt werden. Keine Fallen aufstellen: Sie sind nicht selektiv und gefährden auch geschützte Arten.
+</div>
+
+<h2>So unterscheidest du die beiden Arten</h2>
+<div class="scroll">
+<table>
+  <thead><tr><th></th><th>Asiatische Hornisse<br><i>Vespa velutina</i></th><th>Europäische Hornisse<br><i>Vespa crabro</i></th></tr></thead>
+  <tbody>
+    <tr><th>Körper</th><td>Kopf und Brust dunkel (schwarzbraun), Hinterleib überwiegend dunkel mit orange-gelbem Bereich hinten</td><td>Brust rotbraun, Hinterleib gelb mit dunkler Zeichnung</td></tr>
+    <tr><th>Beine</th><td>dunkel mit gelben Enden („Gelbfüße“)</td><td>rotbraun</td></tr>
+    <tr><th>Gesicht</th><td>orange</td><td>gelb</td></tr>
+    <tr><th>Größe</th><td>etwas kleiner</td><td>größer, kräftiger</td></tr>
+    <tr><th>Nest</th><td>Freinest. März–Juni Primärnest an geschützten Stellen (Hecken, unter Dächern), ab Juli Sekundärnest oft frei in Baumkronen über 10 m, Öffnung seitlich, unten geschlossen. Über 2000 Tiere, 60–100 cm hoch.</td><td>Wettergeschützte Hohlräume (Baumhöhlen, Rollladenkästen, Dachböden, Nistkästen), Öffnung immer nach unten. Etwa 400–700 Tiere, ca. 30 × 60 cm.</td></tr>
+    <tr><th>Am Bienenstock</th><td>lauert vor dem Flugloch, schwebt und fängt heimkehrende Bienen im Flug</td><td>fängt gelegentlich ebenfalls Bienen; das gezielte Schweben vor dem Flugloch ist typischer für <i>V. velutina</i></td></tr>
+  </tbody>
+</table>
+</div>
+<p class="small muted">Körper- und Verhaltensmerkmale nach den Steckbriefen der Behörden und Fachverbände (Quellen unten); Nestmerkmale nach dem Merkblatt des Kreises Düren 2026. Einzelne Tiere weichen in der Färbung ab – im Zweifel mehrere Fotos aus verschiedenen Winkeln.</p>
+
+<h2>Jetzt im September</h2>
+<p>Sekundärnester der Asiatischen Hornisse sind von Juli bis November aktiv und hängen oft hoch in Baumkronen, weshalb sie erst nach dem Laubfall gut zu sehen sind. Im Spätsommer und Herbst können Bienenvölker besonders stark beeinträchtigt werden. Deshalb sind jetzt Meldungen mit Flugrichtung besonders hilfreich für die Nestsuche.</p>
+
+<h2>Was tun, wenn der Alarm kommt</h2>
+<ul>
+  <li><b>Foto und Video ansehen</b> (Tab „Alarme“). Nur wenn die Art sicher ist, weiter. Bei Unsicherheit weitere Aufnahmen abwarten.</li>
+  <li><b>Melden</b> im Neobiota-Portal des LANUV NRW (Webformular oder Smartphone-App) oder bei der unteren Naturschutzbehörde. Gebraucht werden: genauer Standort, Bild- oder Videobeleg, Einzel- oder Mehrfachsichtung und wenn möglich die An- und Abflugrichtung.</li>
+  <li><b>Wiederholte Sichtungen melden</b>: Ziel der Behörden ist, den Neststandort zu finden. Die Richtungsangaben aus dem Video sind dafür wertvoll.</li>
+  <li><b>Nest nicht selbst angehen.</b> Entfernung nur durch geschulte Personen, Anzeige bei der unteren Naturschutzbehörde. In NRW genügt dafür der Nachweis einer Meldung im Neobiota-Portal.</li>
+  <li><b>Stand schützen</b>: Schutzvorrichtungen am Einflugloch (Fluglochgitter) verhindern, dass Hornissen ins Volk eindringen.</li>
+  <li><b>Verbände</b>: Landesimkerverband Rheinland und Landesimkerverband Westfalen-Lippe sind laut NRW-Förderkonzept Anlaufstellen für Imkerinnen und Imker.</li>
+</ul>
+
+<h2>Wie die Erkennung arbeitet – und wo ihre Grenzen liegen</h2>
+<p>Ein neuronales Netz (YOLOv8s aus dem Projekt vespCV/hornet3000) prüft mehrmals pro Sekunde das Kamerabild und kennt fünf Klassen, darunter Honigbiene, Europäische Hornisse und Vespa velutina. Ein Alarm entsteht erst, wenn mehrere Bilder hintereinander eine Asiatische Hornisse zeigen. Erkennt das Modell an derselben Stelle mindestens ebenso sicher die Europäische Hornisse, gibt es keinen Alarm.</p>
+<ul>
+  <li>Das Modell wurde mit Fotos von Beobachtungsportalen trainiert. Wie zuverlässig es <b>am Flugloch mit deiner Kamera</b> arbeitet, ist nicht belegt: beobachte die ersten Wochen, prüfe jeden Alarm und stelle die Schwelle unter „Meldewege“ nach.</li>
+  <li>Je größer das Tier im Bild, desto verlässlicher die Erkennung. Kamera nah am Flugloch, gute Ausleuchtung, sauberes Objektiv.</li>
+  <li>Eine optionale KI-Prüfung (Claude oder lokales Ollama) ordnet Alarme zusätzlich ein. Sie unterdrückt nie einen Alarm, sondern ergänzt eine Einschätzung.</li>
+</ul>
+
+<h2>Quellen</h2>
+<ul class="src">
+  <li>LANUV NRW, Neobiota-Portal, Artsteckbrief: <a href="https://neobiota.naturschutzinformationen.nrw.de/neobiota/de/arten/tiere/190771/kurzbeschreibung" target="_blank" rel="noopener">neobiota.naturschutzinformationen.nrw.de</a></li>
+  <li>Meldeformular Neobiota-Portal NRW: <a href="https://neobiota.naturschutzinformationen.nrw.de/neobiota/de/fundpunkte/webformular" target="_blank" rel="noopener">Sichtung melden</a></li>
+  <li>Kreis Düren, Merkblatt Asiatische Hornisse 2026: <a href="https://kreis-dueren.de/kreishaus/amt/amt66/pdf/2026_Merkblatt-Asiatische-Hornisse.pdf" target="_blank" rel="noopener">PDF</a></li>
+  <li>Land NRW, Förderkonzept gegen die Asiatische Hornisse: <a href="https://www.land.nrw/pressemitteilung/nordrhein-westfalen-staerkt-schutz-der-honigbienen-neues-foerderkonzept-gegen-die" target="_blank" rel="noopener">Pressemitteilung</a></li>
+  <li>LANUV NRW, Pressemitteilung 2023 (Meldung, Schutz der Bienenvölker): <a href="https://www.lanuk.nrw.de/fileadmin/lanuv/presse/uploads/2023_05_26-PM-AsiatischeHornisse.pdf" target="_blank" rel="noopener">PDF</a></li>
+  <li>Stadt Bonn, Asiatische Hornisse melden: <a href="https://bonn.de/themen-entdecken/umwelt-natur/asiatische-hornisse.php" target="_blank" rel="noopener">bonn.de</a></li>
+  <li>Erkennungsmodell und Trainingsdaten: <a href="https://github.com/vespCV/hornet3000" target="_blank" rel="noopener">vespCV/hornet3000</a> (GPL-3.0); verwandtes Projekt <a href="https://github.com/jakobzeise/vespai" target="_blank" rel="noopener">VespAI</a></li>
+  <li>Sichtungsdaten: <a href="https://www.gbif.org" target="_blank" rel="noopener">GBIF</a> (Global Biodiversity Information Facility)</li>
+</ul>

@@ -1,0 +1,2 @@
+Erkennungsmodell: yolov8sModel/best.onnx aus https://github.com/vespCV/hornet3000 (GPL-3.0).
+Klassen: amel = Honigbiene, vcra = Vespa crabro (Europäische Hornisse), vespsp = Wespe, vvel = Vespa velutina (Asiatische Hornisse), vzon = weitere Klasse des Modells.
