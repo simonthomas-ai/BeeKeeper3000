@@ -1,0 +1,17 @@
+</main>
+<footer class="fuss">
+<div class="huelle">
+<nav aria-label="Rechtliches">
+<ul>
+<li><a href="haftung.html"{% if nav.haftung %} aria-current="page"{% endif %}>Haftungsausschluss</a></li>
+<li><a href="datenschutz.html"{% if nav.datenschutz %} aria-current="page"{% endif %}>Datenschutz</a></li>
+<li><a href="impressum.html"{% if nav.impressum %} aria-current="page"{% endif %}>Impressum</a></li>
+<li><a href="lizenzen.html"{% if nav.lizenzen %} aria-current="page"{% endif %}>Lizenzen</a></li>
+</ul>
+</nav>
+<p>{{ betreiber.anzeige }} · ohne Gewinnabsicht · keine Cookies, kein Tracking, keine Fremdinhalte.</p>
+<p>Software und Website wurden mit Hilfe künstlicher Intelligenz ({{ ki.system }}, {{ ki.anbieter }}) erstellt – Näheres im <a href="impressum.html#ki">Impressum</a>. Stand der Rechtstexte: {{ seite.stand_de }}.</p>
+</div>
+</footer>
+</body>
+</html>

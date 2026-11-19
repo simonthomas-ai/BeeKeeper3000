@@ -1,0 +1,28 @@
+<!--seite titel="Download" beschreibung="Hornet3000 Wächter herunterladen: Installer für Linux, Windows und macOS, Android-App, Update und Quellcode – mit Prüfsummen und ehrlichem Prüfstand." nav="download"-->
+<h1>Download</h1>
+<p class="lead">Version {{ software.version }} vom {{ software.stand_de }}. Alle Dateien sind unentgeltlich, eine Anmeldung ist nicht nötig.</p>
+
+<aside class="box achtung" aria-labelledby="vorher">
+<h2 id="vorher">Bitte vorher lesen</h2>
+<p>Die Software wird ohne Gewähr abgegeben und kann Fehler enthalten. Lesen Sie vor dem Einsatz den <a href="haftung.html">Haftungsausschluss</a> und die <a href="lizenzen.html">Lizenzen</a>. Verlassen Sie sich nie allein auf den Alarm: Die Erkennung kann Tiere verpassen und falsch alarmieren.</p>
+</aside>
+
+{{= downloads.html }}
+
+<section aria-labelledby="pruefen">
+<h2 id="pruefen">Dateien prüfen</h2>
+<p>Zu jeder Datei steht oben die SHA-256-Prüfsumme. Sie zeigt, dass die Datei vollständig und unverändert angekommen ist. Alle Summen stehen auch in der Datei <code>SHA256SUMS-{{ software.version }}.txt</code>.</p>
+<h3>Linux und macOS</h3>
+<p><code>sha256sum -c SHA256SUMS-{{ software.version }}.txt</code> (macOS: <code>shasum -a 256 -c SHA256SUMS-{{ software.version }}.txt</code>)</p>
+<h3>Windows (PowerShell)</h3>
+<p><code>Get-FileHash -Algorithm SHA256 .\Hornet3000-Setup-{{ software.version }}.exe</code> – das Ergebnis mit der Summe oben vergleichen.</p>
+<p class="klein">Eine Prüfsumme auf derselben Seite schützt vor Übertragungsfehlern. Sie schützt nicht, falls jemand die Seite selbst verändert hat. Wer das ausschließen will, baut die Software aus dem Quellcode.</p>
+</section>
+
+<section aria-labelledby="warnung">
+<h2 id="warnung">Warnmeldungen des Betriebssystems</h2>
+<p><strong>Windows:</strong> Der Installer ist nicht mit einem bezahlten Zertifikat signiert. SmartScreen kann deshalb „Unbekannter Herausgeber“ anzeigen. Prüfen Sie die Prüfsumme, bevor Sie fortfahren.</p>
+<p><strong>macOS:</strong> Die Programme sind nur selbst signiert und nicht von Apple beglaubigt. Beim ersten Start kann Gatekeeper den Start verweigern. Dann in den Systemeinstellungen unter „Datenschutz &amp; Sicherheit“ den Start ausdrücklich erlauben.</p>
+<p><strong>Android:</strong> Eine App außerhalb des Play Store braucht die Erlaubnis „Unbekannte Quellen“ bzw. „Installation aus dieser Quelle zulassen“. Das Zertifikat der App hat den SHA-256-Fingerabdruck <code class="hash">{{ software.apk_zertifikat_sha256 }}</code> Prüfen lässt er sich mit <code>apksigner verify --print-certs</code>. Android installiert ein Update der App nur, wenn es mit demselben Schlüssel signiert ist.</p>
+{% if downloads.extern %}<p class="klein">Die Dateien werden von {{ downloads.anbieter.name }} ausgeliefert. Beim Herunterladen verbindet sich Ihr Gerät mit diesem Anbieter, siehe <a href="datenschutz.html#download">Datenschutzerklärung</a>.</p>
+{% endif %}</section>

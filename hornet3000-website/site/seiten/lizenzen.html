@@ -1,0 +1,33 @@
+<!--seite titel="Lizenzen" beschreibung="Lizenzen der Software Hornet3000 Wächter und der mitgelieferten Bausteine Dritter, Quellcode und Danksagung." nav="lizenzen"-->
+<h1>Lizenzen und Danksagung</h1>
+<p class="lead">Hornet3000 Wächter besteht aus eigenem Programmcode und Bausteinen anderer. Für jeden Teil gilt seine eigene Lizenz.</p>
+
+<div class="recht">
+<section aria-labelledby="eigen">
+<h2 id="eigen">Unser Programmcode</h2>
+<p>Der Programmcode von Hornet3000 Wächter, der Android-App und der ESP32-Kamera steht unter der Lizenz <strong>{{ lizenz.eigener_code }}</strong>. Auch die Texte, Grafiken und der Baukasten dieser Website stehen unter dieser Lizenz. Sie dürfen alles nach den Bedingungen der Lizenz kostenlos nutzen, ändern und weitergeben, auch andere Imker-Initiativen. Den Lizenztext finden Sie unter <a href="{{ lizenz.text_url }}" rel="noopener noreferrer">{{ lizenz.text_url }}</a>.</p>
+<p>Den Quellcode mit Tests und Bauskripten finden Sie als Datei „Quellcode“ auf der <a href="download.html">Download-Seite</a>. Er liegt jeder Version bei.</p>
+</section>
+
+<section aria-labelledby="dritte">
+<h2 id="dritte">Bausteine Dritter</h2>
+<div class="tabbox" tabindex="0" role="region" aria-label="Bausteine Dritter">
+<table class="tab">
+<thead><tr><th scope="col">Baustein</th><th scope="col">Lizenz</th><th scope="col">Hinweis</th></tr></thead>
+<tbody>
+<tr><th scope="row">Erkennungsmodell aus dem Projekt vespCV/hornet3000</th><td>GPL-3.0</td><td>Mit Ultralytics YOLOv8 trainiert (AGPL-3.0). Lizenztext liegt im Programmordner unter <code>models/</code>.</td></tr>
+<tr><th scope="row">ffmpeg (Video und Ton)</th><td>GPL-3.0-Build</td><td>Als eigenständiges Programm aufgerufen. Quellcode: <a href="https://ffmpeg.org/download.html#get-sources" rel="noopener noreferrer">ffmpeg.org</a> und <a href="https://johnvansickle.com/ffmpeg/" rel="noopener noreferrer">johnvansickle.com</a>.</td></tr>
+<tr><th scope="row">Python-Laufzeit und Bibliotheken</th><td>PSF, MIT, BSD, Apache-2.0, MPL-2.0 u. a.</td><td>Vollständige Liste mit Versionen in der Datei <code>LICENSES.txt</code> im Programmordner.</td></tr>
+<tr><th scope="row">Schriften Bitter und Atkinson Hyperlegible</th><td>SIL Open Font License 1.1</td><td>Auch auf dieser Website verwendet; Lizenztexte liegen bei den Schriftdateien.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Alle Lizenztexte liegen den Installationspaketen bei. Mit dem Erkennungsmodell und ffmpeg steht ein Teil der ausgelieferten Software unter einer Copyleft-Lizenz. Wer die Software weitergibt, muss die Lizenzbedingungen dieser Teile einhalten.</p>
+</section>
+
+<section aria-labelledby="dank">
+<h2 id="dank">Danksagung</h2>
+<p>Das Erkennungsmodell stammt aus dem offenen Projekt <em>vespCV/hornet3000</em>. Ohne die Menschen, die dort Fotos gesammelt, Tiere beschriftet und das Modell trainiert haben, gäbe es diese Software nicht. Die Nennung bedeutet keine Beteiligung oder Billigung dieses Projekts an unserer Software.</p>
+<p class="klein">Stand: {{ seite.stand_de }}</p>
+</section>
+</div>

@@ -1,0 +1,21 @@
+# BEISPIEL: Server-Protokolle nach festen Fristen löschen (Datenschutz: Speicherbegrenzung).
+# Kopieren nach /etc/logrotate.d/hornet3000 und die Zahl hinter "rotate" an website.logfiles_tage in config.json anpassen.
+#
+# Rechnung: Die laufende Datei enthält höchstens einen Tag, dazu kommen "rotate" abgelegte Tage.
+# Für „höchstens 7 Tage“ also: rotate 6.  Allgemein: rotate = logfiles_tage - 1.
+# Bei logfiles_tage = 1 genügt „rotate 0“ (Datei wird täglich geleert).
+# Bei logfiles_tage = 0 wird gar nicht protokolliert (siehe nginx.conf.beispiel, „access_log off;“).
+
+/var/log/nginx/hornet3000-access.log /var/log/nginx/error.log {
+    daily
+    rotate 6
+    maxage 7
+    missingok
+    notifempty
+    compress
+    nodelaycompress
+    sharedscripts
+    postrotate
+        [ ! -f /run/nginx.pid ] || kill -USR1 "$(cat /run/nginx.pid)"
+    endscript
+}

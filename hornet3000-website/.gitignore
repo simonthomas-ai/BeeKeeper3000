@@ -1,0 +1,8 @@
+public/
+vorschau/
+__pycache__/
+.pytest_cache/
+tests/_ausgabe/
+.firebase/
+firebase-debug.log
+node_modules/

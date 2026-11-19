@@ -1,0 +1,66 @@
+{
+  "betreiber": {
+    "initiative": "Bienenschutz Teststand",
+    "rechtsform": "eingetragener Verein (e. V.)",
+    "name": "Bienenschutz Teststand e. V.",
+    "vertretungsberechtigt": "Erika Testfrau (Vorsitzende)",
+    "strasse": "Teststraße 1",
+    "plz": "50000",
+    "ort": "Teststadt",
+    "land": "Deutschland",
+    "email": "kontakt@teststand.invalid",
+    "email_anbieter": "",
+    "telefon": "+49 2200 000000",
+    "kontakt_alternative": "",
+    "register": "Amtsgericht Teststadt, Vereinsregister",
+    "registernummer": "VR 00000",
+    "ust_id": "",
+    "gemeinnuetzig_anerkannt": true,
+    "gemeinnuetzig_nachweis": "Freistellungsbescheid des Finanzamts Teststadt vom 01.01.2026"
+  },
+  "website": {
+    "adresse": "https://hornet3000.teststand.invalid",
+    "hoster_name": "Testhoster GmbH",
+    "hoster_anschrift": "Hosterweg 2, 12345 Hostingstadt",
+    "hoster_land": "Deutschland",
+    "avv_abgeschlossen": true,
+    "protokolle": "selbst",
+    "hoster_datenschutz_url": "",
+    "hoster_drittland": false,
+    "hoster_drittland_grundlage": "",
+    "logfiles_tage": 7,
+    "ip_kuerzen": true
+  },
+  "downloads": {
+    "quelle_ordner": "@TESTDATEIEN@",
+    "basis_url": "downloads/",
+    "anbieter": {
+      "name": "",
+      "anschrift": "",
+      "datenschutz_url": ""
+    }
+  },
+  "software": {
+    "version": "1.3.0",
+    "stand": "2026-11-15",
+    "apk_zertifikat_sha256": "42d20a90d479439bf4fcaed1a053bbbc41ac501baf9f11df7716ecf6de377883"
+  },
+  "lizenz": {
+    "eigener_code": "GPL-3.0-or-later",
+    "text_url": "https://www.gnu.org/licenses/gpl-3.0.html"
+  },
+  "ki": {
+    "system": "Claude",
+    "anbieter": "Anthropic PBC",
+    "modelle": "u. a. Claude Sonnet 5.5"
+  },
+  "aufsicht": {
+    "name": "Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen",
+    "anschrift": "Kavalleriestraße 2–4, 40213 Düsseldorf",
+    "telefon": "0211 38424-0",
+    "web": "https://www.ldi.nrw.de"
+  },
+  "seite": {
+    "stand": "2026-11-17"
+  }
+}
