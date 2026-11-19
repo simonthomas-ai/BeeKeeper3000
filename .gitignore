@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.pio/
+node_modules/
+.env
+.firebase/
+firebase-debug.log
+# Schlüssel und Zugangsdaten gehören nie ins Repository
+*.keystore
+*.jks
+*.p12
+*.pem
+passwort*
