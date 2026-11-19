@@ -27,7 +27,7 @@ Telefon: {{ betreiber.telefon }}{% endif %}
 
 <section aria-labelledby="hosting">
 <h2 id="hosting">3. Hosting und Server-Protokolle</h2>
-<p>Diese Website liegt bei {{ website.hoster_name }}, {{ website.hoster_anschrift }}, {{ website.hoster_land }} (Hoster). Wenn Sie eine Seite aufrufen, übermittelt Ihr Browser technisch notwendige Daten an den Server. Der Server verarbeitet dabei:</p>
+<p>Diese Website liegt bei {{ website.hoster_name }}, {{ website.hoster_anschrift }} (Hoster). Serverstandort: {{ website.hoster_land }}. Wenn Sie eine Seite aufrufen, übermittelt Ihr Browser technisch notwendige Daten an den Server. Der Server verarbeitet dabei:</p>
 <ul>
 <li>die IP-Adresse{% if website.ip_kuerzen %} (im Zugriffsprotokoll vor dem Speichern gekürzt, sodass sie in der Regel keiner Person mehr zugeordnet werden kann; im Fehlerprotokoll, das nur bei technischen Störungen Einträge erhält, kann sie vollständig stehen und wird nach derselben Frist gelöscht){% endif %},</li>
 <li>Datum und Uhrzeit des Aufrufs,</li>
@@ -35,8 +35,9 @@ Telefon: {{ betreiber.telefon }}{% endif %}
 <li>die übertragene Datenmenge,</li>
 <li>die Browserkennung (User-Agent) und, falls Ihr Browser sie sendet, die zuvor besuchte Adresse.</li>
 </ul>
-<p><strong>Zweck:</strong> Auslieferung der Website, Stabilität und Abwehr von Angriffen. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (unser berechtigtes Interesse an einem sicheren und störungsfreien Betrieb). <strong>Speicherdauer:</strong> Die Protokolle {{= website.logfiles_text }}.</p>
-<p>Der Hoster verarbeitet die Daten in unserem Auftrag. Mit ihm besteht ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO. Wir selbst übermitteln keine Daten gezielt in Länder außerhalb des Europäischen Wirtschaftsraums.</p>
+{% if website.protokoll_hoster %}<p><strong>Zweck:</strong> Auslieferung der Website, Stabilität und Abwehr von Angriffen. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (unser berechtigtes Interesse an einem sicheren und störungsfreien Betrieb). <strong>Speicherung:</strong> Die Server-Protokolle führt der Hoster nach eigenen Regeln. Wir selbst speichern keine Protokolle über Ihren Aufruf und haben auf einzelne Protokolleinträge keinen Zugriff. Wie lange der Hoster Daten zu Betriebs- und Sicherheitszwecken verarbeitet, richtet sich nach dessen Bedingungen, siehe die <a href="{{ website.hoster_datenschutz_url }}" rel="noopener noreferrer">Datenschutzinformationen des Hosters</a>.</p>
+{% else %}<p><strong>Zweck:</strong> Auslieferung der Website, Stabilität und Abwehr von Angriffen. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (unser berechtigtes Interesse an einem sicheren und störungsfreien Betrieb). <strong>Speicherdauer:</strong> Die Protokolle {{= website.logfiles_text }}.</p>
+{% endif %}<p>Der Hoster verarbeitet die Daten in unserem Auftrag. Mit ihm besteht ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO. {{= website.drittland_satz }}</p>
 </section>
 
 <section aria-labelledby="download">
@@ -47,7 +48,7 @@ Telefon: {{ betreiber.telefon }}{% endif %}
 
 <section aria-labelledby="kontakt">
 <h2 id="kontakt">5. Kontakt per E-Mail{% if betreiber.telefon %} oder Telefon{% endif %}</h2>
-<p>Wenn Sie uns schreiben{% if betreiber.telefon %} oder anrufen{% endif %}, verarbeiten wir Ihre Angaben (zum Beispiel Name, E-Mail-Adresse und den Inhalt Ihrer Nachricht), um Ihre Anfrage zu beantworten. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (Interesse an der Beantwortung von Anfragen), bei vertragsnahen Anfragen Art. 6 Abs. 1 lit. b DSGVO. Wir löschen die Angaben, sobald die Anfrage erledigt ist, es sei denn, eine gesetzliche Aufbewahrungspflicht steht dem entgegen. Wir geben sie nicht weiter.</p>
+<p>Wenn Sie uns schreiben{% if betreiber.telefon %} oder anrufen{% endif %}, verarbeiten wir Ihre Angaben (zum Beispiel Name, E-Mail-Adresse und den Inhalt Ihrer Nachricht), um Ihre Anfrage zu beantworten. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (Interesse an der Beantwortung von Anfragen), bei vertragsnahen Anfragen Art. 6 Abs. 1 lit. b DSGVO. Wir löschen die Angaben, sobald die Anfrage erledigt ist, es sei denn, eine gesetzliche Aufbewahrungspflicht steht dem entgegen. Wir geben sie nicht an Dritte weiter{% if betreiber.email_anbieter %}, außer an den Betreiber unseres E-Mail-Postfachs (siehe unten){% endif %}.{% if betreiber.email_anbieter %} Unser E-Mail-Postfach wird bei {{ betreiber.email_anbieter }} geführt. Ihre Nachricht wird dort technisch übertragen und gespeichert, auch außerhalb des Europäischen Wirtschaftsraums ist das möglich. Wenn Sie das nicht möchten, schreiben Sie uns per Post an die Anschrift im Impressum.{% endif %}</p>
 <p>E-Mails sind auf dem Transportweg häufig nicht durchgehend verschlüsselt und können mitgelesen werden. Schicken Sie uns deshalb keine vertraulichen Angaben.</p>
 </section>
 

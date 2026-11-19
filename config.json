@@ -9,12 +9,13 @@
     "ort": "",
     "land": "Deutschland",
     "email": "",
+    "email_anbieter": "",
     "telefon": "",
     "kontakt_alternative": "",
     "register": "",
     "registernummer": "",
     "ust_id": "",
-    "gemeinnuetzig_anerkannt": null,
+    "gemeinnuetzig_anerkannt": true,
     "gemeinnuetzig_nachweis": ""
   },
   "website": {
@@ -23,6 +24,10 @@
     "hoster_anschrift": "",
     "hoster_land": "",
     "avv_abgeschlossen": false,
+    "protokolle": "",
+    "hoster_datenschutz_url": "",
+    "hoster_drittland": null,
+    "hoster_drittland_grundlage": "",
     "logfiles_tage": null,
     "ip_kuerzen": null
   },
@@ -41,8 +46,8 @@
     "apk_zertifikat_sha256": "42d20a90d479439bf4fcaed1a053bbbc41ac501baf9f11df7716ecf6de377883"
   },
   "lizenz": {
-    "eigener_code": "",
-    "text_url": ""
+    "eigener_code": "GPL-3.0-or-later",
+    "text_url": "https://www.gnu.org/licenses/gpl-3.0.html"
   },
   "ki": {
     "system": "Claude",

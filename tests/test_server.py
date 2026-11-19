@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Prüft server/nginx.conf.beispiel an einem ECHT laufenden nginx (Syntax, Kopfzeilen, Methoden, IP-Kürzung, Downloads).
 
 Voraussetzung: nginx und openssl sind installiert. Sonst werden die Tests übersprungen und das steht im Bericht.

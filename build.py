@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Baukasten der Hornet3000-Website (nur Python-Standardbibliothek, ab Python 3.9).
 
 Was dieses Skript tut
@@ -38,13 +40,14 @@ VERSION_BAUKASTEN = "1.0.0"
 HILFE = {
     "betreiber.initiative": "Anzeigename der Initiative (steht in Kopfzeile und Fuß), z. B. „Bienenschutz Musterland“",
     "betreiber.rechtsform": "z. B. „Privatperson“, „eingetragener Verein (e. V.)“, „GbR“, „gGmbH“",
-    "betreiber.name": "Vollständiger Name der verantwortlichen Person bzw. der Organisation (so wie im Register / Ausweis)",
-    "betreiber.vertretungsberechtigt": "Pflicht bei Vereinen/Gesellschaften: Name(n) der vertretungsberechtigten Person(en)",
-    "betreiber.strasse": "Straße und Hausnummer (ladungsfähige Anschrift – ein Postfach genügt nicht)",
+    "betreiber.name": "Vollständiger Name der Organisation (so wie im Register bzw. im Freistellungsbescheid) oder der verantwortlichen Person",
+    "betreiber.vertretungsberechtigt": "Pflicht bei Vereinen/Gesellschaften (§ 5 DDG): Name einer vertretungsberechtigten Person, z. B. „Vorstand: …“. Es genügt eine Person, und sie muss nicht diejenige sein, die die Software betreut",
+    "betreiber.strasse": "Straße und Hausnummer der Organisation (ladungsfähige Anschrift, z. B. Vereinssitz oder Geschäftsstelle – ein Postfach genügt nicht)",
     "betreiber.plz": "Postleitzahl",
     "betreiber.ort": "Ort",
     "betreiber.land": "Land, z. B. Deutschland",
-    "betreiber.email": "E-Mail-Adresse, die Sie regelmäßig lesen",
+    "betreiber.email": "E-Mail-Adresse, die Sie regelmäßig lesen. Sie steht öffentlich im Impressum: eine eigene, neutrale Adresse der Organisation nehmen, keine private mit Klarnamen",
+    "betreiber.email_anbieter": "Nur wenn das Postfach bei einem externen Anbieter liegt (z. B. „Google Ireland Limited (Gmail)“): wird in der Datenschutzerklärung genannt. Sonst leer lassen",
     "betreiber.telefon": "Telefonnummer (empfohlen). Wenn leer: unter kontakt_alternative einen zweiten, schnellen Kontaktweg nennen",
     "betreiber.kontakt_alternative": "Zweiter Kontaktweg, falls keine Telefonnummer angegeben wird (z. B. „Kontaktformular unter …“)",
     "betreiber.register": "Nur wenn eingetragen: Registergericht, z. B. „Amtsgericht Köln – Vereinsregister“",
@@ -55,10 +58,14 @@ HILFE = {
     "website.adresse": "Adresse der Website mit https://, z. B. https://ihre-domain.de (die echte Adresse, unter der die Seite erreichbar ist)",
     "website.hoster_name": "Name des Hosters (Anbieter des Servers/Webspace)",
     "website.hoster_anschrift": "Anschrift des Hosters (Straße, PLZ Ort)",
-    "website.hoster_land": "Land, in dem der Server steht",
+    "website.hoster_land": "Land, in dem der Server steht; bei Auslieferung über ein weltweites Netz (Content-Delivery-Netz) z. B. „weltweit verteilt, Verwaltung in Irland“ – so, wie es der Hoster angibt",
     "website.avv_abgeschlossen": "true, wenn ein Auftragsverarbeitungsvertrag (Art. 28 DSGVO) mit dem Hoster besteht (muss true sein)",
-    "website.logfiles_tage": "Wie viele Tage Server-Protokolle aufbewahrt werden (Zahl, 0–365); muss zur Servereinstellung passen",
-    "website.ip_kuerzen": "true, wenn der Server IP-Adressen im Zugriffsprotokoll vor dem Speichern kürzt (Beispiel: server/nginx.conf.beispiel); sonst false",
+    "website.protokolle": "Wer führt die Server-Protokolle? „selbst“ = Sie (eigener Server; dann logfiles_tage und ip_kuerzen angeben). „hoster“ = der Hoster nach eigenen Regeln, ohne dass Sie einzelne Einträge sehen oder speichern (z. B. Firebase Hosting ohne verbundenes Cloud Logging)",
+    "website.logfiles_tage": "Nur bei protokolle = selbst: wie viele Tage Server-Protokolle aufbewahrt werden (Zahl, 0–365); muss zur Servereinstellung passen. Sonst null",
+    "website.ip_kuerzen": "Nur bei protokolle = selbst: true, wenn der Server IP-Adressen im Zugriffsprotokoll vor dem Speichern kürzt (Beispiel: server/nginx.conf.beispiel); sonst false. Bei „hoster“: null",
+    "website.hoster_datenschutz_url": "https-Adresse der Datenschutzinformationen des Hosters (Pflicht bei protokolle = hoster; bei Google/Firebase z. B. die Seite „Privacy and Security in Firebase“)",
+    "website.hoster_drittland": "true, wenn der Hoster Daten auch außerhalb des Europäischen Wirtschaftsraums verarbeiten kann (bei Google/Firebase: true), sonst false",
+    "website.hoster_drittland_grundlage": "Nur wenn hoster_drittland = true: Grundlage der Übermittlung, z. B. „Angemessenheitsbeschluss der EU-Kommission (EU-US Data Privacy Framework, Google ist zertifiziert) und Standardvertragsklauseln“. Sonst leer",
     "downloads.quelle_ordner": "Ordner mit den Release-Dateien und SHA256SUMS-<Version>.txt (wird auf Vollständigkeit und Prüfsummen geprüft)",
     "downloads.basis_url": "„downloads/“ = Dateien liegen auf demselben Server; oder https://… eines anderen Anbieters",
     "downloads.anbieter.name": "Nur bei externem Download-Anbieter: Name",
@@ -84,6 +91,7 @@ PLATZHALTER = re.compile(r"(?i)(\btodo\b|\bxxx+\b|bitte ausf|musterstr|musterman
                          r"\bexample\.(com|org|net)\b|\bbeispiel(stra|firma|name)|<[^>]+>)")
 EMAIL = re.compile(r"^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]{2,}$")
 JURISTISCH = re.compile(r"(?i)(e\.\s?v\.|eingetragener verein|gmbh|\bug\b|\bag\b|gbr|stiftung|genossenschaft|\bohg\b|\bkg\b)")
+PROTOKOLL_MODI = ("selbst", "hoster")
 REGISTERPFLICHT = re.compile(r"(?i)(e\.\s?v\.|eingetragener verein|gmbh|\bug\b|\bag\b|genossenschaft|\bohg\b|\bkg\b)")
 
 
@@ -172,10 +180,25 @@ def pruefe_config(cfg: dict, modus_release: bool) -> list[str]:
     if boolean(w + "avv_abgeschlossen") is not True:
         f.append(f"{w}avv_abgeschlossen: muss true sein – ohne Auftragsverarbeitungsvertrag mit dem Hoster (Art. 28 DSGVO) "
                  "darf die Seite nicht mit diesen Angaben veröffentlicht werden")
-    tage = lookup(cfg, w + "logfiles_tage")
-    if isinstance(tage, bool) or not isinstance(tage, int) or not 0 <= tage <= 365:
-        f.append(f"{w}logfiles_tage: ganze Zahl von 0 bis 365 – {HILFE[w + 'logfiles_tage']}")
-    boolean(w + "ip_kuerzen")
+    modus = text(w + "protokolle")
+    if modus and modus not in PROTOKOLL_MODI:
+        f.append(f"{w}protokolle: nur „selbst“ oder „hoster“ erlaubt („{modus}“) – {HILFE[w + 'protokolle']}")
+    if modus == "selbst":
+        tage = lookup(cfg, w + "logfiles_tage")
+        if isinstance(tage, bool) or not isinstance(tage, int) or not 0 <= tage <= 365:
+            f.append(f"{w}logfiles_tage: ganze Zahl von 0 bis 365 – {HILFE[w + 'logfiles_tage']}")
+        boolean(w + "ip_kuerzen")
+        https(w + "hoster_datenschutz_url", pflicht=False)
+    elif modus == "hoster":
+        https(w + "hoster_datenschutz_url")
+        for feld in ("logfiles_tage", "ip_kuerzen"):
+            if lookup(cfg, w + feld) not in (None, ""):
+                f.append(f"{w}{feld}: bei protokolle = hoster auf null setzen, denn der Hoster bestimmt die Aufbewahrung")
+    if boolean(w + "hoster_drittland") is True:
+        text(w + "hoster_drittland_grundlage")
+    elif lookup(cfg, w + "hoster_drittland_grundlage"):
+        f.append(f"{w}hoster_drittland_grundlage: nur ausfüllen, wenn hoster_drittland = true ist")
+    text(b + "email_anbieter", pflicht=False)
 
     d = "downloads."
     basis = text(d + "basis_url")
@@ -620,6 +643,17 @@ def kontext(cfg: dict, vorschau: bool, downloads_html: str) -> dict:
         w["logfiles_text"] = "werden nicht gespeichert"
     else:
         w["logfiles_text"] = f"werden höchstens {tage} Tage gespeichert und dann gelöscht"
+    w["protokoll_hoster"] = w.get("protokolle") == "hoster"
+    if w["protokoll_hoster"]:
+        w["ip_kuerzen"] = False                      # Kürzung liegt nicht in unserer Hand, daher keine Zusage
+    dl = w.get("hoster_drittland")
+    if dl is True:
+        w["drittland_satz"] = ("Der Hoster kann Daten auch in Staaten außerhalb des Europäischen Wirtschaftsraums verarbeiten, "
+                               "insbesondere in den USA. Grundlage dafür ist: " + html.escape(str(w.get("hoster_drittland_grundlage", "")).rstrip(".")) + ".")
+    elif dl is False:
+        w["drittland_satz"] = "Wir übermitteln keine Daten in Länder außerhalb des Europäischen Wirtschaftsraums."
+    else:
+        w["drittland_satz"] = '<mark class="fehlt">[website.hoster_drittland fehlt]</mark>'
     return ctx
 
 
@@ -627,7 +661,8 @@ def erlaubte_hosts(cfg: dict) -> set[str]:
     hosts = {"neobiota.naturschutzinformationen.nrw.de", "www.gnu.org", "ffmpeg.org", "johnvansickle.com", "github.com",
              "www.ldi.nrw.de", "datenschutzkonferenz-online.de", "www.gesetze-im-internet.de", "www.lanuk.nrw.de",
              "gbif.org", "www.gbif.org", "telegram.org", "www.anthropic.com", "docs.openwebui.com", "ollama.com"}
-    for pfad in ("aufsicht.web", "lizenz.text_url", "downloads.anbieter.datenschutz_url", "downloads.basis_url"):
+    for pfad in ("aufsicht.web", "lizenz.text_url", "downloads.anbieter.datenschutz_url", "downloads.basis_url",
+                 "website.hoster_datenschutz_url"):
         v = lookup(cfg, pfad)
         if isinstance(v, str) and v.startswith("https://"):
             hosts.add(urlparse(v).hostname or "")

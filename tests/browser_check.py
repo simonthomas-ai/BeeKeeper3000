@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Browser-Prüfung der gebauten Website (Playwright + Chromium).
 
 Prüft für jede Seite bei Handy-, Tablet- und Desktop-Breite, hell und dunkel:

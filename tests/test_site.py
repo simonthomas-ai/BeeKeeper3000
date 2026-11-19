@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Hornet3000-Mitwirkende
 """Automatische Tests des Website-Baukastens (pytest).
 
 Aufruf:  python -m pytest tests -q
@@ -127,8 +129,9 @@ def test_ausgelieferte_config_verweigert_veroeffentlichung(tmp_path):
     text = "\n".join(fehler)
     assert fehler, "Leere Angaben dürfen nicht veröffentlicht werden"
     for pflicht in ("betreiber.name", "betreiber.strasse", "betreiber.email", "website.hoster_name",
-                    "website.avv_abgeschlossen", "website.logfiles_tage", "lizenz.eigener_code", "gemeinnuetzig_anerkannt"):
+                    "website.avv_abgeschlossen", "website.protokolle", "website.hoster_drittland", "gemeinnuetzig_nachweis"):
         assert pflicht in text, pflicht
+    assert "lizenz." not in text, "Lizenz ist vorbelegt und darf nicht als fehlend gemeldet werden"
     assert not (tmp_path / "x").exists(), "Bei Fehlern darf nichts ausgegeben werden"
 
 
@@ -190,6 +193,12 @@ def setze(cfg: dict, pfad: str, wert):
     ("website.logfiles_tage", True, "logfiles_tage"),
     ("website.logfiles_tage", "7", "logfiles_tage"),
     ("website.ip_kuerzen", "ja", "ip_kuerzen"),
+    ("website.protokolle", "irgendwer", "nur „selbst“ oder „hoster“"),
+    ("website.protokolle", "", "protokolle: fehlt"),
+    ("website.hoster_drittland", None, "true oder false"),
+    ("website.hoster_drittland", True, "hoster_drittland_grundlage: fehlt"),
+    ("website.hoster_drittland_grundlage", "irgendwas", "nur ausfüllen, wenn hoster_drittland = true"),
+    ("website.hoster_datenschutz_url", "http://hoster.test.de/datenschutz", "https://"),
     ("downloads.basis_url", "http://dl.test.de/", "https://"),
     ("downloads.basis_url", "../x/", "relativer Ordner"),
     ("downloads.basis_url", "/abs/", "relativer Ordner"),
@@ -628,3 +637,97 @@ def test_browserpruefung_handy_tablet_desktop_hell_dunkel(fertig):
     r = subprocess.run([py, str(ROOT / "tests" / "browser_check.py"), str(fertig)], capture_output=True, text=True, timeout=600)
     assert r.returncode == 0, r.stdout + r.stderr
     assert " 0 Fehler" in r.stdout
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# 7. Hosting bei einem Dritten (z. B. Google Firebase Hosting), Organisation statt Privatperson, Lizenz
+# ---------------------------------------------------------------------------------------------------------------------
+GOOGLE_DS = "https://firebase.google.com/support/privacy"
+GRUNDLAGE = "Angemessenheitsbeschluss der EU-Kommission (EU-US Data Privacy Framework) und Standardvertragsklauseln"
+
+
+def als_fremd_hoster(cfg: dict) -> dict:
+    cfg["website"].update(hoster_name="Testcloud Ltd.", hoster_anschrift="Cloudweg 1, Dublin, Irland", hoster_land="Irland",
+                          protokolle="hoster", logfiles_tage=None, ip_kuerzen=None, hoster_datenschutz_url=GOOGLE_DS,
+                          hoster_drittland=True, hoster_drittland_grundlage=GRUNDLAGE)
+    return cfg
+
+
+def test_fremd_hoster_datenschutz_sagt_ehrlich_wer_protokolliert(tmp_path, cfg):
+    fehler, out = bau(tmp_path, als_fremd_hoster(cfg))
+    assert fehler == [], fehler
+    t = sichtbarer_text(seite(out, "datenschutz.html"))
+    for teil in ("Testcloud Ltd.", "Die Server-Protokolle führt der Hoster nach eigenen Regeln",
+                 "Wir selbst speichern keine Protokolle über Ihren Aufruf", "auf einzelne Protokolleinträge keinen Zugriff",
+                 "Datenschutzinformationen des Hosters", "Auftragsverarbeitung nach Art. 28 DSGVO",
+                 "auch in Staaten außerhalb des Europäischen Wirtschaftsraums verarbeiten", "insbesondere in den USA",
+                 "Grundlage dafür ist: " + GRUNDLAGE + "."):
+        assert teil in t, teil
+    # Keine Zusagen, die wir nicht halten können:
+    assert "höchstens" not in t and "gekürzt" not in t and "werden nicht gespeichert" not in t
+    assert f'<a href="{GOOGLE_DS}" rel="noopener noreferrer">' in seite(out, "datenschutz.html")
+
+
+def test_fremd_hoster_verbietet_eigene_log_zusagen(tmp_path, cfg):
+    als_fremd_hoster(cfg)
+    cfg["website"]["logfiles_tage"] = 7
+    assert "auf null setzen" in fehler_fuer(tmp_path, cfg)
+
+
+def test_ohne_drittland_steht_kein_usa_satz(tmp_path, cfg):
+    fehler, out = bau(tmp_path, cfg)
+    assert fehler == []
+    t = sichtbarer_text(seite(out, "datenschutz.html"))
+    assert "Wir übermitteln keine Daten in Länder außerhalb des Europäischen Wirtschaftsraums." in t
+    assert "USA" not in t
+
+
+def test_email_anbieter_wird_in_datenschutz_genannt(tmp_path, cfg):
+    cfg["betreiber"]["email_anbieter"] = "Testmail Ltd. (E-Mail-Dienst)"
+    fehler, out = bau(tmp_path, cfg, name="mit")
+    assert fehler == []
+    t = sichtbarer_text(seite(out, "datenschutz.html"))
+    assert "Unser E-Mail-Postfach wird bei Testmail Ltd. (E-Mail-Dienst) geführt" in t
+    assert "außer an den Betreiber unseres E-Mail-Postfachs" in t and "per Post an die Anschrift im Impressum" in t
+    cfg["betreiber"]["email_anbieter"] = ""
+    fehler, out = bau(tmp_path, cfg, name="ohne")
+    t = sichtbarer_text(seite(out, "datenschutz.html"))
+    assert "E-Mail-Postfach" not in t and "Wir geben sie nicht an Dritte weiter." in t
+
+
+def test_organisation_nennt_nur_vorstand_nicht_den_betreuer(fertig):
+    """Mit Verein als Betreiber steht im Impressum der Verein plus EINE vertretungsberechtigte Person (§ 5 DDG), sonst niemand."""
+    t = sichtbarer_text(seite(fertig, "impressum.html"))
+    assert "Vertretungsberechtigt: Erika Testfrau" in t
+    namen = re.findall(r"\b(?:Herr|Frau|Dr\.|Prof\.)\s+\w+", t)
+    assert namen == [], namen
+
+
+def test_ausgelieferte_config_ist_frei_lizenziert_und_gemeinnuetzig_vorbereitet():
+    c = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
+    assert c["lizenz"] == {"eigener_code": "GPL-3.0-or-later", "text_url": "https://www.gnu.org/licenses/gpl-3.0.html"}
+    assert c["betreiber"]["gemeinnuetzig_anerkannt"] is True          # Freistellungsbescheid liegt laut Betreiber vor
+    assert c["betreiber"]["gemeinnuetzig_nachweis"] == "", "Der Nachweis (Finanzamt, Datum) darf nicht erfunden werden"
+
+
+def test_lizenzseite_nennt_freie_nutzung(fertig):
+    t = sichtbarer_text(seite(fertig, "lizenzen.html"))
+    assert "Lizenz GPL-3.0-or-later" in t
+    assert "kostenlos nutzen, ändern und weitergeben" in t
+    assert "https://www.gnu.org/licenses/gpl-3.0.html" in t
+
+
+def test_firebase_json_passt_zu_den_seiten(fertig):
+    fb = json.loads((ROOT / "firebase.json").read_text(encoding="utf-8"))["hosting"]
+    assert fb["public"] == "public" and fb["cleanUrls"] is False
+    assert "firebase.json" in fb["ignore"] and "**/.*" in fb["ignore"]
+    kopf = {h["key"]: h["value"] for h in fb["headers"][0]["headers"]}
+    assert fb["headers"][0]["source"] == "**"
+    assert kopf["X-Content-Type-Options"] == "nosniff" and kopf["Referrer-Policy"] == "no-referrer"
+    csp = kopf["Content-Security-Policy"]
+    assert "frame-ancestors 'none'" in csp
+    meta = re.search(r'http-equiv="Content-Security-Policy" content="([^"]+)"', seite(fertig, "index.html")).group(1)
+    for teil in meta.split(";"):
+        assert teil.strip() in csp, teil
+    nginx = (ROOT / "server" / "nginx.conf.beispiel").read_text(encoding="utf-8")
+    assert csp in nginx, "nginx- und Firebase-Kopfzeilen müssen übereinstimmen"
