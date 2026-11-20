@@ -1,8 +1,12 @@
-# Security notes
+# Security and operational baseline
 
-- Keep Hornet3000 and monitor ingestion bound to loopback where possible.
-- Set separate, random API credentials. Never commit .env files, tokens, camera passwords, private captures, GPS traces, or audio.
-- The bridge forwards event metadata only; it does not forward images, audio, or GPS.
-- Use HTTPS and a private VPN/reverse proxy for any remote connection. Do not expose the plain-HTTP listeners to the public internet.
-- The current source baseline has no complete automated retention/deletion workflow. Review storage and retention before operational use.
-- Report security issues privately to the repository maintainer; do not publish credentials or exploitable personal data in issues.
+- Keep all services bound to loopback or a trusted private network by default.
+- Use separate, randomly generated credentials for each service.
+- Never commit secrets, camera credentials, personal data, private captures, audio, or GPS traces.
+- Remote access requires a private VPN or HTTPS reverse proxy. Never expose plain-HTTP listeners directly to the public internet.
+- The current bridge forwards metadata only and deliberately omits image, audio, and GPS data.
+- The current monitor receiver validates and logs accepted events but does not yet persist them into the PWA dashboard.
+- The reviewed source baseline does not provide a complete automatic retention/deletion workflow. Define and test retention before operational use.
+- ONNX Runtime was unavailable in the checked build environment; AI inference must not be assumed active.
+- Keep dependencies and model assets pinned and record their licenses and provenance.
+- Security review and deployment-specific privacy assessment are release gates, not optional claims of certification.
