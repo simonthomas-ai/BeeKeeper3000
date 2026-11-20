@@ -8,11 +8,11 @@ From the repository root, install the optional dependency file at network/meshco
 
 ## Wire protocol v1
 
-- Binary envelope with Ed25519 signature and 8-byte public-key fingerprint.
+- Binary envelope with Ed25519 signature and 16-byte public-key fingerprint.
 - Event and station identifiers are short SHA-256 identifiers.
 - Transmits timestamps, expiry, event type, taxon, verification claim, confidence and optional bearing.
 - Does not encode exact GPS, images, audio, filenames, credentials or free-form text.
-- The payload is 112 bytes without a bearing and 116 bytes with a bearing, below the 163-byte MeshCore channel-data payload limit.
+- The payload is 128 bytes without a bearing and 132 bytes with a bearing, below the 163-byte MeshCore channel-data payload limit.
 - Nest-hypothesis events are not accepted in v1 because the common schema requires a location for that event type and the radio envelope intentionally excludes coordinates.
 - An expert-confirmed claim is downgraded to unverified unless the signing key is included in the explicit expert trust allowlist.
 
@@ -24,7 +24,7 @@ Create a dedicated Ed25519 key pair out of band and protect the private key usin
 
 Instantiate MeshCoreSerialTransport with a serial port, channel index, application data type, the station ID and the station private key. Open a connection before sending events. Disconnect the transport during orderly shutdown. The implementation is in network/meshcore/transport.py.
 
-For receiving, subscribe to the configured channel/data type and pass raw payload bytes to decode_event with a public-key allowlist. The allowlist is keyed by the 16-character public-key fingerprint. A separate trusted-expert fingerprint allowlist is needed to accept expert-confirmed claims.
+For receiving, subscribe to the configured channel/data type and pass raw payload bytes to decode_event with a public-key allowlist. The allowlist is keyed by the 32-character public-key fingerprint. A separate trusted-expert fingerprint allowlist is needed to accept expert-confirmed claims.
 
 ## Operational limits
 
