@@ -15,7 +15,7 @@ def _validate(path: str | Path) -> None:
     if not source.is_file():
         raise OutboxBackupError("outbox database is not a regular file")
     try:
-        with sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True, timeout=5) as db:
+        with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True, timeout=5) as db:
             result = db.execute("PRAGMA integrity_check").fetchone()
             if result != ("ok",):
                 raise OutboxBackupError("SQLite integrity check failed")
