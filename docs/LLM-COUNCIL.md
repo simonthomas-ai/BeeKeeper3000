@@ -22,7 +22,7 @@ Das Inventar ist dynamisch. Es werden keine Modelle als „befragt“ markiert, 
 
 | Anbieter/Quelle | Rolle | Aktivierung |
 |---|---|---|
-| Lokale Open-Weight-Modelle (z. B. Qwen, Gemma, Mistral, DeepSeek, Llama-kompatible Modelle) | Primäre kostenfreie Beratung, sofern lokal ausführbar und Lizenz geprüft | Lokal durch Betreiber |
+| Lokale Open-Weight-Modelle (z. B. Qwen, Gemma, Mistral, DeepSeek, Llama-kompatible Modelle) | Gleichberechtigte Review-Teilnahme, sofern lokal ausführbar und Lizenz geprüft | Lokal durch Betreiber |
 | Hugging Face Hub / Inference Providers | Modellkatalog, Metadaten und optionale Inferenz | Aus; nur bei nachgewiesenem 0-EUR-Tarif und Betreiberfreigabe |
 | LMArena | Menschlich gesteuerter, vergleichender Benchmark und Community-Feedback | Manuell; keine automatisierten Abfragen |
 | Weitere Provider (OpenAI, Anthropic, Google, DeepSeek, Mistral, etc.) | Optionale unabhängige Reviews | Nur bei explizit bestätigtem kostenlosem Kontingent und API-Zugang; sonst überspringen |
@@ -48,7 +48,7 @@ Honig-Stufen: 0–39 „Nektar“ (nicht belastbar), 40–59 „Pollen“ (inter
 
 Ein Vorschlag erhält zunächst nur eine vorläufige Punktzahl. Punkte für Korrektheit, Sicherheit und Stabilität werden erst nach Prüfung und Tests vergeben. Nicht belegte Behauptungen, fehlende Quellen, Lizenzunklarheit oder bezahlte Abhängigkeiten reduzieren den Wert. Ein Modell darf sich nicht selbst bewerten. Anbieter- und Modellnamen bleiben sichtbar; Bewertungen werden nicht durch Anbieter gesponsert.
 
-## Demokratischer Entscheidungsprozess
+Lokale und externe Modelle erhalten bei gleicher Aufgabe, gleichem Kontext und gleicher Bewertungsmethodik gleichberechtigte Review-Gelegenheiten. Es gibt keine Bevorzugung nach Anbieter oder Modellgröße. Externe Modelle werden nur dann tatsächlich aufgerufen, wenn die 0-EUR-Sperre technisch beim Anbieter durchgesetzt werden kann. Ein Zeitplan kann keine Gratis-Kontingente herbeiführen; Provider-Quoten und Abrechnungsbedingungen besitzen keine universelle, verlässliche Schnittstelle.\n\n## Demokratischer Entscheidungsprozess
 
 1. Ein gemeinsamer, versionierter Aufgaben-Prompt und ein öffentliches, anonymisiertes Kontextpaket werden erstellt.
 2. Alle aktivierten Modelle erhalten dieselbe Aufgabe und dieselben relevanten Informationen. Antworten werden unabhängig gesammelt.
