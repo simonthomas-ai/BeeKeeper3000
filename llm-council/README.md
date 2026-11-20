@@ -1,60 +1,40 @@
-# LLM Council – Betrieb mit 0 EUR
+# LLM Council – Online-only, 0 EUR
 
-## Was ist bereits im Repository?
+## Zielarchitektur
 
-- `tools/llm_council.py`: Runner ohne Drittanbieter-Pythonpakete.
-- `llm-council/config.json`: harte Budgetvorgabe 0 EUR, Ollama lokal, externe Provider standardmäßig aus.
-- `llm-council/REVIEW-PROMPT.md`: identischer Review-Prompt für alle Modelle.
-- `tests/test_llm_council.py`: Sicherheits- und Kosten-Gates.
-- `.github/workflows/llm-council.yml`: wöchentlicher/manueller Lauf nur auf eigenem Runner.
+BEEKEEPER3000 verwendet keine lokalen LLMs und führt keine lokale Modellinferenz aus. Der Council-Runner ist nur ein leichter Orchestrator; die Textgenerierung erfolgt über freigegebene Online-APIs. Das API-Budget bleibt strikt 0 EUR.
 
-## Lokal starten
+- `tools/llm_council.py`: standardbibliotheksbasierter Orchestrator.
+- `llm-council/config.json`: lokales Ollama ist deaktiviert; Online-Provider werden einzeln freigegeben.
+- `llm-council/REVIEW-PROMPT.md`: gemeinsamer Review-Prompt.
+- `tests/test_llm_council.py`: Kosten- und Sicherheits-Gates.
 
-1. Ollama installieren und starten: https://ollama.com/
-2. Das freigegebene lokale Modell laden: `ollama pull qwen2.5:7b`. Die Modell-ID ist bereits in `config.json` allowlisted. Modellgröße an RAM/VRAM anpassen; die Lizenz des konkreten Modells vor Nutzung/Weitergabe prüfen.
-3. `qwen2.5:7b` ist in `llm-council/config.json` ausdrücklich allowlisted. Weitere Modelle müssen dort einzeln eingetragen werden; der Runner führt niemals automatisch alle installierten Modelle aus und lehnt Cloud-Modellkennungen ab.
+## Erster Online-Pfad: OpenRouter Free
 
-4. Tests aus dem Repository-Hauptverzeichnis ausführen:
+Die Konfiguration verwendet `openrouter/free`, das laut Anbieter passende kostenlose Modelle auswählt. Das Free-Konto bietet API-Zugang und 50 Requests pro Tag; kostenlose Modellvarianten müssen ausdrücklich gewählt werden. Vor dem ersten Lauf muss ein Free-Konto eingerichtet und `OPENROUTER_API_KEY` als geschützte Umgebungsvariable gesetzt werden. Keine Zahlungsmethode oder Guthabenaufladung aktivieren. Bei Limit, 402 oder fehlender Gratisverfügbarkeit wird nicht auf Paid-Modelle ausgewichen.
 
-   ```sh
-   python -m unittest tests.test_llm_council -v
-   ```
+## LMArena / Arena
 
-5. Council starten:
+LMArena wird als manuelle Qualitäts- und Modellorientierung genutzt, nicht als automatisierter Council-Endpunkt. Keine Browser-Bots, Scraper oder inoffiziellen Endpunkte. Die offizielle Arena API belastet Requests gegen Workspace-Guthaben; direkte Modellaufrufe benötigen bezahlte oder passende Aktionsmittel. Die Arena-AUP untersagt automatisiertes Benchmarking. Deshalb ist Arena API für den automatischen 0-EUR-Council nicht aktiviert.
 
-   ```sh
-   python tools/llm_council.py
-   ```
+## Weitere Anbieter
 
-6. Berichte erscheinen unter `llm-council/runs/`. Im geplanten Windows-Runner speichert der Workflow sie dauerhaft lokal unter `%USERPROFILE%\\BEEKEEPER3000\\llm-council\\runs`. Es werden keine Actions-Artefakte hochgeladen. Antworten werden nicht automatisch als wahr oder als Honig-Score bewertet.
+- Google Gemini API Free Tier: deaktiviert, bis ein Projekt ohne Billing bestätigt ist. Free-Tier-Inhalte können zur Produktverbesserung verwendet werden; nur öffentliche/anonymisierte Daten senden.
+- Groq Free Tier: deaktiviert, bis ein Free-only-Konto und ein sicherer nicht kostenpflichtiger Stopp verifiziert sind. Developer Tier benötigt eine Zahlungsmethode.
+- Hugging Face Inference Providers: deaktiviert; Free-Accounts haben laut aktueller Dokumentation keine monatlichen Inference-Provider-Credits und Requests sind Pay-as-you-go.
+- Weitere Provider nur nach Nachweis einer echten 0-EUR-Sperre und Prüfung der Nutzungsbedingungen.
 
-## Externe kostenlose Modelle
+## Start
 
-Externe Anbieter sind absichtlich deaktiviert. Ein Provider darf nur aktiviert werden, wenn alle Bedingungen erfüllt sind:
+1. `OPENROUTER_API_KEY` sicher als Umgebungsvariable setzen. Nicht in Dateien, Issues oder Commits speichern.
+2. `python -m unittest tests.test_llm_council -v` ausführen.
+3. `python tools/llm_council.py` starten.
+4. JSON-Berichte werden lokal im konfigurierten Ausgabeverzeichnis gespeichert.
 
-- kostenloser Zugang ist für genau dieses Konto und Modell aktuell verifiziert;
-- Nutzungsbedingungen wurden in den letzten 30 Tagen geprüft;
-- der Anbieter erzwingt serverseitig eine harte Ausgabenobergrenze von exakt 0 EUR;
-- die API ist OpenAI-chat-completions-kompatibel und verwendet HTTPS;
-- Zugangsdaten liegen ausschließlich in einer lokalen Umgebungsvariable bzw. in einem geschützten Secret Store.
+Der Runner prüft Budget, HTTPS, Providerfreigabe, Terms-Prüfdatum und die bestätigte harte 0-EUR-Sperre. Antworten werden nie automatisch ausgeführt, übernommen, bewertet oder gemerged.
 
-Die Konfigurationsfelder `free_access_verified`, `provider_enforced_hard_cap_eur` und `terms_reviewed_on` sind eine Betreiberbestätigung, keine automatische Prüfung der Anbieterabrechnung. Nicht aktivieren, wenn der Anbieter keine echte harte 0-EUR-Sperre anbietet. Insbesondere sind kostenlose Testguthaben und Pay-as-you-go-Credits keine Kostenfreiheit. Hugging Face Inference Providers sind standardmäßig gesperrt.
+## Datenschutz und Sicherheit
 
-## GitHub-Actions-Zeitplan
+Nur öffentliche, anonymisierte und notwendige technische Inhalte an externe Modelle senden. Keine API-Schlüssel, Passwörter, personenbezogenen Daten, Kamerabilder, Audio, GPS-/Stationskoordinaten oder vertraulichen Sicherheitsdetails. Secret-Pattern-Scans ersetzen keine manuelle Datenschutzprüfung. Kostenstatus unbekannt/abgelaufen/nicht verifizierbar bedeutet: nicht aufrufen. Keine kostenpflichtigen Fallbacks oder Aufladungen.
 
-Der Workflow läuft ausschließlich auf einem eigenen Windows-x64-Runner mit den Labels:
-
-`self-hosted`, `windows`, `x64`, `llm-council`
-
-Das Gerät muss eingeschaltet sein, Ollama muss laufen und das Modell lokal vorhanden sein. Python 3 muss im PATH liegen. Es wird kein GitHub-gehosteter Runner verwendet. Um einen Runner einzurichten, folge den offiziellen GitHub-Schritten unter https://docs.github.com/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners und registriere ihn nur für dieses Repository. Runner nicht öffentlich oder ungeschützt betreiben.
-
-Der Workflow ist wöchentlich (Montag 05:17 UTC) und manuell startbar. Er erzeugt nur ein Artefakt. Keine automatischen Issues, PRs, Commits oder Merges.
-
-## Sicherheitsgrenzen
-
-- Nur Loopback für Ollama; kein externer Ollama-Bind.
-- Keine privaten Repositorydaten, Secrets, Bilder, Audio oder Standortkoordinaten in Prompts.
-- Antworten sind nicht vertrauenswürdige Daten; nie als Shell-Befehle ausführen.
-- Kein automatischer Codeimport, Merge oder Selbstbewertung.
-- Vor externen Modellaufrufen Datenminimierung und Betreiberfreigabe.
-- Bei Unsicherheit: Provider überspringen, nicht auf kostenpflichtige Alternative ausweichen.
+Der Workflow-Runner führt nur Orchestrierung aus; die Modellinferenz erfolgt vollständig online. Ein geeigneter lokaler LLM-Rechner ist nicht erforderlich.
