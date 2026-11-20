@@ -27,3 +27,8 @@ The JSON report includes a SHA-256 of the annotation file. Store the report, ann
 - Metrics are only as representative as the held-out data and annotation process.
 - No model is bundled; no model performance claim or operational release follows from the existence of this tool.
 - A field trial and expert confirmation remain mandatory.
+
+
+## Model provenance screening
+
+No external model is approved yet. Candidate model/dataset repositories and the reasons they are held or rejected are tracked in [MODEL-PROVENANCE-REGISTER-2026-11-20.md](MODEL-PROVENANCE-REGISTER-2026-11-20.md).
