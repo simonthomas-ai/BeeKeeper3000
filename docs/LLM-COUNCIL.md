@@ -67,7 +67,7 @@ Es gibt keine Abstimmung „Modell gegen Modell“ über die Wahrheit. Mehrheits
 - Externe Endpunkte bleiben standardmäßig deaktiviert. Erforderlich sind eine aktuelle (maximal 30 Tage alte) Nutzungsbedingungenprüfung, explizit bestätigter kostenloser Zugriff und ein vom Anbieter durchgesetztes hartes Ausgabenlimit von exakt 0 EUR. Fehlt eine Bedingung, wird der Anbieter übersprungen.
 - `tests/test_llm_council.py` prüft Kosten-Gates, HTTPS, Loopback-Bindung, Secret-Blockierung und Promptgrößenlimit.
 - `.github/workflows/llm-council.yml` startet wöchentlich oder manuell ausschließlich auf einem selbstverwalteten Runner mit den Labels `self-hosted`, `windows`, `x64`, `llm-council`. Es werden keine kostenpflichtigen GitHub-gehosteten Runner verwendet.
-- Der Workflow lädt einen Bericht als Artefakt hoch; er erstellt keine PRs, verändert keine Projektdateien und merged niemals automatisch.
+- Der Workflow speichert Berichte ausschließlich lokal im Benutzerprofil des Runner-Rechners (`BEEKEEPER3000/llm-council/runs`); es werden keine Actions-Artefakte hochgeladen. Er erstellt keine PRs, verändert keine Projektdateien und merged niemals automatisch.
 - Berichte enthalten Antwort-Hashes und Status. Honig-Punkte werden nicht automatisch vergeben, sondern erst nach unabhängiger menschlicher Prüfung.
 
 **Wichtige Grenze:** Eine Konfigurationsangabe allein kann die Abrechnung eines fremden Anbieters nicht technisch garantieren. Externe Anbieter dürfen nur aktiviert werden, wenn deren eigene Kontoeinstellungen/Vertrag eine echte harte 0-EUR-Sperre durchsetzen. Ist das nicht verfügbar, bleibt der externe Anbieter deaktiviert. Die aktuelle Hugging-Face-Inference-Provider-Route erfüllt diese Voraussetzung nicht automatisch.
