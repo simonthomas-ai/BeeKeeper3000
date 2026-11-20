@@ -62,7 +62,7 @@ def restore(source: str | Path, destination: str | Path) -> Path:
         raise OutboxBackupError("restore destination must be a new file")
     dst.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with sqlite3.connect(src, timeout=5) as source_db, sqlite3.connect(dst) as target_db:
+        with closing(sqlite3.connect(src, timeout=5)) as source_db, closing(sqlite3.connect(dst)) as target_db:
             source_db.backup(target_db)
         _validate(dst)
         return dst
