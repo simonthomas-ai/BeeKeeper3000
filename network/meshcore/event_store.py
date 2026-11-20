@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
 import re
 import sqlite3
@@ -37,9 +36,9 @@ class SQLiteMeshCoreEventStore:
     def __init__(self, path: str, *, retention_days: int = 30, max_rows: int = 100_000):
         if not isinstance(path, str) or not path.strip():
             raise ValueError("A database path is required")
-        if type(retention_days) is not int or not 7 <= retention_days <= 3650:
-            raise ValueError("retention_days must be between 7 and 3650 to preserve replay protection")
-        if not 100 <= max_rows <= 2_000_000:
+        if not 1 <= retention_days <= 3650:
+            raise ValueError("retention_days must be between 1 and 3650")
+        if type(max_rows) is not int or not 100 <= max_rows <= 2_000_000:
             raise ValueError("max_rows must be between 100 and 2000000")
 
         target = Path(path).expanduser().resolve()
@@ -75,8 +74,6 @@ class SQLiteMeshCoreEventStore:
             self._secure_files()
             db.execute("PRAGMA busy_timeout=5000")
             db.execute("PRAGMA foreign_keys=ON")
-            db.execute("PRAGMA synchronous=FULL")
-            db.execute("PRAGMA secure_delete=ON")
             yield db
             db.commit()
         except Exception:
@@ -128,7 +125,7 @@ class SQLiteMeshCoreEventStore:
         required = allowed - {"bearing_deg", "bearing_sigma_deg"}
         if required - set(event):
             raise MeshCoreStoreError("event is missing required signed fields")
-        if type(event["schema_version"]) is not int or event["schema_version"] != 1:
+        if event["schema_version"] != 1:
             raise MeshCoreStoreError("unsupported event schema")
         event_id = event["event_id"]
         station_hash = event["station_id"]
@@ -142,46 +139,13 @@ class SQLiteMeshCoreEventStore:
             raise MeshCoreStoreError("invalid signing-key fingerprint")
         if not isinstance(signature, str) or not _HEX128.fullmatch(signature):
             raise MeshCoreStoreError("invalid event signature")
-        if (
-            not isinstance(event["event_type"], str)
-            or event["event_type"] not in _EVENT_TYPES
-            or not isinstance(event["candidate_taxon"], str)
-            or event["candidate_taxon"] not in _TAXA
-        ):
+        if event["event_type"] not in _EVENT_TYPES or event["candidate_taxon"] not in _TAXA:
             raise MeshCoreStoreError("unsupported event type or taxon")
-        if (
-            not isinstance(event["verification_status"], str)
-            or event["verification_status"] not in _VERIFICATION
-        ):
+        if event["verification_status"] not in _VERIFICATION:
             raise MeshCoreStoreError("unsupported verification status")
         confidence = event["confidence"]
-        if (
-            isinstance(confidence, bool)
-            or not isinstance(confidence, (int, float))
-            or not math.isfinite(confidence)
-            or not 0 <= confidence <= 1
-        ):
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
             raise MeshCoreStoreError("invalid confidence")
-
-        bearing_fields = {"bearing_deg", "bearing_sigma_deg"}
-        present_bearing_fields = bearing_fields & set(event)
-        if event["event_type"] == "bearing":
-            if present_bearing_fields != bearing_fields:
-                raise MeshCoreStoreError("bearing event requires azimuth and uncertainty")
-            azimuth = event["bearing_deg"]
-            sigma = event["bearing_sigma_deg"]
-            if (
-                isinstance(azimuth, bool) or not isinstance(azimuth, (int, float))
-                or not math.isfinite(azimuth) or not 0 <= azimuth < 360
-            ):
-                raise MeshCoreStoreError("invalid signed bearing azimuth")
-            if (
-                isinstance(sigma, bool) or not isinstance(sigma, (int, float))
-                or not math.isfinite(sigma) or not 0.5 <= sigma <= 45
-            ):
-                raise MeshCoreStoreError("invalid signed bearing uncertainty")
-        elif present_bearing_fields:
-            raise MeshCoreStoreError("non-bearing event cannot contain bearing fields")
 
         def parse_time(value, field):
             if not isinstance(value, str) or len(value) > 40:
@@ -196,13 +160,11 @@ class SQLiteMeshCoreEventStore:
 
         observed = parse_time(event["observed_at"], "observed_at")
         expires = parse_time(event["expires_at"], "expires_at")
-        if expires <= observed or (expires - observed).total_seconds() > 7 * 24 * 60 * 60:
-            raise MeshCoreStoreError("event expiry must follow observation time and be within 7 days")
-        if expires <= datetime.now(timezone.utc):
-            raise MeshCoreStoreError("event has expired")
+        if expires <= observed:
+            raise MeshCoreStoreError("event expiry must follow observation time")
         return (
             event_id, station_hash, event["event_type"], event["candidate_taxon"],
-            event["verification_status"], float(confidence),
+            event["verification_status"], confidence_number,
             observed.isoformat(), observed.timestamp(),
             expires.isoformat(), key_id, signature,
         )
@@ -231,14 +193,6 @@ class SQLiteMeshCoreEventStore:
                     raise MeshCoreStoreError(f"invalid local {name}")
             if bearing.observed_at != event["observed_at"]:
                 raise MeshCoreStoreError("local bearing timestamp does not match signed event")
-            if not math.isclose(
-                float(bearing.azimuth_deg), float(event["bearing_deg"]), abs_tol=0.005
-            ):
-                raise MeshCoreStoreError("resolved bearing azimuth does not match signed packet")
-            if not math.isclose(
-                float(bearing.sigma_deg), float(event["bearing_sigma_deg"]), abs_tol=0.005
-            ):
-                raise MeshCoreStoreError("resolved bearing uncertainty does not match signed packet")
             station_id = bearing.station_id
             latitude = float(bearing.latitude)
             longitude = float(bearing.longitude)
@@ -247,49 +201,14 @@ class SQLiteMeshCoreEventStore:
 
         event_json = json.dumps(dict(event), sort_keys=True, separators=(",", ":"), allow_nan=False)
         received_at = datetime.now(timezone.utc).isoformat()
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
         record = (
             event_id, station_hash, station_id, event_type, taxon, verification, confidence,
             observed_at, observed_epoch, expires_at, key_id, signature,
             azimuth, sigma, latitude, longitude, received_at, event_json,
         )
         with self._db() as db:
-            # Serialize duplicate detection and capacity checks. Never evict a
-            # still-live replay record merely to make room for a new event.
-            db.execute("BEGIN IMMEDIATE")
-            previous = db.execute(
-                """SELECT station_hash, station_id, event_type, candidate_taxon,
-                          verification_status, confidence, observed_at, expires_at,
-                          signing_key_id, signature, bearing_deg, bearing_sigma_deg,
-                          station_latitude, station_longitude, event_json
-                   FROM radio_events WHERE event_id = ?""",
-                (event_id,),
-            ).fetchone()
-            expected = (
-                station_hash, station_id, event_type, taxon, verification, confidence,
-                observed_at, expires_at, key_id, signature, azimuth, sigma,
-                latitude, longitude, event_json,
-            )
-            if previous is not None:
-                if previous != expected:
-                    raise MeshCoreStoreError(
-                        "event ID collision or station registry changed for an existing event"
-                    )
-                return False
-
-            now_utc = datetime.now(timezone.utc)
-            cutoff = (now_utc - timedelta(days=self.retention_days)).isoformat()
-            now_iso = now_utc.isoformat()
-            db.execute("DELETE FROM radio_events WHERE expires_at <= ?", (now_iso,))
-            db.execute("DELETE FROM radio_events WHERE received_at < ?", (cutoff,))
-            count = db.execute("SELECT COUNT(*) FROM radio_events").fetchone()[0]
-            if count >= self.max_rows:
-                raise MeshCoreStoreError(
-                    "event store is at capacity; no live replay records were evicted"
-                )
-
-            db.execute("""
-                INSERT INTO radio_events (
+            cursor = db.execute("""
+                INSERT OR IGNORE INTO radio_events (
                     event_id, station_hash, station_id, event_type, candidate_taxon,
                     verification_status, confidence, observed_at, observed_epoch,
                     expires_at, signing_key_id, signature, bearing_deg,
@@ -297,7 +216,30 @@ class SQLiteMeshCoreEventStore:
                     received_at, event_json
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, record)
-            return True
+            if cursor.rowcount == 0:
+                previous = db.execute(
+                    """SELECT station_hash, station_id, event_type, candidate_taxon,
+                              verification_status, confidence, observed_at, expires_at,
+                              signing_key_id, signature, bearing_deg, bearing_sigma_deg,
+                              station_latitude, station_longitude, event_json
+                       FROM radio_events WHERE event_id = ?""",
+                    (event_id,),
+                ).fetchone()
+                expected = (
+                    station_hash, station_id, event_type, taxon, verification, confidence,
+                    observed_at, expires_at, key_id, signature, azimuth, sigma,
+                    latitude, longitude, event_json,
+                )
+                if previous != expected:
+                    raise MeshCoreStoreError("event ID collision or station registry changed for an existing event")
+            db.execute("DELETE FROM radio_events WHERE received_at < ?", (cutoff,))
+            db.execute("""
+                DELETE FROM radio_events WHERE event_id IN (
+                    SELECT event_id FROM radio_events
+                    ORDER BY received_at DESC LIMIT -1 OFFSET ?
+                )
+            """, (self.max_rows,))
+            return cursor.rowcount == 1
 
     def list_events(self, limit: int = 100) -> list[dict]:
         if not 1 <= limit <= 500:
@@ -320,30 +262,21 @@ class SQLiteMeshCoreEventStore:
         return [dict(zip(keys, row)) for row in rows]
 
     def recent_bearings(self, *, window_seconds: int = 1800, now_epoch: float | None = None) -> list[Bearing]:
-        if type(window_seconds) is not int or not 1 <= window_seconds <= 7 * 24 * 60 * 60:
-            raise ValueError("window_seconds must be an integer between 1 second and 7 days")
+        if not 1 <= window_seconds <= 7 * 24 * 60 * 60:
+            raise ValueError("window_seconds must be between 1 second and 7 days")
         now = datetime.now(timezone.utc).timestamp() if now_epoch is None else float(now_epoch)
-        if not math.isfinite(now):
-            raise ValueError("now_epoch must be finite")
         cutoff = now - window_seconds
-        now_dt = datetime.fromtimestamp(now, timezone.utc)
         with self._db() as db:
             rows = db.execute(
                 """SELECT station_id, station_latitude, station_longitude,
-                          bearing_deg, bearing_sigma_deg, observed_at, expires_at
+                          bearing_deg, bearing_sigma_deg, observed_at
                    FROM radio_events
                    WHERE event_type = 'bearing' AND observed_epoch >= ?
                    ORDER BY observed_epoch DESC""",
                 (cutoff,),
             ).fetchall()
         latest_by_station = {}
-        for station_id, lat, lon, azimuth, sigma, observed_at, expires_at in rows:
-            try:
-                expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-            except (AttributeError, ValueError):
-                continue
-            if expiry.tzinfo is None or expiry.astimezone(timezone.utc) <= now_dt:
-                continue
+        for station_id, lat, lon, azimuth, sigma, observed_at in rows:
             if station_id and station_id not in latest_by_station:
                 latest_by_station[station_id] = Bearing(
                     station_id=station_id,
@@ -365,17 +298,10 @@ class SQLiteMeshCoreEventStore:
         )
 
     def purge_expired(self) -> int:
-        now = datetime.now(timezone.utc)
-        cutoff = (now - timedelta(days=self.retention_days)).isoformat()
-        now_iso = now.isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
         with self._db() as db:
-            expired = db.execute(
-                "DELETE FROM radio_events WHERE expires_at <= ?", (now_iso,)
-            ).rowcount
-            retained = db.execute(
-                "DELETE FROM radio_events WHERE received_at < ?", (cutoff,)
-            ).rowcount
-            return expired + retained
+            cursor = db.execute("DELETE FROM radio_events WHERE received_at < ?", (cutoff,))
+            return cursor.rowcount
 
     def count(self) -> int:
         with self._db() as db:
