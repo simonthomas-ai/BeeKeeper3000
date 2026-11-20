@@ -35,7 +35,9 @@ VENV=/opt/beekeeper3000/venv-camera
 [[ -f "$CAMERA_ENV" ]] || die "Create $CAMERA_ENV from docs/camera.env.example first."
 [[ -f "$MANIFEST" ]] || die "Place a reviewed ONNX model and manifest at $MANIFEST first."
 [[ -f "$UNIT_TEMPLATE" ]] || die "Camera systemd unit template is missing."
-[[ -d "$STATE_ROOT" && -d "$MODEL_DIR" ]] || die "Protected station state/model directories are missing."
+[[ -d "$STATE_ROOT" ]] || die "Protected station state directory is missing."
+[[ ! -L "$MODEL_DIR" ]] || die "Model directory must not be a symbolic link."
+install -d -o beekeeper -g beekeeper -m 0750 "$MODEL_DIR"
 [[ "$(stat -c '%U:%G:%a' "$STATE_ROOT")" == "beekeeper:beekeeper:700" ]] || die "Station state directory must be beekeeper:beekeeper mode 0700."
 [[ "$(stat -c '%U:%G:%a' "$MODEL_DIR")" == "beekeeper:beekeeper:750" ]] || die "Model directory must be beekeeper:beekeeper mode 0750."
 
