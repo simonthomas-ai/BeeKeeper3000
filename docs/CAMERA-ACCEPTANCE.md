@@ -29,6 +29,20 @@ Record for at least a continuous 2-hour run:
 
 Repeat with a physically disconnected camera and with the local source API unavailable. The process must reconnect with bounded backoff; queued metadata must remain until acknowledged. A full outbox must stop the process visibly rather than discard a record.
 
+## Windows one-frame hardware check
+
+Run from the repository checkout with the camera dependencies installed in a dedicated environment:
+
+```powershell
+.\scripts\Test-BeeKeeperCamera.ps1 -PythonExe ".\.venv-camera\Scripts\python.exe"
+```
+
+The script prompts for the camera index (for example `0`) or the complete local RTSP(S)/HTTP(S) URL using hidden input. It passes the source only through a temporary process environment variable, never as a command-line argument, clears it afterwards, reads one frame, releases the camera and saves no image. The diagnostic does not need a model to prove that the capture backend returns a frame.
+
+The station doctor also checks the base station, bridge and optional model configuration. Its overall exit code can therefore be non-zero even if the separate `Live camera test` row passes. Review that row and all other failures independently.
+
+For Reolink or another network camera, enable its RTSP service in the camera's own settings, use a dedicated least-privilege camera account, and enter the correct stream path for the exact model/firmware. Do not paste a credential-bearing RTSP URL into issues, chat, screenshots or logs. A successful one-frame read is only a connection smoke test; complete the two-hour acquisition, disconnect/reconnect, privacy and field-quality checks above before any pilot.
+
 ## 3. Detection-quality evaluation
 
 Do not use random frame-level splits. Group images by observation, photographer, hive/site, camera and capture period so near-duplicates do not leak across training and test sets. Maintain a separately held-out field test set.
