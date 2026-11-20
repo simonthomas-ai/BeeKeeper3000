@@ -28,7 +28,10 @@ def _capture_source(value: str):
         raise ValueError("BEEKEEPER_CAMERA_SOURCE is required")
     source = int(value) if value.isdecimal() else value
     if isinstance(source, str) and not source.startswith(("rtsp://", "rtsps://", "http://", "https://")):
-        source = str(Path(source).expanduser())
+        # Preserve Linux device paths even when the platform branch is
+        # simulated by a cross-platform test runner.
+        if not (sys.platform.startswith("linux") and source.startswith("/dev/video")):
+            source = str(Path(source).expanduser())
 
     # Use native camera backends for local devices. Forcing FFmpeg on Linux can
     # break V4L2 webcams and Raspberry Pi camera bridges; keep FFmpeg for files
