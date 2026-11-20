@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 from .source_cursors import CursorError, CursorExpired, CursorSigner
 from .source_event_store import (
     SQLiteSourceEventStore, SourceStoreError, SourceConflictError, SourceCapacityError,
+    SourceDeletedError,
 )
 from .source_events import SourceEventError
 
@@ -234,6 +235,8 @@ def make_handler(api_key: str, cursor_secret: str | bytes, store: SQLiteSourceEv
                     "accepted": True, "duplicate": not inserted,
                     "event_id": event["id"], "sequence": record["sequence"],
                 })
+            except SourceDeletedError:
+                self._send_json(410, {"error": "source_event_id_deleted"})
             except SourceConflictError:
                 self._send_json(409, {"error": "source_event_id_conflict"})
             except SourceCapacityError:
@@ -255,7 +258,44 @@ def make_handler(api_key: str, cursor_secret: str | bytes, store: SQLiteSourceEv
             self._send_json(405, {"error": "method_not_allowed"})
 
         def do_DELETE(self):
-            self._send_json(405, {"error": "method_not_allowed"})
+            parsed = urlsplit(self.path)
+            if parsed.path != "/api/events":
+                self._send_json(404, {"error": "not_found"})
+                return
+            if not self._authorized():
+                self._send_json(401, {"error": "unauthorized"})
+                return
+            if not self._rate_allowed():
+                self._send_json(429, {"error": "rate_limited"})
+                return
+            if self.headers.get("Transfer-Encoding") is not None or self.headers.get("Content-Encoding") is not None:
+                self._send_json(400, {"error": "unsupported_encoding"})
+                return
+            lengths = self.headers.get_all("Content-Length", [])
+            if len(lengths) > 1 or (lengths and lengths[0] != "0"):
+                self._send_json(400, {"error": "delete_body_not_allowed"})
+                return
+            try:
+                query = parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True)
+                if set(query) != {"id"} or len(query["id"]) != 1:
+                    raise ValueError("one event id is required")
+                event_id = query["id"][0]
+                if (
+                    not isinstance(event_id, str)
+                    or not 1 <= len(event_id) <= 128
+                    or any(ord(char) < 33 or ord(char) > 126 for char in event_id)
+                ):
+                    raise ValueError("invalid event id")
+                deleted = store.delete(event_id)
+                self._send_json(200, {"deleted": deleted})
+            except (ValueError, UnicodeError):
+                self._send_json(400, {"error": "invalid_delete_query"})
+            except SourceCapacityError:
+                self._send_json(503, {"error": "source_deletion_ledger_capacity"})
+            except SourceStoreError:
+                self._send_json(503, {"error": "source_journal_unavailable"})
+            except Exception:
+                self._send_json(503, {"error": "source_journal_unavailable"})
 
     return Handler
 
