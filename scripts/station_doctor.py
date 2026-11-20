@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import importlib.util
+import ipaddress
 import json
 import os
 import shutil
-import socket
 import subprocess
 import sys
 import urllib.error
@@ -77,25 +76,26 @@ def _is_loopback_url(value: str) -> bool:
         parsed = urllib.parse.urlsplit(value)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             return False
-        host = parsed.hostname.lower()
-        if host == "localhost":
-            return True
-        return socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80),
-                                  type=socket.SOCK_STREAM) and all(
-            item[4][0].split("%")[0] in {"127.0.0.1", "::1"}
-            for item in socket.getaddrinfo(
-                host, parsed.port or (443 if parsed.scheme == "https" else 80),
-                type=socket.SOCK_STREAM,
-            )
-        )
-    except (OSError, ValueError):
+        if parsed.username is not None or parsed.password is not None:
+            return False
+        # Only literal IPs are accepted: DNS names can be rebound between
+        # validation and connection. The station services bind to loopback.
+        return ipaddress.ip_address(parsed.hostname).is_loopback
+    except (ValueError, TypeError):
         return False
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Never let a loopback diagnostic request escape to another host.
+        return None
 
 
 def _request(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes]:
     request = urllib.request.Request(url, headers=headers or {}, method="GET")
+    opener = urllib.request.build_opener(_NoRedirect())
     try:
-        with urllib.request.urlopen(request, timeout=4) as response:
+        with opener.open(request, timeout=4) as response:
             data = response.read(65537)
             if len(data) > 65536:
                 raise ValueError("response exceeds 64 KiB preflight limit")
