@@ -38,7 +38,7 @@ test('rejects invalid confidence, timestamps, IDs and species labels', () => {
 
 test('bounds and sanitizes station identity', () => {
   const mapped = toMonitorEvent({ ...sampleEvent, station_id: '  roof/camera  ' });
-  assert.equal(mapped.device_id, '___roof_camera__');
+  assert.equal(mapped.device_id, '__roof_camera__');
   assert.ok(mapped.device_id.length <= 80);
 });
 
