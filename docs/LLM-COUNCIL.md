@@ -1,6 +1,6 @@
 # LLM Council – Online-only, 0 EUR
 
-Status: Architektur auf Online-LLMs umgestellt. Lokale Ollama-Inferenz ist deaktiviert. OpenRouter Free ist als erster API-Pfad konfiguriert; ein erfolgreicher Modellaufruf ist erst nach Einrichtung eines Free-Kontos und API-Schlüssels nachgewiesen.
+Status: Architektur auf Online-LLMs umgestellt. Lokale Ollama-Inferenz ist deaktiviert. OpenRouter Free ist als erster API-Pfad vorbereitet, aber bis zur Prüfung des konkreten Kontos deaktiviert. Ein erfolgreicher Modellaufruf ist noch nicht nachgewiesen.
 
 ## Leitentscheidung
 
