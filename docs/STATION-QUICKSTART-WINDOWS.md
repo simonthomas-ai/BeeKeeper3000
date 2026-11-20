@@ -71,6 +71,8 @@ The launcher is a per-user process supervisor, not a Windows Service and not an 
 
 ## Optional camera producer
 
+For a safe one-frame hardware check before starting inference, run `scripts/Test-BeeKeeperCamera.ps1` (hidden source input, no image saved); see [camera acceptance](CAMERA-ACCEPTANCE.md).
+
 After the base station has been started, install the optional runtime from camera/requirements.txt in a dedicated Python environment. Set only the local manifest and camera source in the current PowerShell session, then use the launcher:
 
 ~~~powershell
