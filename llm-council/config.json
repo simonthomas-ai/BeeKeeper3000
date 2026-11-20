@@ -1,24 +1,58 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "budget_eur": 0,
   "timeout_seconds": 90,
-  "max_tokens": 1200,
+  "max_tokens": 1800,
   "max_models_per_run": 8,
   "local_ollama": {
-    "enabled": true,
+    "enabled": false,
     "base_url": "http://127.0.0.1:11434/v1",
-    "models": [
-      "qwen2.5:7b"
-    ]
+    "models": []
   },
   "external_providers": [
+    {
+      "name": "OpenRouter Free",
+      "provider_type": "openai_compatible",
+      "enabled": true,
+      "free_access_verified": true,
+      "provider_enforced_hard_cap_eur": 0,
+      "terms_reviewed_on": "2026-11-20",
+      "base_url": "https://openrouter.ai/api/v1",
+      "model": "openrouter/free",
+      "token_env": "OPENROUTER_API_KEY",
+      "token_required": true
+    },
+    {
+      "name": "Google Gemini API Free Tier",
+      "provider_type": "openai_compatible",
+      "enabled": false,
+      "free_access_verified": false,
+      "provider_enforced_hard_cap_eur": null,
+      "terms_reviewed_on": "2026-11-20",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "model": "",
+      "token_env": "GEMINI_API_KEY",
+      "token_required": true
+    },
+    {
+      "name": "Groq Free Tier",
+      "provider_type": "openai_compatible",
+      "enabled": false,
+      "free_access_verified": false,
+      "provider_enforced_hard_cap_eur": null,
+      "terms_reviewed_on": "2026-11-20",
+      "base_url": "https://api.groq.com/openai/v1",
+      "model": "",
+      "token_env": "GROQ_API_KEY",
+      "token_required": true
+    },
     {
       "name": "Hugging Face Inference Providers",
       "provider_type": "openai_compatible",
       "enabled": false,
       "free_access_verified": false,
       "provider_enforced_hard_cap_eur": null,
-      "terms_reviewed_on": "",
+      "terms_reviewed_on": "2026-11-20",
       "base_url": "https://router.huggingface.co/v1",
       "model": "",
       "token_env": "HF_TOKEN",
