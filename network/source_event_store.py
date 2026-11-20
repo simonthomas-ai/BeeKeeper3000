@@ -176,12 +176,13 @@ class SQLiteSourceEventStore:
                     raise SourceConflictError("source event ID was reused with different content")
                 return {"sequence": existing[1], "event": event}, False
 
-            db.execute(
-                "DELETE FROM source_events WHERE created_at < ?",
-                ((datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat(),),
-            )
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
+            db.execute("DELETE FROM source_events WHERE created_at < ?", (cutoff,))
+            db.execute("DELETE FROM source_tombstones WHERE deleted_at < ?", (cutoff,))
             earliest_retained = db.execute(
-                "SELECT MIN(sequence) FROM source_events"
+                "SELECT MIN(sequence) FROM ("
+                "SELECT sequence FROM source_events UNION ALL "
+                "SELECT sequence FROM source_tombstones)"
             ).fetchone()[0]
             previous_last = int(db.execute(
                 "SELECT CAST(value AS INTEGER) FROM source_meta WHERE key='last_sequence'"
