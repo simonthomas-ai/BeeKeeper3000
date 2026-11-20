@@ -1,26 +1,54 @@
 # CI- und Lieferketten-Prüfbericht — 20.11.2026
 
-## Verifizierte GitHub-Actions-Läufe
+**Letzter vollständig geprüfter Quellstand:** `743752b97d968f40a7c5167946fb7cc82ae45ed1`
 
-Die folgenden Ergebnisse wurden am 20.11.2026 direkt aus den GitHub-Actions-Läufen und Job-Protokollen abgerufen. Sie gelten nur für die jeweils genannten Commits und den erfassten Projektumfang.
+Die folgenden Ergebnisse wurden direkt aus GitHub Actions und den Job-Protokollen abgerufen. Sie gelten für die genannten Commits und den ausdrücklich erfassten Umfang.
+
+## Verifizierte Workflow-Läufe
 
 | Workflow | Commit | Ergebnis | Lauf |
 |---|---|---|---|
-| Quality gates | `58b7fd30d022f2f0b0c5b14fd598f449adb2f5ce` | erfolgreich | [44757451490](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44757451490) |
-| Supply-chain audit and SBOM | `58b7fd30d022f2f0b0c5b14fd598f449adb2f5ce` | erfolgreich | [44757451376](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44757451376) |
-| CodeQL Python + JavaScript/TypeScript | `58b7fd30d022f2f0b0c5b14fd598f449adb2f5ce` | beide Analysejobs erfolgreich abgeschlossen | [44757451403](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44757451403) |
+| Quality gates (Linux + Windows) | `743752b97d968f40a7c5167946fb7cc82ae45ed1` | alle 4 Jobs erfolgreich | [44758077360](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44758077360) |
+| Network reference tests | `743752b97d968f40a7c5167946fb7cc82ae45ed1` | alle 3 Jobs erfolgreich | [44758077536](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44758077536) |
+| CodeQL Python + JavaScript/TypeScript | `743752b97d968f40a7c5167946fb7cc82ae45ed1` | beide Analysejobs erfolgreich abgeschlossen | [44758077509](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44758077509) |
+| Supply-chain audit and SBOM | `58b7fd30d022f2f0b0c5b14fd598f449adb2f5ce` | alle 5 Jobs erfolgreich | [44757451376](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44757451376) |
 
-## Ausgeführte Tests
+## Ausgeführte Testmengen
 
-| Bereich | Tests | Ergebnis |
+### Quality gates
+
+| Bereich | Testausführungen | Ergebnis |
 |---|---:|---|
 | Triangulation und LLM-Council-Sicherheitsprüfungen | 20 | bestanden |
 | MeshCore-Protokoll, Receiver, persistenter Speicher und Transport | 34 | bestanden |
-| Kamera-Runtime, Manifest, Outbox und Source-Client | 25 | bestanden |
+| Kamera-Runtime, Manifest, Outbox und Source-Client auf Linux | 25 | bestanden |
+| Dieselben Kamera-/Outbox-Tests auf Windows | 25 | bestanden |
 | Monitor-Bridge (Node.js) | 32 | bestanden |
-| **Summe** | **111** | **alle bestanden** |
+| **Summe** | **136 Ausführungen** | **alle bestanden** |
 
-Die Kamera-Tests verwenden synthetische Ereignisse und simulierte Kamera-Backends. Die Windows-DirectShow-Auswahl wird im Test simuliert; das ist kein Nachweis einer echten Kamera auf einem Windows-PC.
+Die Kamera-Testfälle wurden auf Linux und Windows wiederholt; daher sind 136 Testausführungen nicht 136 unterschiedliche Testfälle.
+
+### Network reference tests
+
+| Bereich | Testausführungen | Ergebnis |
+|---|---:|---|
+| Python-Netzwerk-, API-, Backup-, Kamera- und Stations-Preflight-Tests | 77 | bestanden |
+| Read-only Stations-Preflight | 7 | bestanden |
+| MeshCore-Protokoll, Receiver, persistenter Speicher, Transport und Hardware-Probe | 39 | bestanden |
+| Monitor-Bridge (Node.js) | 32 | bestanden |
+| **Summe** | **155 Ausführungen** | **alle bestanden** |
+
+## Windows-Befund und Korrektur
+
+Der erste Windows-Lauf deckte einen echten Portabilitätsfehler auf: SQLite-Verbindungen wurden nach Transaktionen nicht deterministisch geschlossen; Windows konnte dadurch temporäre Datenbanken nicht löschen. Zusätzlich wurde ein Linux-Gerätepfad beim plattformübergreifenden Test normalisiert.
+
+Korrekturen:
+- SQLite-Outbox-Verbindungen werden nach Commit/Rollback immer geschlossen.
+- Backup- und Restore-Verbindungen werden ebenfalls explizit geschlossen.
+- Das Backup-Testfixture schließt seine eigene SQLite-Verbindung.
+- Linux-Gerätepfade bleiben im simulierten Linux-Backend-Test unverändert.
+
+Der anschließende Quality-Gates-Lauf auf Commit `743752b...` bestand einschließlich Windows-Job, PowerShell-Syntaxprüfung und 25 Kamera-/Outbox-Tests.
 
 ## Abhängigkeitsprüfung und SBOM
 
@@ -31,21 +59,15 @@ Im Supply-Chain-Lauf wurden folgende Ergebnisse protokolliert:
 - Node.js-Abhängigkeiten: `found 0 vulnerabilities`.
 - CycloneDX-SBOM für MeshCore-Runtime erzeugt.
 - CycloneDX-SBOM für isolierte Kamera-Runtime erzeugt.
-- Vulnerability-Reports und SBOM-Dateien wurden als GitHub-Actions-Artefakte gespeichert.
+- Vulnerability-Reports und SBOM-Dateien als GitHub-Actions-Artefakte gespeichert.
 
-Die Artefakte sind über den [Supply-Chain-Lauf](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44757451376) abrufbar. GitHub-Artefakte haben eine begrenzte Aufbewahrungsdauer und sind keine dauerhafte Projektarchivierung.
+Die Artefakte sind über den [Supply-Chain-Lauf](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44757451376) abrufbar. GitHub-Artefakte haben eine begrenzte Aufbewahrungsdauer.
 
-Diese Ergebnisse bedeuten ausschließlich, dass die genannten Abhängigkeitsversionen zum Zeitpunkt des Laufs in den verwendeten Advisory-Datenbanken keine bekannten Treffer hatten. Sie beweisen weder Fehlerfreiheit noch Lizenzkompatibilität, vollständige Herkunft oder Sicherheit der gesamten Anwendung.
+Der Supply-Chain-Lauf fand auf Commit `58b7fd3...` statt. Die danach erfolgten Änderungen betrafen Kamera-/SQLite-Implementierung und Workflow-Prüfungen, nicht die in diesem Lauf geprüften Dependency-Manifeste. Das ist kein vollständiger Produkt-SBOM-Nachweis.
 
-## Zusätzliche Windows-Prüfung
+## CodeQL-Einordnung
 
-Am 20.11.2026 wurde anschließend ein Windows-spezifischer Job ergänzt:
-- Installation der optionalen CPU-Kamera-Abhängigkeiten auf `windows-latest`.
-- `pip check`.
-- Syntaxanalyse von `scripts/Start-BeeKeeperCamera.ps1`, ohne das Skript auszuführen.
-- Kamera-/Outbox-Tests unter Windows.
-
-Der Lauf auf dem neueren Commit `e6002af26da38e7008bce6c57afb927928b518f7` wird hier erst als bestanden eingetragen, wenn sein GitHub-Actions-Ergebnis abgeschlossen und geprüft ist. Bis dahin gilt die Windows-Prüfung als ausstehend.
+Die Python- und JavaScript/TypeScript-Analysejobs wurden erfolgreich abgeschlossen und die Analyseergebnisse hochgeladen. Ein erfolgreicher CodeQL-Lauf ist **keine Aussage, dass es null Alerts gibt**. Offene Code-Scanning-Befunde müssen im GitHub-Sicherheitsbereich separat geprüft, bewertet und gegebenenfalls behoben werden.
 
 ## Nicht durch CI nachgewiesen
 
