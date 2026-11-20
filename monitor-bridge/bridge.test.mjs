@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce } from './bridge.mjs';
 
 const sampleEvent = {
@@ -139,4 +141,20 @@ test('pollOnce rejects source responses larger than the configured limit', async
     sourceKey: 'test-source-api-key-long-enough',
     fetchImpl: async () => new Response('x'.repeat(2 * 1024 * 1024 + 1), { status: 200 })
   }), /size limit/);
+});
+
+test('direct CLI startup reaches configuration validation on this operating system', () => {
+  const entry = fileURLToPath(new URL('./bridge.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [entry], {
+    encoding: 'utf8',
+    timeout: 5000,
+    env: {
+      ...process.env,
+      HORNET3000_API_KEY: '',
+      BEEKEEPER_MONITOR_INGEST_TOKEN: ''
+    }
+  });
+  assert.equal(result.error, undefined, result.error?.message);
+  assert.equal(result.status, 1, result.stdout + '\\n' + result.stderr);
+  assert.match(result.stderr, /HORNET3000_API_KEY/);
 });
