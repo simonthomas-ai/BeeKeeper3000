@@ -47,6 +47,7 @@ jobs:
             }
           }
           ./scripts/Start-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -ValidateOnly
+          ./scripts/Install-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -ValidateOnly
 
       - name: Exercise protected station backup and restore including camera outbox
         shell: pwsh
