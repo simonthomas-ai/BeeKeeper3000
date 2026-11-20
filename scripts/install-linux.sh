@@ -103,10 +103,12 @@ if [[ ! -e "$ENV_FILE" ]]; then
   "$PYTHON" - "$ENV_FILE" "$STATE_ROOT" <<'PY'
 import os, secrets, sys
 target, state = sys.argv[1], sys.argv[2]
+monitor_token = secrets.token_urlsafe(48)
 values = {
     "HORNET3000_API_KEY": secrets.token_urlsafe(48),
     "HORNET3000_CURSOR_SECRET": secrets.token_urlsafe(48),
-    "VESPAGUARD_INGEST_TOKEN": secrets.token_urlsafe(48),
+    "VESPAGUARD_INGEST_TOKEN": monitor_token,
+    "BEEKEEPER_MONITOR_INGEST_TOKEN": monitor_token,
     "HORNET3000_EVENT_DB": state + "/source-events.sqlite3",
     "HORNET3000_EVENT_RETENTION_DAYS": "30",
     "HORNET3000_EVENT_MAX_ROWS": "250000",
