@@ -63,7 +63,7 @@ def request_json(url: str, payload: dict | None = None, headers: dict | None = N
             return json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise CouncilError(f"Provider HTTP status {exc.code}") from None
-    except (urllib.error.URLError, TimeoutError, socket.timeout) as exc:
+    except (urllib.error.URLError, TimeoutError, socket.timeout, OSError) as exc:
         raise CouncilError(f"Provider unavailable: {type(exc).__name__}") from None
     except (UnicodeDecodeError, json.JSONDecodeError):
         raise CouncilError("Provider returned invalid JSON.") from None
@@ -167,7 +167,7 @@ def run(config: dict, prompt: str, outdir: Path) -> dict:
                     item = {"provider": "ollama-local", "model": model, "status": "skipped", "cost_eur": 0}
                     if not isinstance(model, str) or model not in names:
                         item["reason"] = "model not installed locally"
-                    elif model.lower().endswith(":cloud") or ".cloud" in model.lower():
+                    elif "cloud" in model.lower():
                         item["reason"] = "cloud model identifiers are prohibited by the zero-cost policy"
                     else:
                         try:
