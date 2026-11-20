@@ -20,6 +20,11 @@ if ($env:OS -ne "Windows_NT") {
 }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $secretPath = Join-Path $StateRoot "station-secrets.clixml"
+$StateRoot = (Resolve-Path $StateRoot).Path
+$dataRoot = Join-Path $StateRoot "data"
+if (-not (Test-Path $dataRoot -PathType Container)) {
+    throw "Station data directory missing. Start the base station first."
+}
 if (-not (Test-Path $secretPath -PathType Leaf)) {
     throw "Station DPAPI secrets not found. Start the base station once first."
 }
@@ -36,7 +41,7 @@ $pythonCommand = Get-Command -Name $PythonExe -CommandType Application -ErrorAct
 if (-not $pythonCommand) { throw "Python executable not found: $PythonExe" }
 $pythonPath = $pythonCommand.Path
 $secrets = Import-Clixml -LiteralPath $secretPath
-if (-not ($secrets.SourceApiKey -is [Security.SecureString])) {
+if (-not ($secrets.PSObject.Properties.Name -contains 'SourceApiKey') -or -not ($secrets.SourceApiKey -is [Security.SecureString])) {
     throw "DPAPI SourceApiKey is missing or invalid."
 }
 $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secrets.SourceApiKey)
@@ -59,7 +64,7 @@ try {
     [Environment]::SetEnvironmentVariable("HORNET3000_URL", $SourceApiUrl, "Process")
     [Environment]::SetEnvironmentVariable("BEEKEEPER_MODEL_MANIFEST", $manifestPath, "Process")
     [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_SOURCE", $CameraSource, "Process")
-    [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_OUTBOX", (Join-Path $StateRoot "datacamera-outbox.sqlite3"), "Process")
+    [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_OUTBOX", (Join-Path (Join-Path $StateRoot "data") "camera-outbox.sqlite3"), "Process")
     [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_MAX_FPS", [string]$MaxFps, "Process")
     [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_COOLDOWN_SECONDS", [string]$CooldownSeconds, "Process")
     [Environment]::SetEnvironmentVariable("BEEKEEPER_ONNX_THREADS", [string]$OnnxThreads, "Process")
@@ -68,7 +73,7 @@ try {
     try {
         & $pythonPath -c "import cv2, onnxruntime"
         if ($LASTEXITCODE -ne 0) {
-            throw "Camera dependencies are missing. Install cameraequirements.txt into this Python environment."
+            throw "Camera dependencies are missing. Install camera\requirements.txt into this Python environment."
         }
         & $pythonPath -m camera.runtime
         if ($LASTEXITCODE -ne 0) { throw "Camera runtime exited with code $LASTEXITCODE." }
