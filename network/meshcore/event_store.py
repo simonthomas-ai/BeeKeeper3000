@@ -365,10 +365,17 @@ class SQLiteMeshCoreEventStore:
         )
 
     def purge_expired(self) -> int:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
+        now = datetime.now(timezone.utc)
+        cutoff = (now - timedelta(days=self.retention_days)).isoformat()
+        now_iso = now.isoformat()
         with self._db() as db:
-            cursor = db.execute("DELETE FROM radio_events WHERE received_at < ?", (cutoff,))
-            return cursor.rowcount
+            expired = db.execute(
+                "DELETE FROM radio_events WHERE expires_at <= ?", (now_iso,)
+            ).rowcount
+            retained = db.execute(
+                "DELETE FROM radio_events WHERE received_at < ?", (cutoff,)
+            ).rowcount
+            return expired + retained
 
     def count(self) -> int:
         with self._db() as db:
