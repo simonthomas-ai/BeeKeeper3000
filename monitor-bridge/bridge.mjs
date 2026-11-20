@@ -357,8 +357,11 @@ export async function pollOnce(state, options = {}) {
     }
 
     const previousCursor = currentState.cursor ?? null;
-    if (body.has_more && body.next_cursor === previousCursor) {
-      throw new Error('Hornet3000 cursor did not advance while more events remain');
+    if (body.has_more && body.events.length === 0) {
+      throw new Error('Hornet3000 cursor page claims more events but returned an empty page');
+    }
+    if ((body.has_more || body.events.length > 0) && body.next_cursor === previousCursor) {
+      throw new Error('Hornet3000 cursor did not advance past returned events');
     }
 
     // In cursor mode, invalid events must stop the page. Advancing past one
