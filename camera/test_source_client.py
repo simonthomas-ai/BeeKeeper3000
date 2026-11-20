@@ -33,6 +33,36 @@ class SourceClientTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=2)
 
+
+    def test_does_not_follow_redirects(self):
+        followed = {"value": False}
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.send_response(302)
+                self.send_header("Location", "http://127.0.0.1:%d/forwarded" % server.server_port)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            def do_GET(self):
+                followed["value"] = True
+                self.send_response(200)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            def log_message(self, *args):
+                pass
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = SourceApiClient("http://127.0.0.1:%d" % server.server_port, "a" * 32)
+            event = {"id":"camera-redirect","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False}
+            with self.assertRaises(Exception):
+                client.send_event(event)
+            self.assertFalse(followed["value"])
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
     def test_rejects_non_loopback_and_remote_scheme(self):
         with self.assertRaises(ValueError):
             SourceApiClient("http://example.org", "a" * 32)
