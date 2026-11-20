@@ -15,6 +15,7 @@ const intervalMs = Number.isFinite(requestedInterval)
 const requireCursor = (process.env.BRIDGE_REQUIRE_CURSOR || 'true').toLowerCase() === 'true';
 const statePath = path.resolve(process.env.BRIDGE_STATE_FILE || './monitor-bridge-state.json');
 const maxSeen = 10000;
+export const MAX_STATE_BYTES = 2 * 1024 * 1024;
 const maxSourceResponseBytes = 2 * 1024 * 1024;
 const maxReceiverResponseBytes = 4096;
 let busy = false;
@@ -54,11 +55,11 @@ export async function readState(file = statePath) {
     const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW || 0);
     handle = await fs.open(file, flags);
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.size > 1024 * 1024) {
-      throw new Error('Bridge state file is invalid or exceeds 1 MiB');
+    if (!stat.isFile() || stat.size > MAX_STATE_BYTES) {
+      throw new Error('Bridge state file is invalid or exceeds 2 MiB');
     }
     // Bound the read even if another process grows the opened file after fstat.
-    const buffer = Buffer.allocUnsafe((1024 * 1024) + 1);
+    const buffer = Buffer.allocUnsafe(MAX_STATE_BYTES + 1);
     let bytesRead = 0;
     while (bytesRead < buffer.length) {
       const result = await handle.read(
@@ -67,7 +68,7 @@ export async function readState(file = statePath) {
       if (result.bytesRead === 0) break;
       bytesRead += result.bytesRead;
     }
-    if (bytesRead > 1024 * 1024) {
+    if (bytesRead > MAX_STATE_BYTES) {
       throw new Error('Bridge state file exceeds 1 MiB');
     }
     const value = JSON.parse(buffer.subarray(0, bytesRead).toString('utf8'));
@@ -102,12 +103,18 @@ export async function writeState(ids, file = statePath) {
     throw new Error('Bridge cursor must be a non-empty string of at most 512 characters');
   }
   const stableIds = [...ids].slice(-maxSeen);
+  if (!stableIds.every(id => typeof id === 'string' && /^[\\x21-\\x7E]{1,128}$/.test(id))) {
+    throw new Error('Bridge event IDs must be printable ASCII strings of 1..128 characters');
+  }
   const data = JSON.stringify({
     version: 2,
     updatedAt: new Date().toISOString(),
     forwardedIds: stableIds,
     cursor
   }, null, 2);
+  if (Buffer.byteLength(data, 'utf8') > MAX_STATE_BYTES) {
+    throw new Error('Bridge state exceeds the configured 2 MiB size limit');
+  }
   const directory = path.dirname(file);
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
