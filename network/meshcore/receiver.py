@@ -7,7 +7,7 @@ from collections import deque
 from typing import Callable, Iterable, Mapping
 
 from network.triangulation import Bearing
-from .protocol import MeshCoreProtocolError, decode_event
+from .protocol import MeshCoreProtocolError, decode_event, public_key_fingerprint
 
 
 class StationRegistryError(ValueError):
@@ -81,6 +81,7 @@ class MeshCoreEventReceiver:
         station_registry: StationRegistry,
         sink: Callable,
         *,
+        trusted_station_keys: Mapping[str, Iterable[str]],
         trusted_expert_fingerprints: Iterable[str] = (),
         max_seen: int = 10_000,
     ):
@@ -89,7 +90,40 @@ class MeshCoreEventReceiver:
         if not 1 <= max_seen <= 100_000:
             raise ValueError("max_seen must be between 1 and 100000")
         self.transport = transport
+        if not isinstance(trusted_public_keys, Mapping) or not trusted_public_keys:
+            raise ValueError("trusted_public_keys must be a non-empty public-key mapping")
         self.trusted_public_keys = dict(trusted_public_keys)
+        for key_id, public_key in self.trusted_public_keys.items():
+            if not isinstance(key_id, str) or not re.fullmatch(r"[0-9a-f]{32}", key_id):
+                raise ValueError("trusted public-key IDs must be 32-character lowercase fingerprints")
+            if getattr(public_key, "has_private", lambda: False)():
+                raise ValueError("receiver must be provisioned with public keys, never private signing keys")
+            try:
+                if public_key_fingerprint(public_key) != key_id:
+                    raise ValueError("trusted public-key fingerprint does not match its key material")
+            except Exception as exc:
+                raise ValueError("invalid trusted public key") from exc
+        if not isinstance(trusted_station_keys, Mapping) or not trusted_station_keys:
+            raise ValueError("trusted_station_keys must explicitly bind stations to authorized signing keys")
+        station_key_map = {}
+        for station_hash, fingerprints in trusted_station_keys.items():
+            if not isinstance(station_hash, str) or not re.fullmatch(r"[0-9a-f]{32}", station_hash):
+                raise ValueError("trusted station IDs must be 32-character lowercase station hashes")
+            if isinstance(fingerprints, str):
+                raise ValueError("each station must map to an iterable of key fingerprints")
+            try:
+                authorized = set(fingerprints)
+            except TypeError as exc:
+                raise ValueError("invalid station signing-key allowlist") from exc
+            if not authorized or any(
+                not isinstance(item, str)
+                or not re.fullmatch(r"[0-9a-f]{32}", item)
+                or item not in self.trusted_public_keys
+                for item in authorized
+            ):
+                raise ValueError("station signing-key allowlists must reference trusted public keys")
+            station_key_map[station_hash] = frozenset(authorized)
+        self.trusted_station_keys = station_key_map
         self.station_registry = station_registry
         self.sink = sink
         self.trusted_expert_fingerprints = set(trusted_expert_fingerprints)
@@ -114,6 +148,9 @@ class MeshCoreEventReceiver:
                 trusted_expert_fingerprints=self.trusted_expert_fingerprints,
             )
             event_id = event["event_id"]
+            authorized_signers = self.trusted_station_keys.get(event["station_id"], frozenset())
+            if event["signature_key_id"] not in authorized_signers:
+                raise MeshCoreProtocolError("signing key is not authorized for this station")
             if event_id in self._seen:
                 self.duplicate_count += 1
                 return False
