@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - "network/**"
+      - "monitor-bridge/**"
       - ".github/workflows/network-tests.yml"
 
 permissions:
