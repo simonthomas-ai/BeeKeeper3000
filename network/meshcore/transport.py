@@ -40,7 +40,7 @@ class MeshCoreSerialTransport:
             from meshcore import MeshCore, EventType
         except ImportError as exc:
             raise MeshCoreTransportError(
-                "Optional dependency missing: install network/meshcore/requirements.txt"
+                "Optional dependency missing: install network/meshcore/requirements.lock"
             ) from exc
         try:
             client = await MeshCore.create_serial(self.port, self.baudrate)
