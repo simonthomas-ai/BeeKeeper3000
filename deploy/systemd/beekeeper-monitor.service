@@ -1,0 +1,34 @@
+[Unit]
+Description=BeeKeeper local Monitor PWA and authenticated event receiver
+After=network.target
+
+[Service]
+Type=simple
+User=beekeeper
+Group=beekeeper
+WorkingDirectory=@MONITOR_ROOT@
+EnvironmentFile=/etc/beekeeper3000/station.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=@PYTHON@ -m integrations.local_ingest
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30
+TimeoutStopSec=20
+KillSignal=SIGINT
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/beekeeper3000
+LimitNOFILE=4096
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,35 @@
+[Unit]
+Description=BeeKeeper authenticated local source event journal API
+After=network.target
+
+[Service]
+Type=simple
+User=beekeeper
+Group=beekeeper
+WorkingDirectory=@BEEKEEPER_ROOT@
+EnvironmentFile=/etc/beekeeper3000/station.env
+Environment=PYTHONPATH=@BEEKEEPER_ROOT@
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=@PYTHON@ -m network.source_api
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30
+TimeoutStopSec=20
+KillSignal=SIGINT
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/beekeeper3000
+LimitNOFILE=4096
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target
