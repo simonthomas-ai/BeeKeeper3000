@@ -68,8 +68,10 @@ class CursorSigner:
         if len(parts) != 2:
             raise CursorError("malformed cursor")
         encoded, supplied_signature = parts
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", encoded) or not re.fullmatch(r"[A-Za-z0-9_-]+", supplied_signature):
+            raise CursorError("malformed cursor encoding")
         expected_signature = _b64encode(
-            hmac.new(self._secret, encoded.encode("ascii", errors="strict"), hashlib.sha256).digest()
+            hmac.new(self._secret, encoded.encode("ascii"), hashlib.sha256).digest()
         )
         if not hmac.compare_digest(supplied_signature, expected_signature):
             raise CursorError("cursor signature is invalid")
