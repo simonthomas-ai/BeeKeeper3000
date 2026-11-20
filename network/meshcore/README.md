@@ -24,7 +24,7 @@ Create a dedicated Ed25519 key pair out of band and protect the private key usin
 
 Instantiate `MeshCoreSerialTransport` with a serial port, channel index, application data type, station ID and station private key. Open a connection before sending events. Disconnect the transport during orderly shutdown. The implementation is in `network/meshcore/transport.py`.
 
-For receiving, use `MeshCoreEventReceiver` with a public-key allowlist and a receiver-local `StationRegistry`. The allowlist is keyed by the 32-character public-key fingerprint. A separate trusted-expert fingerprint allowlist is required to accept expert-confirmed claims.
+For receiving, use `MeshCoreEventReceiver` with a public-key allowlist and a receiver-local `StationRegistry`. The allowlist is keyed by the 32-character public-key fingerprint. A separate trusted-expert fingerprint allowlist is required to accept expert-confirmed claims. In addition, every station hash must be explicitly bound to one or more authorized public-key fingerprints using `trusted_station_keys`. A key that is globally trusted but not authorized for a given station cannot submit events under that station's identity. During rotation, configure both old and new fingerprints for that station, verify the new station key, then remove the old fingerprint. Keep the public-key allowlist and station-key mapping local to the receiving station; never transmit private keys.
 
 ## Durable local event store
 
@@ -47,15 +47,23 @@ registry = StationRegistry({
         "longitude": 6.7890,
     }
 })
+# Bind every station hash to its authorized signing-key fingerprint(s).
+# Multiple fingerprints allow an explicit overlap period during key rotation.
+trusted_station_keys = {
+    "32_CHARACTER_STATION_HASH": {
+        "32_CHARACTER_PUBLIC_KEY_FINGERPRINT",
+    },
+}
 receiver = MeshCoreEventReceiver(
     transport=radio,
     trusted_public_keys=trusted_keys,
+    trusted_station_keys=trusted_station_keys,
     station_registry=registry,
     sink=store,
 )
 ```
 
-The sink stores only events after signature, expiry and registry validation. Its unique event ID survives process restarts; exact packet replays return `False` from the sink and are counted as duplicates. A reused event ID with different signed content or a changed local station resolution is rejected rather than silently overwritten. Retention and maximum row count are bounded. Retention cannot be shorter than the protocol's maximum seven-day packet TTL, so a still-valid event cannot be replayed after its deduplication record expires. At capacity, the store refuses a new event rather than evicting a live replay record. Expired packets are excluded from bearing queries and are purged during maintenance/insertion. On POSIX the store requires a service-owned private directory (mode 0700) and restricts SQLite files/sidecars to mode 0600. On Windows configure NTFS ACLs for the service identity. SQLite is not encrypted by this application; use full-disk encryption.
+The sink stores only events after signature, expiry and registry validation. Its unique event ID survives process restarts; exact packet replays return `False` from the sink and are counted as duplicates. A reused event ID with different signed content or a changed local station resolution is rejected rather than silently overwritten. Retention and maximum row count are bounded. On POSIX the store requires a service-owned private directory (mode 0700) and restricts SQLite files/sidecars to mode 0600. On Windows configure NTFS ACLs for the service identity. SQLite is not encrypted by this application; use full-disk encryption.
 
 Station coordinates are receiver-local data: they are not transmitted over MeshCore. The stored station coordinates are only attached to bearing events after resolving the signed station hash through the local registry. They are not part of the signed radio event JSON.
 
