@@ -5,6 +5,7 @@
 - Node.js bridge forwards metadata only and deliberately omits image, audio and GPS coordinates.
 - Bridge requires separate source and receiver credentials, validates endpoint transport policy, validates source events, bounds source and receiver response sizes, rejects redirects and uses request timeouts.
 - Bridge checkpoints source event IDs only after the Monitor returns HTTP 202 with an explicit `{"accepted":true}` durable-storage acknowledgement. If writing the local checkpoint fails, its in-memory ID is rolled back for retry.
+- The bridge supports versioned v2 state with an opaque source cursor, bounded multi-page catch-up, per-page checkpointing after durable receiver acknowledgements, restart-safe replay, strict invalid-event handling and an opt-in `BRIDGE_REQUIRE_CURSOR=true` fail-closed mode. The old latest-100 source API remains supported only as an explicitly lossy compatibility fallback.
 - Optional MeshCore profile signs compact event metadata using Ed25519. Receivers verify expiry and signatures, require an explicit station-hash-to-signing-key allowlist, reject private key material at receiver configuration, and downgrade expert status unless the key is separately trusted for expert verification. Multiple fingerprints may be temporarily authorized for a station during deliberate key rotation.
 - MeshCore events omit exact location, media, credentials and free-form text. A receiver resolves station hashes using a local coordinate registry.
 - `network/meshcore/event_store.py` persists verified MeshCore event IDs and metadata in local SQLite with bounded retention and row count. Duplicate delivery remains idempotent after receiver restart. Coordinates are stored only from the receiver-local station registry, not from the radio packet.
@@ -24,7 +25,7 @@
 
 ## Known release gaps
 
-- The bridge still polls only the latest 100 source events; no lossless cursor-based catch-up has been proven. The Hornet3000 source API must supply stable cursor/sequence pagination and retention. See BeeKeeper3000 issue #7.
+- The bridge client now supports cursor pagination and backlog catch-up, but the actual Hornet3000 source API in this repository still exposes only the latest 100 events. The server-side cursor implementation, durable sequence, retention and live end-to-end acceptance are not present here. Until those ship, default compatibility mode remains lossy; deployments can set `BRIDGE_REQUIRE_CURSOR=true` to fail closed. See `monitor-bridge/SOURCE-CURSOR-CONTRACT.md` and BeeKeeper3000 issue #7.
 - MeshCore has only simulated protocol/transport tests; no real radio, antenna, repeater or multi-station field test is claimed.
 - Freenet, Meshtastic, Mosquitto and MapLibre are not active runtime dependencies of BeeKeeper3000.
 - ONNX inference and the Vespa-velutina classifier are not validated as operational.
