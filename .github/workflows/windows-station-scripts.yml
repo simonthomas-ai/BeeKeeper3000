@@ -80,7 +80,11 @@ jobs:
           monitor = SQLiteEventStore(str(data / "monitor-events.sqlite3"))
           monitor(HiveEvent(kind="camera_detection", device_id="ci-station", timestamp="2026-11-20T08:00:00Z", payload={"label":"candidate","confidence":0.8,"verification_status":"unverified"}))
           outbox = SQLiteOutbox(str(data / "camera-outbox.sqlite3"))
-          outbox.enqueue({"id":"camera-backup-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"candidate","confidence":0.8,"prey_detected":False})
+          outbox.enqueue_if_due(
+              {"id":"camera-backup-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False},
+              cooldown_seconds=30,
+              now_epoch=1000,
+          )
           '@ | python -
           if ($LASTEXITCODE -ne 0) { throw "Could not seed synthetic databases." }
 
@@ -113,4 +117,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Monitor restore test failed." }
           python -m camera.outbox_backup restore --backup $cameraBackup --destination (Join-Path $restoreRoot "camera.sqlite3")
           if ($LASTEXITCODE -ne 0) { throw "Camera outbox restore test failed." }
+
+          @'
+          import sys
+          from camera.outbox import SQLiteOutbox
+          restored = SQLiteOutbox(sys.argv[1])
+          second = {
+              "id":"camera-backup-2",
+              "observed_at":"2026-11-20T08:00:30Z",
+              "station_id":"ci-station",
+              "species":"vespa_velutina_candidate",
+              "confidence":0.8,
+              "prey_detected":False,
+          }
+          assert not restored.enqueue_if_due(second, cooldown_seconds=30, now_epoch=1029), "restored cooldown was not preserved"
+          assert restored.enqueue_if_due(second, cooldown_seconds=30, now_epoch=1030), "restored cooldown did not expire"
+          assert [row["id"] for row in restored.pending(10)] == ["camera-backup-1", "camera-backup-2"]
+          print("Camera outbox restore preserved pending event and cooldown state.")
+          '@ | python - (Join-Path $restoreRoot "camera.sqlite3")
+          if ($LASTEXITCODE -ne 0) { throw "Restored camera cooldown state did not behave correctly." }
 
