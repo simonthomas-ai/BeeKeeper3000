@@ -15,6 +15,10 @@ Dieses Repository verbindet die Quellbasis Hornet3000 Wächter 1.6.0 mit einem d
 
 Details: [SOVEREIGNTY.md](SOVEREIGNTY.md), [SECURITY.md](SECURITY.md), [PROVENANCE.md](PROVENANCE.md), [LICENSES.md](LICENSES.md).
 
+## Bundesweites Velutina-Messnetz
+
+Die technische Zielarchitektur, die Grenzen von LoRa/Freenet und die Betriebs-/Datenschutzanforderungen stehen in [NETWORK-ARCHITECTURE.md](NETWORK-ARCHITECTURE.md). Ein erster, dependency-freier Peilungs-Triangulationsbaustein mit Tests liegt unter [network/](network/). Er berechnet einen Suchhinweis aus mindestens drei zeitlich synchronisierten Peilungen; er bestätigt kein Nest und ersetzt keine fachliche Prüfung.
+
 ## Monitor-Anbindung
 
 Die lokale Adapter-Komponente in [monitor-bridge/](monitor-bridge/) liest Ereignisse aus Hornet3000 und sendet ausgewählte Metadaten an den authentifizierten Eingang von [Beekeeper-Monitor](https://github.com/simonthomas-ai/Beekeeper-Monitor).
