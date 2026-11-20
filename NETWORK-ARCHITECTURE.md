@@ -23,7 +23,7 @@ Ein Smartphone-only-Teilnehmer ist vollwertig: Es gibt keine Pflicht, Funkhardwa
 
 ### LoRa / MeshCore
 - Lokaler, stromsparender Transport für kurze Ereignisdatensätze und Statusmeldungen.
-- Store-and-forward mit Ablaufzeit, Duplikaterkennung und begrenzter Hop-Anzahl.
+- Zielanforderung für den späteren Netzbetrieb: Store-and-forward mit Ablaufzeit, persistenter Duplikaterkennung und begrenzter Hop-Anzahl. Der aktuelle MeshCore-Adapter sendet und empfängt kompakte Ereignisse; ein persistenter Funk-Relay-/Hop-Queue-Dienst ist noch nicht implementiert.
 - Kein Bild-, Video- oder Audio-Transport über LoRa.
 - MeshCore ist eine mögliche Implementierung, nicht die einzige zulässige Funktechnik.
 - LoRa-Funkabdeckung ist regional und topografieabhängig. Eine bundesweite Abdeckung entsteht nur durch viele freiwillige Gateways/Relais und darf nicht versprochen werden.
@@ -61,7 +61,7 @@ Kann bei geeigneter Sichtlinie und Tageszeit ein Suchteam unterstützen, ist abe
 
 ## 4. Ereignisformat und Funkbudget
 
-Das kanonische Ereignisformat ist JSON (siehe `network/protocol-v1.schema.json`). Für LoRa wird es in ein kompaktes binäres/CBOR-Profil übersetzt; große Felder werden nicht übertragen.
+Das transportneutrale Ereignismodell ist in JSON beschrieben (siehe `network/protocol-v1.schema.json`). Für MeshCore ist inzwischen ein konkretes binäres Profil v1 unter `network/meshcore/protocol.py` implementiert. Die JSON-Struktur wird nicht unverändert über Funk gesendet. Andere Transportadapter benötigen ein eigenes, versioniertes Wire-Format.
 
 Pflichtfelder:
 - schema_version, event_id, station_id
@@ -72,7 +72,11 @@ Pflichtfelder:
 - evidence_hash statt Bild/Ton-Datei
 - signature_key_id und Signatur über kanonische Nutzdaten
 
-Jede Station signiert lokal. Empfänger prüfen Signatur, Zeitfenster, Wertebereiche, Wiederholung und Rate-Limits. Vertrauenswürdigkeit entsteht nicht allein aus einem Modellscore.
+Das MeshCore-Profil verwendet eine Ed25519-Signatur, 128-Bit-Fingerprints für öffentliche Schlüssel und pseudonyme 128-Bit-Hashes für Stations- und Ereigniskennungen. Das Funkpaket enthält Ereignistyp, Taxonkandidat, Konfidenz, Verifikationsstatus, Beobachtungs-/Ablaufzeit und bei Peilungen Azimut plus Unsicherheit. Die Größe liegt bei 128 Byte ohne bzw. 132 Byte mit Peilungsdaten und damit unter dem dokumentierten 163-Byte-Anwendungsdatenlimit des MeshCore-Channel-Data-Pakets.
+
+**Keine exakten Koordinaten, Fotos, Audiodaten, Zugangsdaten oder Freitexte werden über dieses Funkprofil übertragen.** Empfangende Stationen müssen eine lokale Zuordnung des Stationshashs zu Station-ID und kalibrierten Koordinaten pflegen. Erst dort entsteht aus einer verifizierten Peilungsmeldung ein lokales `Bearing`-Objekt für die Triangulation. Unbekannte Stationen oder nicht vertrauenswürdige Schlüssel werden abgewiesen. Ein kryptografisch signierter Expert-Status wird ohne explizite Expert-Key-Allowlist zu `unverified` zurückgestuft.
+
+Die Softwaretests verwenden synthetische Schlüssel, Koordinaten und einen simulierten Funkclient. Sie belegen weder reale Funkübertragung noch Reichweite, Funkrecht, Koordinatenkalibrierung oder Feldgenauigkeit. Persistente Funk-Relay-Queues, Schlüsselwiderruf/-rotation und ein echtes Hardware-Lab bleiben separate Abnahmen. Vertrauenswürdigkeit entsteht nicht allein aus einem Modellscore.
 
 ## 5. Datenhoheit und Datenschutz
 
@@ -102,8 +106,8 @@ Meldungen ersetzen keine Meldung an die zuständige Landes-/Kommunalbehörde. Da
 
 ## 8. Umsetzungsphasen und Abnahmekriterien
 
-1. **Software-Protokoll:** JSON-Schema, Signaturprüfung, Replay-Schutz, lokale Queue und Simulator.
-2. **Zwei-Knoten-Labor:** zwei LoRa-Knoten und ein Gateway; Paketverlust, Duplikate, Zeitdrift, Reichweite und Stromverbrauch messen.
+1. **Software-Protokoll:** JSON-Schema und das MeshCore-Binärprofil v1 sind vorhanden; Signaturprüfung, Ablaufzeit, lokaler Stationsresolver und simulierte Transporttests laufen in CI. Persistente Offline-Funkqueue, Schlüsselwiderruf und Simulator für Funkverlust müssen noch ergänzt werden.
+2. **Zwei-Knoten-Labor:** zwei reale LoRa-Knoten und ein Gateway; Paketverlust, Duplikate, Zeitdrift, Reichweite und Stromverbrauch messen. Diese Hardwareabnahme ist offen.
 3. **Drei- bis Fünf-Stationen-Feldtest:** bekannte Testpeilungen, vermessene Referenzpunkte, Vergleich mit GPS/Kompass und manuellem Tracking.
 4. **P2P-Adapter:** Freenet-Synchronisierung nur für signierte Ereignis-Batches; Offline- und Konflikttests.
 5. **Pilotregion:** Imkerverein/Uni/Naturschutzbehörde, Datenschutzkonzept und fachliche Validierung.
