@@ -8,7 +8,7 @@ This optional module is the first local producer for the BeeKeeper3000 source AP
 - No model weights or datasets are included. The example manifest is deliberately invalid (placeholder hash and unreviewed license state) and cannot start inference.
 - Before running a model, record the original artifact URL, immutable version/hash, actual SPDX license, redistribution/training rights and an explicit license review in a local manifest. Nonprofit intent does not override NC/ND terms or missing permissions.
 - Only a model with license_review_status set to approved or public-domain passes the technical gate. This field records an operator review; it is not legal advice or automatic proof of rights.
-- The graph must emit three named outputs: normalized xyxy boxes after model-side NMS, scores in 0..1 and integer class IDs. Preprocessing is fixed RGB, NCHW, float32 0..1, stretch resize. Models with other signatures need an adapter and tests; do not guess tensor order.
+- The graph must emit either three named outputs (normalized xyxy boxes after model-side NMS, scores in 0..1 and integer class IDs) or the explicit Ultralytics post-NMS matrix6 contract (`output0`: xyxy pixel coordinates, confidence, class_id). Preprocessing is RGB, NCHW, float32 0..1 and explicitly selected `stretch` or `letterbox`; the manifest carries the resize mode. Other signatures need an adapter and tests; do not guess tensor order.
 - Experimental model output remains unverified. Do not use this pipeline for nest destruction, trapping, pesticide use or other irreversible action.
 
 ## Install (Python 3.11+)
