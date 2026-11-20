@@ -63,7 +63,7 @@ Es gibt keine Abstimmung „Modell gegen Modell“ über die Wahrheit. Mehrheits
 ## Implementierter Runner und Autarkie
 
 - `tools/llm_council.py` implementiert einen standardbibliotheksbasierten Runner für lokale Ollama-Modelle und ausdrücklich freigegebene OpenAI-kompatible HTTPS-Endpunkte.
-- `llm-council/config.json` setzt `budget_eur: 0`; Ollama ist auf Loopback begrenzt. Installierte Modelle können automatisch erkannt oder explizit ausgewählt werden.
+- `llm-council/config.json` setzt `budget_eur: 0`; Ollama ist auf Loopback begrenzt. Lokale Modelle müssen in `llm-council/config.json` explizit freigegeben sein; Cloud-Modellkennungen werden abgewiesen.
 - Externe Endpunkte bleiben standardmäßig deaktiviert. Erforderlich sind eine aktuelle (maximal 30 Tage alte) Nutzungsbedingungenprüfung, explizit bestätigter kostenloser Zugriff und ein vom Anbieter durchgesetztes hartes Ausgabenlimit von exakt 0 EUR. Fehlt eine Bedingung, wird der Anbieter übersprungen.
 - `tests/test_llm_council.py` prüft Kosten-Gates, HTTPS, Loopback-Bindung, Secret-Blockierung und Promptgrößenlimit.
 - `.github/workflows/llm-council.yml` startet wöchentlich oder manuell ausschließlich auf einem selbstverwalteten Runner mit den Labels `self-hosted`, `linux`, `x64`, `llm-council`. Es werden keine kostenpflichtigen GitHub-gehosteten Runner verwendet.
