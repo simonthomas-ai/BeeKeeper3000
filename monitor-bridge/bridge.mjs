@@ -11,6 +11,7 @@ const requestedInterval = Number(process.env.POLL_INTERVAL_MS || 10000);
 const intervalMs = Number.isFinite(requestedInterval)
   ? Math.min(3600000, Math.max(2000, requestedInterval))
   : Number.NaN;
+const requireCursor = (process.env.BRIDGE_REQUIRE_CURSOR || 'false').toLowerCase() === 'true';
 const statePath = path.resolve(process.env.BRIDGE_STATE_FILE || './monitor-bridge-state.json');
 const maxSeen = 10000;
 const maxSourceResponseBytes = 2 * 1024 * 1024;
@@ -326,7 +327,7 @@ export async function pollOnce(state, options = {}) {
   // lossless delivery. Once a cursor has been checkpointed, never silently
   // downgrade to the lossy API.
   if (!hasCursorFields) {
-    if (currentState.cursor !== null) {
+    if (options.requireCursor || currentState.cursor !== null) {
       throw new Error('Hornet3000 cursor pagination disappeared; refusing a lossy downgrade');
     }
     currentState.paginationMode = 'legacy-latest-100';
@@ -384,7 +385,7 @@ async function main() {
     if (busy) return;
     busy = true;
     try {
-      const count = await pollOnce(state);
+      const count = await pollOnce(state, { requireCursor });
       if (count) console.log(`Forwarded ${count} event(s); metadata only.`);
     } catch (error) {
       console.error(`Bridge cycle failed: ${error.message}`);
