@@ -4,8 +4,9 @@ Dieses Verzeichnis enthält zwei getrennte Teile:
 
 ## 1. Kern ohne Funkabhängigkeiten
 
-- `triangulation.py`: gewichteter Least-Squares-Schnittpunkt geografischer Peilungen.
-- `test_triangulation.py`: synthetische Tests für bekannten Zielpunkt, ungültige Geometrie und Rückwärtsstrahlen.
+- `triangulation.py`: winkelgewichtete iterative Peilschnittberechnung mit Huber-Robustifizierung, konfigurierbarer Ausreißererkennung und lokaler linearer 95-%-Unsicherheitsellipse.
+- `test_triangulation.py`: synthetische Tests für Zielpunkt, Unsicherheitsellipse, ungültige/nicht-endliche Messwerte, Zeitfenster, Ausreißer und ungünstige Geometrie.
+- `TRIANGULATION-VALIDATION.md`: Annahmen, Kalibrierverfahren, Interpretation der Ellipse und zwingende Feldabnahme.
 - `protocol-v1.schema.json`: JSON-Ereignisvertrag als transportneutrale Datenstruktur.
 
 Test:
@@ -35,7 +36,7 @@ Die MeshCore-Abhängigkeit ist optional und wird nicht durch die Kern-Triangulat
 
 ## Sicherheits- und Betriebsgrenzen
 
-Die Triangulation benötigt mindestens drei unabhängige, zeitlich passende Peilungen und liefert einen **Suchhinweis**, keine bestätigte Nestposition. Eine gültige Ed25519-Signatur bestätigt nur den Besitz eines Schlüssels, nicht die biologische Richtigkeit einer Artbestimmung.
+Die Triangulation benötigt mindestens drei unabhängige, zeitlich passende Peilungen und liefert einen **Suchhinweis**, keine bestätigte Nestposition. Der 95-%-Ellipsenwert ist eine lokale linearisierte Gauß-Näherung und ersetzt keine Kalibrierung, GNSS-Vermessung oder empirische Abdeckungsprüfung. Vor Feldbetrieb sind die Prüfungen aus `TRIANGULATION-VALIDATION.md` durchzuführen. Eine gültige Ed25519-Signatur bestätigt nur den Besitz eines Schlüssels, nicht die biologische Richtigkeit einer Artbestimmung.
 
 MeshCore-Pakete übertragen keine exakten GPS-Koordinaten, Bilder, Audiodaten, Zugangsdaten oder Freitext. Empfangende Stationen müssen vertrauenswürdige Schlüssel und die lokale Zuordnung ihrer Stationskennungen vorab provisionieren.
 
