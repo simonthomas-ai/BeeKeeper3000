@@ -62,13 +62,14 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     model_file = raw.get("model_file")
     if not isinstance(model_file, str) or not model_file or Path(model_file).is_absolute():
         raise ModelManifestError("model_file must be a non-empty relative path")
-    model_path = (manifest_path.parent / model_file).resolve(strict=True)
+    model_root = manifest_path.parent.resolve()
     try:
-        model_path.relative_to(manifest_path.parent.resolve())
-    except ValueError as exc:
+        model_path = (model_root / model_file).resolve()
+        model_path.relative_to(model_root)
+    except (OSError, ValueError) as exc:
         raise ModelManifestError("model_file must stay inside the manifest directory") from exc
     if not model_path.is_file():
-        raise ModelManifestError("model_file is not a regular file")
+        raise ModelManifestError("model_file is missing or is not a regular file")
 
     digest = raw.get("model_sha256")
     if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
