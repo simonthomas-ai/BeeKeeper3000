@@ -144,3 +144,30 @@ Eine DPAPI-Datei ist nicht portabel. Auf dem neuen Gerät darf der alte Bridge-C
 
 Der neue Rechner kann nur Ereignisse wiederherstellen, die im gesicherten Quelljournal noch vorhanden waren. Ein abgelaufener oder bereits gelöschter Datensatz lässt sich durch einen neuen Schlüssel nicht zurückholen. Vor produktivem Betrieb ist die Wiederherstellung mit einer Testkopie der Datenbanken und einem kontrollierten Replay zu prüfen.
 
+
+
+## Optional start after Windows logon
+
+By default the station is started manually in the current user session. To
+start the three base services after the current user logs on, register the
+optional Task Scheduler entry:
+
+    .\scripts\Register-BeeKeeperStationStartup.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
+
+The command first runs the non-mutating prerequisite check. It creates a
+current-user scheduled task with an interactive logon trigger and a 30-second
+delay. It stores no password, uses the current user's DPAPI-protected secrets,
+and runs without elevation. The task is optional; no task is created by the
+base station launcher itself.
+
+Remove the task without deleting station data or secrets:
+
+    .\scripts\Register-BeeKeeperStationStartup.ps1 -Unregister
+
+This is a logon start mechanism, not a Windows Service or a crash-restarting
+watchdog. The current Windows launcher starts the three base processes and
+health-checks them at startup, but it does not automatically restart an
+individual process if it later exits. Use the Linux/systemd deployment for
+managed service restart behaviour, or keep the Windows stack under operator
+supervision until a dedicated Windows service host has been field-tested.
+Camera AI and MeshCore radio are never started by this logon task.

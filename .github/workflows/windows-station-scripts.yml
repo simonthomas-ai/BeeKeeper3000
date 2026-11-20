@@ -47,6 +47,11 @@ jobs:
             }
           }
           ./scripts/Start-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -ValidateOnly
+          ./scripts/Register-BeeKeeperStationStartup.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -ValidateOnly
+          ./scripts/Register-BeeKeeperStationStartup.ps1 -Unregister -ValidateOnly
+          if (Get-ScheduledTask -TaskName "BeeKeeper3000-Station" -ErrorAction SilentlyContinue) {
+            throw "Startup-task validation unexpectedly created or altered a scheduled task."
+          }
           $cameraScript = Get-Content -Raw -LiteralPath "./scripts/Start-BeeKeeperCamera.ps1"
           if (-not $cameraScript.Contains('(Join-Path (Join-Path $StateRoot "data") "camera-outbox.sqlite3")')) {
             throw "Camera launcher must store its outbox under the protected station data directory."
