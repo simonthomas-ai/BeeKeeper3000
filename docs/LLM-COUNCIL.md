@@ -1,6 +1,6 @@
 # LLM Council – offene, kostenfreie und demokratische Projektberatung
 
-Status: Konzept und Governance-Vorschlag, noch keine automatisierte LLM-Befragung aktiv.
+Status: Governance dokumentiert; Runner und GitHub-Actions-Workflow eingecheckt. Der Runner ist erst nach Einrichtung eines passenden Self-hosted-Runners und lokaler Modelle tatsächlich ausführbar.
 
 ## Zweck
 
@@ -10,7 +10,7 @@ BEEKEEPER3000 kann mehrere unabhängige Sprachmodelle als beratende Prüfer für
 
 1. **Kostenobergrenze: 0 EUR.** Keine Pay-as-you-go-Aufrufe, keine kostenpflichtigen Tokens, keine automatische Aufladung und keine kostenpflichtigen Provider-Fallbacks.
 2. Ein Provider wird nur aktiviert, wenn sein aktueller Tarif tatsächlich kostenfrei ist, die Nutzungsbedingungen die geplante Nutzung erlauben und ein Betreiber die Aktivierung ausdrücklich konfiguriert.
-3. Hugging Face Inference Providers ist eine Aggregations-/Routingplattform, keine Garantie für kostenlose Inferenz. Die aktuelle Preisdokumentation nennt für Free-Accounts keine monatlichen Inference-Provider-Credits; Tarife ändern sich. Daher standardmäßig deaktiviert. Lokale Open-Weight-Modelle auf eigener Hardware sind der bevorzugte kostenfreie Weg.
+3. Hugging Face Inference Providers ist eine Aggregations-/Routingplattform, keine Garantie für kostenlose Inferenz. Die aktuelle Preisdokumentation weist für Free-Accounts keine monatlichen Inference-Provider-Credits aus; Inference Providers sind pay-as-you-go. Daher bleibt HF-Inferenz standardmäßig deaktiviert und wird nur zugelassen, wenn ein Anbieter eine technisch durchsetzbare Ausgabenobergrenze von exakt 0 EUR garantiert. Lokale Open-Weight-Modelle auf eigener Hardware sind der bevorzugte kostenfreie Weg.
 4. LMArena ist für menschliche, öffentliche Vergleichs-/Benchmark-Teilnahme vorgesehen. Keine Bots, automatisierten Browseraktionen, Scraping oder nicht dokumentierte Endpunkte. Arena-Ranglisten sind Kontext, kein Ersatz für reproduzierbare Projektbenchmarks.
 5. Keine privaten Schlüssel, Tokens, Passwörter, Kamerabilder, Audio, personenbezogenen Daten, exakten Stationskoordinaten oder vertraulichen Sicherheitsdetails an externe Modelle senden.
 6. Vor jeder externen Anfrage wird der Prompt auf Geheimnisse und personenbezogene Daten geprüft und auf ein minimales, öffentlich teilbares technisches Paket reduziert.
@@ -59,6 +59,18 @@ Ein Vorschlag erhält zunächst nur eine vorläufige Punktzahl. Punkte für Korr
 7. Minderheitsmeinungen und begründete Ablehnungen bleiben im Entscheidungsprotokoll erhalten.
 
 Es gibt keine Abstimmung „Modell gegen Modell“ über die Wahrheit. Mehrheitskonsens ersetzt weder Messdaten noch Fachprüfung.
+
+## Implementierter Runner und Autarkie
+
+- `tools/llm_council.py` implementiert einen standardbibliotheksbasierten Runner für lokale Ollama-Modelle und ausdrücklich freigegebene OpenAI-kompatible HTTPS-Endpunkte.
+- `llm-council/config.json` setzt `budget_eur: 0`; Ollama ist auf Loopback begrenzt. Installierte Modelle können automatisch erkannt oder explizit ausgewählt werden.
+- Externe Endpunkte bleiben standardmäßig deaktiviert. Erforderlich sind eine aktuelle (maximal 30 Tage alte) Nutzungsbedingungenprüfung, explizit bestätigter kostenloser Zugriff und ein vom Anbieter durchgesetztes hartes Ausgabenlimit von exakt 0 EUR. Fehlt eine Bedingung, wird der Anbieter übersprungen.
+- `tests/test_llm_council.py` prüft Kosten-Gates, HTTPS, Loopback-Bindung, Secret-Blockierung und Promptgrößenlimit.
+- `.github/workflows/llm-council.yml` startet wöchentlich oder manuell ausschließlich auf einem selbstverwalteten Runner mit den Labels `self-hosted`, `linux`, `x64`, `llm-council`. Es werden keine kostenpflichtigen GitHub-gehosteten Runner verwendet.
+- Der Workflow lädt einen Bericht als Artefakt hoch; er erstellt keine PRs, verändert keine Projektdateien und merged niemals automatisch.
+- Berichte enthalten Antwort-Hashes und Status. Honig-Punkte werden nicht automatisch vergeben, sondern erst nach unabhängiger menschlicher Prüfung.
+
+**Wichtige Grenze:** Eine Konfigurationsangabe allein kann die Abrechnung eines fremden Anbieters nicht technisch garantieren. Externe Anbieter dürfen nur aktiviert werden, wenn deren eigene Kontoeinstellungen/Vertrag eine echte harte 0-EUR-Sperre durchsetzen. Ist das nicht verfügbar, bleibt der externe Anbieter deaktiviert. Die aktuelle Hugging-Face-Inference-Provider-Route erfüllt diese Voraussetzung nicht automatisch.
 
 ## Autarker Ausführungsentwurf
 
