@@ -10,4 +10,6 @@ This is a preliminary engineering inventory, not legal advice and not a complete
 - No model weights or training datasets are bundled here. Model weights, datasets, photos, audio, firmware binaries, map tiles and generated assets require separate source, hash, license and redistribution checks.
 - The optional components in `OPEN_SOURCE_COMPONENTS.md` are not automatically copied or bundled simply because a license is permissive.
 
+The dated upstream license/security review is maintained in [docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md](docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md). It records optional upstream projects and their advisory status as reviewed on that date; it does not grant permission to bundle their code, firmware, models or datasets.
+
 Before a release, produce an SPDX or CycloneDX SBOM for every runtime/build, include authoritative full license texts and notices, verify all transitive dependencies, and have the inherited source/license chain reviewed.
