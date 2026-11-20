@@ -38,8 +38,10 @@ $MonitorRepo = (Resolve-Path $MonitorRepo).Path
 $startScript = Join-Path $PSScriptRoot "Start-BeeKeeperStation.ps1"
 if (-not (Test-Path $startScript -PathType Leaf)) { throw "Station launcher is missing: $startScript" }
 
-& $startScript -MonitorRepo $MonitorRepo -PythonExe $PythonExe -NodeExe $NodeExe -ValidateOnly
-if ($LASTEXITCODE -ne 0) { throw "Station prerequisites did not pass validation." }
+$powerShellPath = Join-Path $PSHOME "powershell.exe"
+$validationArguments = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -MonitorRepo "{1}" -PythonExe "{2}" -NodeExe "{3}" -ValidateOnly' -f $startScript, $MonitorRepo, $PythonExe, $NodeExe
+$validation = Start-Process -FilePath $powerShellPath -ArgumentList $validationArguments -Wait -PassThru -NoNewWindow
+if ($validation.ExitCode -ne 0) { throw "Station prerequisites did not pass validation (exit $($validation.ExitCode))." }
 if ($ValidateOnly) {
     Write-Host "Logon startup task plan validated; no scheduled task was created."
     Write-Host "Task: $taskName (current user, interactive logon, 30-second delay)"
@@ -47,7 +49,6 @@ if ($ValidateOnly) {
 }
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$powerShellPath = Join-Path $PSHOME "powershell.exe"
 $quotedStart = '"' + $startScript + '"'
 $quotedMonitor = '"' + $MonitorRepo + '"'
 $quotedPython = '"' + $PythonExe + '"'
