@@ -16,7 +16,7 @@ python .\scripts\station_doctor.py --monitor-repo ..\Beekeeper-Monitor
 python3 scripts/station_doctor.py --monitor-repo ../Beekeeper-Monitor
 ~~~
 
-The source API and Monitor checks use read-only GET requests to loopback only. To verify authenticated reads, run the doctor in a shell that has the correct secret environment variables loaded. The values are never printed:
+The source API and Monitor checks use read-only GET requests to literal loopback IP addresses only (`127.0.0.0/8` or `::1`); DNS hostnames such as `localhost` are rejected to avoid DNS rebinding. HTTP redirects are not followed. To verify authenticated reads, run the doctor in a shell that has the correct secret environment variables loaded. The values are never printed:
 
 - \`HORNET3000_API_KEY\`
 - \`BEEKEEPER_MONITOR_INGEST_TOKEN\` or \`VESPAGUARD_INGEST_TOKEN\`
@@ -31,10 +31,11 @@ Model manifest and ONNX CPU runtime:
 python .\scripts\station_doctor.py --model-manifest "$env:LOCALAPPDATA\BeeKeeper3000\models\manifest.json"
 ~~~
 
-One-frame camera check (explicit opt-in; camera URL and credentials are never printed):
+One-frame camera check (explicit opt-in; set the source in the environment so RTSP credentials do not appear in shell history or process arguments):
 
 ~~~powershell
-python .\scripts\station_doctor.py --test-camera --camera-source "0"
+$env:BEEKEEPER_CAMERA_SOURCE = "0"
+python .\scripts\station_doctor.py --test-camera
 ~~~
 
 Connect-only MeshCore hardware check (explicit opt-in; no packet transmitted):
