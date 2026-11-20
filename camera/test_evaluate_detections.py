@@ -34,7 +34,7 @@ class DetectionEvaluationTests(unittest.TestCase):
 
     def test_duplicate_prediction_is_false_positive(self):
         box = [10, 10, 30, 30]
-        report = evaluate([self.record(
+        report = self.run_eval([self.record(
             gt=[{"class_id": 0, "bbox_xyxy": box}],
             pred=[{"class_id": 0, "confidence": 0.95, "bbox_xyxy": box},
                   {"class_id": 0, "confidence": 0.90, "bbox_xyxy": box}]
@@ -44,7 +44,7 @@ class DetectionEvaluationTests(unittest.TestCase):
 
     def test_wrong_class_is_fp_and_fn(self):
         box = [10, 10, 30, 30]
-        report = evaluate([self.record(
+        report = self.run_eval([self.record(
             gt=[{"class_id": 0, "bbox_xyxy": box}],
             pred=[{"class_id": 1, "confidence": 0.95, "bbox_xyxy": box}]
         )])
@@ -53,7 +53,7 @@ class DetectionEvaluationTests(unittest.TestCase):
 
     def test_confidence_and_iou_thresholds_apply(self):
         box = [10, 10, 30, 30]
-        report = evaluate([self.record(
+        report = self.run_eval([self.record(
             gt=[{"class_id": 0, "bbox_xyxy": box}],
             pred=[{"class_id": 0, "confidence": 0.2, "bbox_xyxy": box}]
         )], confidence_threshold=0.5)
