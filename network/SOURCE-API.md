@@ -1,10 +1,9 @@
-# Durable Hornet3000 source API
+# Dauerhaftes Hornet3000-Quelljournal (Source API)
 
-This is a small, independently runnable source-side event journal for installations whose original Hornet3000 HTTP server is not available in this repository. It implements the API expected by `monitor-bridge/bridge.mjs`; it does **not** retrofit the missing C++ 1.6.0 service or automatically connect a camera/model pipeline. A trusted producer must POST validated detections to this service.
+Dies ist ein kleiner, eigenständig ausführbarer Ereignisspeicher für Installationen, bei denen der ursprüngliche Hornet3000-HTTP-Server nicht in diesem Repository vorliegt. Er implementiert die von `monitor-bridge/bridge.mjs` erwartete API. Er **ergänzt nicht** nachträglich den fehlenden C++-Dienst der Version 1.6.0 und verbindet auch nicht automatisch Kamera oder KI-Modell. Ein vertrauenswürdiger Ereignislieferant muss geprüfte Erkennungen per HTTP POST an diesen Dienst senden.
 
-## Run on Windows PowerShell
-
-Use separate randomly generated values for the source API key and cursor-signing secret:
+## Unter Windows PowerShell starten
+Für Quell-API-Schlüssel und Cursor-Signaturgeheimnis **zwei getrennte Zufallswerte** erzeugen:
 
 ```powershell
 $apiBytes = New-Object byte[] 32
@@ -23,9 +22,9 @@ $env:HORNET3000_EVENT_MAX_ROWS = "250000"
 python -m network.source_api
 ```
 
-Python 3.11+; the source API uses only the Python standard library. Create a local application data directory protected by the Windows service account ACL. The application does not configure NTFS ACLs or encrypt SQLite itself. Use BitLocker or an encrypted volume.
+Erforderlich ist Python 3.11 oder neuer; die Quell-API verwendet ausschließlich die Python-Standardbibliothek. Ein lokales Anwendungsdatenverzeichnis mit Zugriffsrechten des Windows-Dienstkontos einrichten. Die Anwendung setzt NTFS-Berechtigungen nicht selbst und verschlüsselt SQLite nicht. BitLocker oder ein verschlüsseltes Laufwerk verwenden.
 
-Linux/macOS:
+Unter Linux/macOS:
 
 ```sh
 export HORNET3000_API_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
@@ -36,35 +35,32 @@ chmod 700 "$HOME/.local/share/beekeeper3000"
 python -m network.source_api
 ```
 
-The listener binds only to `127.0.0.1:8787`. Do not expose its HTTP listener publicly. Remote access needs a separately reviewed authenticated VPN/TLS gateway. Never commit secrets, database files, camera material or GPS tracks.
+Der Dienst bindet ausschließlich an `127.0.0.1:8787`. Den HTTP-Port **nicht öffentlich freigeben**. Fernzugriff erfordert ein separat geprüftes, authentifiziertes VPN-/TLS-Gateway. Schlüssel, Datenbankdateien, Kameramaterial und GPS-Bewegungsdaten niemals in Git speichern.
 
-## API contract
+## API-Vertrag
+Jede Anfrage muss den Header `X-API-Key` enthalten.
 
-Every request includes `X-API-Key`.
+- `POST /api/events` speichert genau eine Beobachtung mit streng begrenzten Metadaten. Eine identische Wiederholung liefert `200` mit `duplicate: true`; ein neuer Eintrag `201`.
+- `GET /api/events?limit=100&cursor=start` beginnt beim ältesten Ereignis, das innerhalb der festgelegten Aufbewahrungsfrist noch vorhanden ist. Ohne `cursor` gilt dasselbe.
+- `GET /api/events?limit=100&cursor=<opaque-token>` setzt nach einem signierten Cursor fort.
+- Ein identischer POST liefert `200`; die Wiederverwendung einer unveränderlichen ID mit verändertem Inhalt liefert `409`; bei vollem Journal wird `503` ausgegeben, ohne gespeicherte Ereignisse zu verwerfen.
+- Seiten enthalten 1 bis 100 Ereignisse, aufsteigend nach Alter, mit `events`, `next_cursor` und `has_more`, passend zum Bridge-Vertrag.
+- Cursor verwenden HMAC-SHA256 und sind an diesen Ereignisstrom gebunden. Fehlerhafte oder gefälschte Cursor liefern HTTP 400. Ein Cursor, der hinter die Aufbewahrungsgrenze zurückfällt, liefert HTTP 410 mit `earliest_sequence` und einem signierten `earliest_cursor`. Der Betreiber muss die Datenlücke ausdrücklich akzeptieren, bevor er fortfährt. Ein alter Cursor wird **niemals stillschweigend zurückgesetzt**. Neue Empfänger beginnen mit `start` beim ältesten noch gespeicherten Datensatz.
 
-- `POST /api/events` stores one strict metadata-only observation. An exact replay returns `200` with `duplicate: true`; a new insert returns `201`.
-- `GET /api/events?limit=100&cursor=start` begins at the oldest event still inside the configured retention window. Omitting `cursor` has the same meaning.
-- `GET /api/events?limit=100&cursor=<opaque-token>` resumes after a signed cursor.
-- An exact duplicate POST returns `200`; reuse of an immutable ID with changed content returns `409`; a full journal returns `503` without dropping retained records.
-- Pages are 1–100 events, oldest first, with `events`, `next_cursor` and `has_more`, matching the bridge contract.
-- Cursors use HMAC-SHA256 and are tied to this event stream. Malformed or forged cursors return 400. A previously issued cursor behind retention returns 410 with `earliest_sequence` and a signed `earliest_cursor`; the operator must explicitly accept the retention gap before resuming. The service never silently resets a stale cursor. A new consumer using `start` begins at the oldest record still retained.
+Das strenge Ereignisschema erlaubt ausschließlich `id`, `observed_at`, `station_id`, `species`, `confidence` und `prey_detected`. Bild-/Audiodaten, Dateipfade, GPS-Koordinaten, Zugangsdaten, beliebige Freitexte und Behauptungen fachkundiger Bestätigung werden abgewiesen. Die Bridge ordnet Modellergebnisse anschließend als `unverified_candidate` ein.
 
-The strict event schema accepts only `id`, `observed_at`, `station_id`, `species`, `confidence` and `prey_detected`. It rejects image/audio data, file paths, GPS coordinates, credentials, arbitrary free text and expert-verification claims. The bridge subsequently maps model output to `unverified_candidate`.
+## Zuverlässigkeit und Speicherung
+- SQLite-Schreibtransaktionen vergeben fortlaufende `AUTOINCREMENT`-Sequenznummern.
+- Quellereignis-IDs sind eindeutig. Identische Inhalte werden wiederholbar ohne doppelte Speicherung verarbeitet; dieselbe ID mit verändertem Inhalt wird abgewiesen.
+- Cursor-Sequenz und Aufbewahrungsgrenze werden dauerhaft gespeichert. Sequenznummern werden nicht zurückgesetzt, selbst wenn die Aufbewahrungsregel sämtliche Zeilen entfernt.
+- Die Aufbewahrung ist zeitlich begrenzt und wird beim Schreiben sowie Lesen von Seiten durchgesetzt; die maximale Zeilenzahl ist ebenfalls begrenzt. Bei voller Kapazität verweigert der Dienst weitere Einträge, statt Ereignisse zu löschen, die die Bridge noch nicht gelesen hat.
+- Maximale Anfragegröße: 32 KiB; maximale Antwortseite: 2 MiB. Anfrageprozesse, Warteschlange, Lesezeitgrenze und Zustand der IP-basierten Ratenbegrenzung sind begrenzt.
+- SQLite wird von der Anwendung nicht verschlüsselt. Unter POSIX müssen Datenverzeichnisse dem Dienstkonto gehören und Modus 0700 besitzen; SQLite-Dateien und Nebendateien erhalten 0600. Unter Windows müssen NTFS-Zugriffsrechte ausdrücklich gesetzt werden.
 
-## Reliability and storage
+## Bridge verbinden
+Im BeeKeeper3000-Verzeichnis die vorhandene Bridge auf `http://127.0.0.1:8787` einstellen, `HORNET3000_API_KEY` auf den Schlüssel der Quell-API setzen und die davon unabhängige Monitor-Empfängeradresse samt Token konfigurieren. `BRIDGE_REQUIRE_CURSOR=true` verwenden. Die Bridge verweigert dann unsicheren Betrieb, statt unbemerkt auf eine verlustbehaftete Liste der letzten 100 Ereignisse zurückzufallen.
 
-- SQLite write transactions allocate monotonically increasing `AUTOINCREMENT` sequence numbers.
-- Stable source IDs are unique. Exact duplicate payloads are idempotent; the same ID with changed content is rejected.
-- Cursor sequence and retained-event boundary are persisted. Sequence numbers do not reset when retention removes every row.
-- Retention is age-bounded and enforced during writes and page reads; maximum row count is bounded. At capacity the service fails closed rather than evicting events that a bridge may not yet have consumed.
-- Maximum request body is 32 KiB; maximum page response is 2 MiB. Request workers, queue, body deadline and per-IP rate-limit state are bounded.
-- SQLite is not encrypted by this application. POSIX data directories must be owned by the service account and mode 0700; SQLite files/sidecars are mode 0600. Windows deployments must set explicit NTFS ACLs.
-
-## Connect the bridge
-
-In the BeeKeeper3000 checkout, point the existing bridge at `http://127.0.0.1:8787`, set `HORNET3000_API_KEY` to the source API key, and set the independent Monitor receiver URL/token. Use `BRIDGE_REQUIRE_CURSOR=true`; the bridge now fails closed rather than silently falling back to a lossy latest-100 feed.
-
-A separate producer/inference component still needs to POST accepted candidate events to this API. No live camera or classifier is wired to it by this module.
+Ein eigenständiger Ereignislieferant bzw. Erkennungsprozess muss weiterhin zulässige Kandidaten per POST an diese API senden. Dieses Modul verbindet **keine** Livekamera und keinen Klassifikator automatisch.
 
 ## Tests
 
@@ -73,36 +69,17 @@ python -m unittest network.test_source_api -v
 python -m unittest network.test_source_api network.test_triangulation -v
 ```
 
-The suite tests 250-event pagination, restart/resume, tampered/stale cursors, retention, duplicate delivery, capacity, authentication and privacy-field rejection. These are software tests, not radio coverage or field-validation tests.
+Die Tests decken Paginierung mit 250 Ereignissen, Neustart/Fortsetzung, manipulierte oder veraltete Cursor, Aufbewahrung, Duplikate, Kapazitätsgrenzen, Authentifizierung und Ablehnung privater Datenfelder ab. Es sind **Softwaretests**, keine Nachweise für Funkreichweite oder Feldtauglichkeit.
 
-## Authenticated source-event erasure
-
-The source journal supports an authenticated operator deletion request:
+## Authentifiziertes Löschen von Quellereignissen
+Das Quelljournal unterstützt einen authentifizierten Löschaufruf durch den Betreiber:
 
 `DELETE /api/events?id=<URL-encoded-event-id>`
 
-Use the same `X-API-Key` header as for source event ingestion and cursor reads.
-The endpoint accepts exactly one printable ASCII event ID, rejects request bodies
-and returns `{"deleted":true}` only when the row was removed. Repeating a deletion
-is idempotent and returns `{"deleted":false}`. Invalid query parameters are
-rejected; unauthenticated deletion returns 401.
+Denselben Header `X-API-Key` wie beim Einfügen und Lesen verwenden. Der Endpunkt akzeptiert genau eine druckbare ASCII-Ereignis-ID, lehnt Anfragekörper ab und liefert `{"deleted":true}` nur, wenn die Zeile tatsächlich gelöscht wurde. Eine wiederholte Löschung ist ohne zusätzliche Wirkung und liefert `{"deleted":false}`. Ungültige Parameter werden abgewiesen; ein nicht authentifizierter Löschversuch liefert HTTP 401.
 
-Deletion creates a tombstone containing only the event ID and deletion time.
-It prevents a delayed retry from recreating the deleted event during the source
-journal retention horizon. The tombstone is itself expired with that retention
-window. Tombstones are bounded to twice the configured event row limit; if that
-separate ledger is full, deletion fails closed with HTTP 503 rather than
-silently allowing a replay.
+Eine Löschung erzeugt einen **Löschvermerk** (Tombstone), der nur Ereignis-ID und Löschzeitpunkt enthält. Er verhindert, dass ein verspäteter Wiederholungsversuch das gelöschte Ereignis während der Aufbewahrungsfrist des Quelljournals erneut erzeugt. Der Löschvermerk läuft mit derselben Frist ab. Die Zahl der Löschvermerke ist auf das Doppelte des eingestellten Ereignislimits begrenzt. Ist dieses gesonderte Verzeichnis voll, verweigert der Dienst die Löschung mit HTTP 503, statt eine spätere Wiederholung stillschweigend zu ermöglichen.
 
-Explicit deletion does not move the cursor retention watermark or recycle
-sequence numbers. The bridge can continue over the intentional sequence hole.
-Normal age-based retention still advances the watermark and causes stale
-cursors to receive HTTP 410. Backups preserve tombstones.
+Eine ausdrückliche Löschung verschiebt weder die Cursor-Aufbewahrungsgrenze noch verwendet sie Sequenznummern erneut. Die Bridge kann die bewusst entstandene Lücke überspringen. Die normale zeitliche Aufbewahrung verschiebt die Grenze dagegen weiterhin und führt bei veralteten Cursorn zu HTTP 410. Backups enthalten die Löschvermerke.
 
-**Important:** source deletion is local to the source journal. It does not recall
-a Monitor event already accepted by a receiver, remove a copy already present in
-a backup/export, retract a radio packet already transmitted or remove a browser
-export. Operators must separately delete downstream Monitor copies and expire
-or destroy other copies according to the deployment's approved data-lifecycle
-procedure. An already fetched in-flight bridge page can still contain the event;
-repeat the downstream deletion check after any in-flight page has settled.
+**Wichtig:** Die Löschung betrifft nur das lokale Quelljournal. Sie löscht kein bereits beim Monitor gespeichertes Ereignis, keine Kopie in Backup oder Export, kein bereits übertragenes Funkpaket und keinen Browserexport. Betreiber müssen nachgelagerte Monitor-Kopien gesondert löschen und andere Kopien entsprechend dem genehmigten Datenlebenszyklus löschen oder ablaufen lassen. Eine bereits geladene, noch nicht verarbeitete Bridge-Seite kann das Ereignis weiterhin enthalten; die nachgelagerte Löschung nach Abschluss laufender Übertragungen erneut kontrollieren.
