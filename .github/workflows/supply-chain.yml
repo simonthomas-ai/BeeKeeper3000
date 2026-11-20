@@ -8,6 +8,10 @@ on:
       - "network/meshcore/requirements*.txt"
       - "network/meshcore/requirements.lock"
       - "camera/requirements.txt"
+      - "camera/**/*.py"
+      - "network/meshcore/**/*.py"
+      - "monitor-bridge/**/*.js"
+      - "monitor-bridge/**/*.mjs"
       - "LICENSES.md"
       - "THIRD_PARTY_NOTICES.md"
       - "PROVENANCE.md"
@@ -17,6 +21,10 @@ on:
   pull_request:
     paths:
       - "camera/requirements.txt"
+      - "camera/**/*.py"
+      - "network/meshcore/**/*.py"
+      - "monitor-bridge/**/*.js"
+      - "monitor-bridge/**/*.mjs"
       - "monitor-bridge/package.json"
       - "monitor-bridge/package-lock.json"
       - "network/meshcore/requirements*.txt"
