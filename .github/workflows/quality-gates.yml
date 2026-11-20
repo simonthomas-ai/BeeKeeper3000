@@ -79,11 +79,13 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Join-Path $PWD "scripts/Start-BeeKeeperCamera.ps1"),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
+          foreach ($script in @("scripts/Start-BeeKeeperCamera.ps1", "scripts/Test-BeeKeeperCamera.ps1")) {
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $PWD $script),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+          }
           if ($errors.Count -gt 0) {
             $errors | Format-List | Out-String | Write-Error
             exit 1
