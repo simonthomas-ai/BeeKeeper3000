@@ -16,17 +16,20 @@ Dieses Repository enthält aktuell eine veröffentlichte Teilmenge der BeeKeeper
 ## Aktueller Softwarestand
 
 ### Netzwerk und Triangulation
+
 - `network/triangulation.py`: gewichtete Least-Squares-Schnittpunktberechnung aus mindestens drei unabhängigen, zeitlich passenden Peilungen.
 - `network/protocol-v1.schema.json`: JSON-Vertrag für künftige und lokale IP-/Netzwerkereignisse.
 - `network/meshcore/`: optionaler MeshCore-Serialadapter mit binärem Ereignisformat v1, Ed25519-Signaturen, 128-Bit-Fingerprints, Ablaufzeit, Duplikatfilter und lokalem Stationskoordinatenregister.
-- MeshCore-Funkpakete enthalten keine exakten Koordinaten, Fotos, Audio, Zugangsdaten oder Freitext. Die Empfängerstation ordnet die pseudonyme Stationskennung lokal einem kalibrierten Standort zu.
+- `network/meshcore/event_store.py`: lokaler SQLite-Speicher mit dauerhafter Ereignis-ID-Deduplizierung, Aufbewahrungs-/Datensatzlimit und lokaler Speicherung der zur Peilung aufgelösten Stationskoordinaten. Doppelte signierte Ereignisse werden auch nach einem Empfänger-Neustart nicht erneut gespeichert.
+- MeshCore-Funkpakete enthalten keine exakten Koordinaten, Fotos, Audio, Zugangsdaten oder Freitext. Die Empfängerstation ordnet die pseudonyme Stationskennung lokal einem kalibrierten Standort zu. Die Triangulation liefert ausschließlich eine Suchhypothese.
 
 ### Monitor-Anbindung
-Die Node.js-Komponente in [monitor-bridge/](monitor-bridge/) fragt den Hornet3000-Ereignisendpunkt ab und überträgt ausgewählte Metadaten an den authentifizierten Eingang von [Beekeeper-Monitor](https://github.com/simonthomas-ai/Beekeeper-Monitor). Die Bridge kennzeichnet Artbestimmungen als unbestätigt und lässt Bilder, Audio und GPS weg.
 
-Der aktuelle Monitor-Hauptzweig verfügt über einen loopback-gebundenen Empfangsdienst mit SQLite-Ereignisspeicher und einer lokalen Stationsereignis-Ansicht. Die lokale Ansicht wird unter `http://127.0.0.1:8765/` geöffnet. Die öffentliche GitHub-Pages-Seite greift absichtlich nicht auf einen privaten localhost-Dienst zu.
+Die Node.js-Komponente in [monitor-bridge/](monitor-bridge/) fragt den Hornet3000-Ereignisendpunkt ab und überträgt ausgewählte Metadaten an den authentifizierten Eingang von [Beekeeper-Monitor](https://github.com/simonthomas-ai/Beekeeper-Monitor). Die Bridge kennzeichnet Artbestimmungen als unbestätigt und lässt Bilder, Audio und GPS weg. Sie markiert Ereignisse erst nach einer positiven dauerhaften Empfangsbestätigung; bei fehlgeschriebenem lokalen Bridge-Checkpoint wird die In-Memory-Markierung zurückgerollt.
 
-**Synchronisationsgrenze:** Die Bridge liest derzeit nur die jüngsten 100 Ereignisse pro Abfrage. Ohne Cursor-/Sequenzunterstützung der Quell-API ist verlustfreie Nachholung bei größeren Rückständen noch nicht garantiert. Siehe [Issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7).
+Der Monitor-Hauptzweig verfügt über einen loopback-gebundenen Empfangsdienst mit SQLite-Ereignisspeicher und einer lokalen Stationsereignis-Ansicht. Die lokale Ansicht wird unter `http://127.0.0.1:8765/` geöffnet. Die öffentliche GitHub-Pages-Seite greift absichtlich nicht auf einen privaten localhost-Dienst zu.
+
+**Synchronisationsgrenze:** Die Bridge liest derzeit nur die jüngsten 100 Ereignisse pro Abfrage. Ohne Cursor-/Sequenzunterstützung der Quell-API ist verlustfreie Nachholung bei größeren Rückständen nicht garantiert. Siehe [Issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7).
 
 ## Tests
 
@@ -40,7 +43,7 @@ Für den optionalen MeshCore-Adapter:
 
 ```sh
 python -m pip install -r network/meshcore/requirements.lock
-python -m unittest network.meshcore.test_protocol network.meshcore.test_receiver network.meshcore.test_transport -v
+python -m unittest network.meshcore.test_protocol network.meshcore.test_receiver network.meshcore.test_event_store network.meshcore.test_transport -v
 ```
 
 Für die Node.js-Bridge:
@@ -50,7 +53,7 @@ cd monitor-bridge
 npm test
 ```
 
-GitHub Actions prüft Triangulation, signiertes MeshCore-Protokoll, Empfangs-/Transporttests und die Bridge separat. Die erfolgreiche CI belegt Softwaretests und synthetische Datenpfade, keinen realen Funkbetrieb oder Feldgenauigkeit.
+GitHub Actions prüft Triangulation, signiertes MeshCore-Protokoll, Empfänger, persistenten Speicher und Transport sowie die Bridge separat. Erfolgreiche CI belegt Softwaretests und synthetische Datenpfade, aber keinen realen Funkbetrieb oder Feldgenauigkeit.
 
 ## Was noch nicht als einsatzbereit gilt
 
@@ -59,7 +62,7 @@ GitHub Actions prüft Triangulation, signiertes MeshCore-Protokoll, Empfangs-/Tr
 - Kein Freenet-, Meshtastic-, Mosquitto- oder MapLibre-Laufzeitadapter in diesem Repository.
 - Keine vollständige lokale Stationsruntime mit Installer und Geräteverwaltung.
 - Kein nach unabhängigen Testdaten validiertes Vespa-velutina-Erkennungsmodell; ONNX-Inferenz ist nicht als aktiv bestätigt.
-- Kein vollständiger Backup-/Restore-Abnahmetest für den Monitor-Datenspeicher.
+- Kein vollständiger Backup-/Restore-Abnahmetest für die lokalen Datenspeicher.
 - Keine vollständige Datenschutz- oder DSGVO-Konformitätsprüfung.
 
 ## Sicherheit und Datenschutz
