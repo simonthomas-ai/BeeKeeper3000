@@ -6,6 +6,8 @@ import re
 from collections import deque
 from typing import Callable, Iterable, Mapping
 
+from Crypto.PublicKey import ECC
+
 from network.triangulation import Bearing
 from .protocol import MeshCoreProtocolError, decode_event, public_key_fingerprint
 
@@ -92,17 +94,21 @@ class MeshCoreEventReceiver:
         self.transport = transport
         if not isinstance(trusted_public_keys, Mapping) or not trusted_public_keys:
             raise ValueError("trusted_public_keys must be a non-empty public-key mapping")
-        self.trusted_public_keys = dict(trusted_public_keys)
-        for key_id, public_key in self.trusted_public_keys.items():
+        self.trusted_public_keys = {}
+        for key_id, supplied_key in trusted_public_keys.items():
             if not isinstance(key_id, str) or not re.fullmatch(r"[0-9a-f]{32}", key_id):
                 raise ValueError("trusted public-key IDs must be 32-character lowercase fingerprints")
-            if getattr(public_key, "has_private", lambda: False)():
-                raise ValueError("receiver must be provisioned with public keys, never private signing keys")
             try:
-                if public_key_fingerprint(public_key) != key_id:
+                key = supplied_key if hasattr(supplied_key, "curve") else ECC.import_key(
+                    supplied_key, curve_name="Ed25519"
+                )
+                if key.curve != "Ed25519" or key.has_private():
+                    raise ValueError("receiver accepts public Ed25519 keys only")
+                if public_key_fingerprint(key) != key_id:
                     raise ValueError("trusted public-key fingerprint does not match its key material")
-            except Exception as exc:
-                raise ValueError("invalid trusted public key") from exc
+                self.trusted_public_keys[key_id] = key.public_key()
+            except (ValueError, TypeError, IndexError) as exc:
+                raise ValueError("invalid public Ed25519 key") from exc
         if not isinstance(trusted_station_keys, Mapping) or not trusted_station_keys:
             raise ValueError("trusted_station_keys must explicitly bind stations to authorized signing keys")
         station_key_map = {}
@@ -127,6 +133,13 @@ class MeshCoreEventReceiver:
         self.station_registry = station_registry
         self.sink = sink
         self.trusted_expert_fingerprints = set(trusted_expert_fingerprints)
+        if any(
+            not isinstance(key_id, str)
+            or not re.fullmatch(r"[0-9a-f]{32}", key_id)
+            or key_id not in self.trusted_public_keys
+            for key_id in self.trusted_expert_fingerprints
+        ):
+            raise ValueError("expert trust fingerprints must reference trusted public keys")
         self.max_seen = max_seen
         self._seen = set()
         self._seen_order = deque()
