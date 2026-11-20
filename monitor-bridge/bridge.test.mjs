@@ -455,7 +455,7 @@ test('maximum valid bridge checkpoint survives restart within the bounded state 
     assert.equal(restored.size, 10000);
     assert.equal(restored.cursor, state.cursor);
     assert.equal(restored.has('0000' + 'x'.repeat(124)), true);
-    assert.equal(restored.has('7pr' + 'x'.repeat(124)), true);
+    assert.equal(restored.has('07pr' + 'x'.repeat(124)), true);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
