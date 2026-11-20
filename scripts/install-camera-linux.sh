@@ -15,7 +15,7 @@ while (($#)); do
 done
 die() { echo "ERROR: $*" >&2; exit 1; }
 [[ "$EUID" -eq 0 ]] || die "Run with sudo/root."
-for cmd in systemctl getent usermod install sed grep stat; do
+for cmd in systemctl getent usermod install sed grep stat tail; do
   command -v "$cmd" >/dev/null 2>&1 || die "Required command missing: $cmd"
 done
 [[ -d /run/systemd/system ]] || die "systemd is not running."
@@ -33,11 +33,11 @@ VENV=/opt/beekeeper3000/venv-camera
 [[ -L /opt/beekeeper3000/current && -f "$APP_ROOT/camera/runtime.py" ]] || die "BeeKeeper3000 base station is not installed."
 [[ -f "$STATION_ENV" ]] || die "Base station secrets file is missing."
 [[ -f "$CAMERA_ENV" ]] || die "Create $CAMERA_ENV from docs/camera.env.example first."
-[[ -f "$MANIFEST" ]] || die "Place a reviewed ONNX model and manifest at $MANIFEST first."
 [[ -f "$UNIT_TEMPLATE" ]] || die "Camera systemd unit template is missing."
 [[ -d "$STATE_ROOT" ]] || die "Protected station state directory is missing."
 [[ ! -L "$MODEL_DIR" ]] || die "Model directory must not be a symbolic link."
 install -d -o beekeeper -g beekeeper -m 0750 "$MODEL_DIR"
+[[ -f "$MANIFEST" ]] || die "Place a reviewed ONNX model and manifest at $MANIFEST first."
 [[ "$(stat -c '%U:%G:%a' "$STATE_ROOT")" == "beekeeper:beekeeper:700" ]] || die "Station state directory must be beekeeper:beekeeper mode 0700."
 [[ "$(stat -c '%U:%G:%a' "$MODEL_DIR")" == "beekeeper:beekeeper:750" ]] || die "Model directory must be beekeeper:beekeeper mode 0750."
 
