@@ -1,0 +1,9 @@
+{
+  "name": "beekeeper3000-monitor-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local metadata-only event adapter from Hornet3000 to Beekeeper-Monitor",
+  "scripts": { "start": "node bridge.mjs", "test": "node --test" },
+  "engines": { "node": ">=20" }
+}
