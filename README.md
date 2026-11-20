@@ -86,3 +86,18 @@ Die CI prüft die optionale MeshCore-Python-Abhängigkeitsliste mit `pip-audit`,
 ## Herkunft und Lizenz
 
 Die eingebrachte Ausgangsbasis stammt aus Hornet3000 Wächter 1.6.0. Dieses Repository behauptet keine Clean-Room-Neuentwicklung und keine pauschale Neulizenzierung. Die veröffentlichte Repository-Lizenzmetadaten- und Quellbaumprüfung ist noch nicht vollständig abgeschlossen; die Root-Datei `LICENSE` und die vollständige ursprüngliche Quellbasis sind vor einer Release-/Weiterverteilungsfreigabe zu prüfen. Siehe [PROVENANCE.md](PROVENANCE.md), [LICENSES.md](LICENSES.md) und [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Recht, Gemeinnützigkeit und Freigabestatus
+
+**Das Projekt ist nicht als gemeinnützige Körperschaft anerkannt und wird hier nicht als solche bezeichnet.** Kostenloser Open-Source-Zugang ist nicht gleichbedeutend mit steuerlicher Gemeinnützigkeit. Es werden über dieses Repository keine Spendenquittungen, steuerlichen Vorteile, Zertifizierungen oder Haftungsfreiheit zugesagt.
+
+Die Root-Lizenz und die vollständige Rechtekette des veröffentlichten Teilbaums sind noch nicht abschließend freigegeben. Die Ausgangsbasis ist laut Provenienzunterlagen Hornet3000 Wächter 1.6.0 mit GPL-3.0-or-later-Herkunft; daraus folgt keine pauschale Neulizenzierung aller neu hinzugefügten oder externen Bestandteile. Bis zur Prüfung keine Gesamtprojektlizenz unterstellen und keine unklar lizenzierten Artefakte weiterverteilen.
+
+Der öffentliche Pilot- und Release-Status bleibt **BLOCKIERT**, bis die anwendbare Checkliste für Träger-/Betreiberrollen, Lizenzkette, Datenschutz, Produktsicherheit, Funkrecht und fachliche Erkennungsqualität dokumentiert freigegeben wurde. Siehe:
+- [Recht und Gemeinnützigkeit](docs/LEGAL-COMPLIANCE.md)
+- [Verbindliches Release-/Pilot-Gate](docs/RELEASE-LEGAL-GATE.md)
+- [Mitwirkungsregeln](CONTRIBUTING.md)
+- [Sicherheitsrichtlinie](SECURITY.md)
+
+Diese Dokumente sind Risikomanagement und keine Rechtsberatung, keine behördliche Anerkennung und keine Garantie, dass Maintainer oder Betreiber niemals in Anspruch genommen werden können.
+
