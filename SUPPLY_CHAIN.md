@@ -42,3 +42,8 @@ npm --prefix monitor-bridge audit --audit-level=low
 ```
 
 A clean dependency audit is only an advisory-database result for the versions and package set named above. It does not prove license compatibility, source provenance, safe runtime behaviour or compliance.
+
+
+## Dated upstream evidence
+
+The component license/security review is maintained in [docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md](docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md). Changes to that register now trigger the supply-chain CI workflow.
