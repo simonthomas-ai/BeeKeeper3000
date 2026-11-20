@@ -61,6 +61,7 @@ The camera launcher retrieves the source API key from the base station's current
 - A full bounded outbox stops the runtime rather than silently dropping observations.
 - A stable event ID cannot be reused with changed payload content.
 - Camera reconnect uses capped exponential backoff. Processing is CPU-bounded by configurable FPS and ONNX worker threads.
+- Network/file capture uses OpenCV FFmpeg open/read timeouts of 5 seconds; builds without timeout support fail closed instead of silently using an unbounded network read. This is a backend timeout request, not a guarantee against every driver/firmware hang.
 - Raw images are held only in process memory for inference and are not retained by this module.
 
 Windows NTFS ACLs must be restrictive; Linux/macOS directories are mode 0700 and database files mode 0600. SQLite is not application-encrypted: use BitLocker or an encrypted volume. The outbox is a separate database and must be included in a future full station backup/restore drill before deployment.
