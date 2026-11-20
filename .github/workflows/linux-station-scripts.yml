@@ -1,0 +1,51 @@
+name: Linux station installer validation
+
+on:
+  push:
+    paths:
+      - "scripts/install-linux.sh"
+      - "deploy/systemd/**"
+      - "docs/STATION-QUICKSTART-LINUX.md"
+      - ".github/workflows/linux-station-scripts.yml"
+  pull_request:
+    paths:
+      - "scripts/install-linux.sh"
+      - "deploy/systemd/**"
+      - "docs/STATION-QUICKSTART-LINUX.md"
+      - ".github/workflows/linux-station-scripts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: simonthomas-ai/Beekeeper-Monitor
+          path: Beekeeper-Monitor
+      - name: Validate script syntax and prerequisites without installation
+        shell: bash
+        run: |
+          bash -n scripts/install-linux.sh
+          bash scripts/install-linux.sh \
+            --beekeeper-repo "$GITHUB_WORKSPACE" \
+            --monitor-repo "$GITHUB_WORKSPACE/Beekeeper-Monitor" \
+            --validate-only
+      - name: Verify service hardening and no public listener configuration
+        shell: bash
+        run: |
+          for unit in deploy/systemd/*.service; do
+            grep -q '^User=beekeeper$' "$unit"
+            grep -q '^ProtectSystem=strict$' "$unit"
+            grep -q '^ProtectHome=true$' "$unit"
+            grep -q '^NoNewPrivileges=true$' "$unit"
+            grep -q '^ReadWritePaths=/var/lib/beekeeper3000$' "$unit"
+          done
+          if grep -Eq '0\.0\.0\.0|:::' deploy/systemd/*.service; then
+            echo "Systemd service definitions must not declare public listener addresses." >&2
+            exit 1
+          fi
