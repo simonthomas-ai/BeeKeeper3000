@@ -197,6 +197,10 @@ class SQLiteSourceEventStore:
             raise CursorError("cursor sequence must be a non-negative integer")
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError("limit must be between 1 and 100")
+        # Enforce the declared retention window on reads as well as writes.
+        # The earliest_sequence watermark is updated before the page snapshot,
+        # so an offline consumer receives an explicit 410 instead of stale data.
+        self.purge_expired()
         with self._db() as db:
             db.execute("BEGIN")
             last_sequence = int(db.execute(
