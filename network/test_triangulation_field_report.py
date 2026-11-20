@@ -12,6 +12,7 @@ from network.triangulation_field_report import (
     _wilson_interval,
     build_report,
     report_csv,
+    _write_private_report,
 )
 from network.triangulation import Bearing, triangulate
 
@@ -140,6 +141,24 @@ class FieldReportTests(unittest.TestCase):
             text = str(report)
             self.assertNotIn("51.0", text)
             self.assertNotIn("6.995", text)
+
+    def test_station_id_cannot_move_between_trials(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "moved-station.csv"
+            rows = trial_rows("trial-01") + trial_rows("trial-02")
+            rows[4]["station_latitude"] = "51.2"
+            write_csv(path, rows)
+            with self.assertRaises(FieldReportError):
+                report_csv(path)
+
+    def test_private_report_refuses_overwrite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "report.json"
+            _write_private_report(path, '{"private": true}')
+            with self.assertRaises(FileExistsError):
+                _write_private_report(path, '{"replacement": true}')
+            self.assertEqual(path.read_text(encoding="utf-8"), '{"private": true}')
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
     def test_wilson_interval_edges(self):
         self.assertIsNone(_wilson_interval(0, 0))
