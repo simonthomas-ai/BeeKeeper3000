@@ -63,6 +63,34 @@ class SourceClientTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=2)
 
+    def test_acknowledges_only_explicit_source_erasure_response(self):
+        class Handler(BaseHTTPRequestHandler):
+            response_body = b'{"error":"source_event_id_deleted"}'
+            response_code = 410
+            def do_POST(self):
+                self.rfile.read(int(self.headers["Content-Length"]))
+                self.send_response(self.response_code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(self.response_body)))
+                self.end_headers()
+                self.wfile.write(self.response_body)
+            def log_message(self, *args):
+                pass
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = SourceApiClient("http://127.0.0.1:%d" % server.server_port, "a" * 32)
+            event = {"id":"camera-deleted","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False}
+            self.assertTrue(client.send_event(event))
+            Handler.response_body = b'{"error":"some_other_410"}'
+            with self.assertRaises(SourceClientError):
+                client.send_event(event)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
     def test_rejects_non_loopback_and_remote_scheme(self):
         with self.assertRaises(ValueError):
             SourceApiClient("http://example.org", "a" * 32)

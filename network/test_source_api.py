@@ -12,7 +12,7 @@ from urllib.parse import quote
 
 from network.source_api import make_server
 from network.source_cursors import CursorError, CursorExpired, CursorSigner
-from network.source_event_store import SQLiteSourceEventStore
+from network.source_event_store import SQLiteSourceEventStore, SourceDeletedError
 from network.source_events import SourceEventError, validate_source_event
 
 API_KEY = "source-api-test-key-not-for-production"
@@ -101,6 +101,39 @@ class SQLiteSourceStoreTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def test_individual_delete_keeps_cursor_sequence_and_blocks_replay(self):
+        for index in range(1, 4):
+            self.store.append(sample_event(index))
+        self.assertTrue(self.store.delete("source-event-0001"))
+        self.assertFalse(self.store.delete("source-event-0001"))
+        self.assertEqual(self.store.count(), 2)
+        page = self.store.page(0, 100)
+        self.assertEqual([event["id"] for event in page["events"]],
+                         ["source-event-0002", "source-event-0003"])
+        self.assertEqual(page["next_sequence"], 3)
+        with self.assertRaises(SourceDeletedError):
+            self.store.append(sample_event(1))
+
+    def test_invalid_source_event_id_cannot_be_deleted(self):
+        for invalid in ("", "has space", "snowman-☃", "x" * 129):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                self.store.delete(invalid)
+
+    def test_deleted_event_tombstone_expires_with_retention_without_sequence_reuse(self):
+        for index in range(1, 4):
+            self.store.append(sample_event(index))
+        self.assertTrue(self.store.delete("source-event-0001"))
+        expired = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat()
+        with self.store._db() as db:
+            db.execute(
+                "UPDATE source_tombstones SET deleted_at=? WHERE event_id=?",
+                (expired, "source-event-0001"),
+            )
+        self.store.purge_expired()
+        record, inserted = self.store.append(sample_event(1))
+        self.assertTrue(inserted)
+        self.assertGreater(record["sequence"], 3)
 
     def test_duplicate_delivery_is_idempotent_but_conflicting_reuse_is_rejected(self):
         record, inserted = self.store.append(sample_event(1))
@@ -191,6 +224,53 @@ class SourceApiTests(unittest.TestCase):
         conn.close()
         payload = json.loads(raw.decode("utf-8")) if raw else None
         return status, payload, headers
+
+    def test_authenticated_delete_erases_source_event_without_breaking_cursors(self):
+        for index in (1, 2):
+            status, _, _ = self.request("POST", "/api/events", body=json.dumps(sample_event(index)))
+            self.assertEqual(status, 201)
+        status, payload, _ = self.request(
+            "DELETE", "/api/events?id=source-event-0001", key="wrong"
+        )
+        self.assertEqual(status, 401)
+        self.assertEqual(self.store.count(), 2)
+
+        status, payload, _ = self.request(
+            "DELETE", "/api/events?id=source-event-0001"
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"deleted": True})
+        self.assertEqual(self.store.count(), 1)
+
+        # An explicit deletion is a sequence hole, not a retention purge:
+        # consumers can still continue from the prior cursor.
+        status, page, _ = self.request("GET", "/api/events?limit=100&cursor=start")
+        self.assertEqual(status, 200)
+        self.assertEqual([event["id"] for event in page["events"]], ["source-event-0002"])
+        self.assertFalse(page["has_more"])
+
+        # Delayed replay of the deleted ID must fail closed.
+        status, replay, _ = self.request(
+            "POST", "/api/events", body=json.dumps(sample_event(1))
+        )
+        self.assertEqual(status, 410)
+        self.assertEqual(replay, {"error": "source_event_id_deleted"})
+        status, payload, _ = self.request(
+            "DELETE", "/api/events?id=source-event-0001"
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(payload, {"deleted": False})
+
+    def test_delete_rejects_missing_duplicate_and_malformed_parameters(self):
+        for path in (
+            "/api/events",
+            "/api/events?id=",
+            "/api/events?id=source-event-0001&id=source-event-0002",
+            "/api/events?id=source-event-0001&extra=1",
+        ):
+            with self.subTest(path=path):
+                status, _, _ = self.request("DELETE", path)
+                self.assertEqual(status, 400)
 
     def test_unauthorized_source_access_is_denied(self):
         status, payload, _ = self.request("GET", "/api/events", key="wrong")

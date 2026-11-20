@@ -31,6 +31,22 @@ class SourceBackupTests(unittest.TestCase):
             row = db.execute("SELECT event_id FROM source_events WHERE event_id='backup-test-1'").fetchone()
         self.assertIsNotNone(row)
 
+    def test_backup_restore_preserves_tombstone_against_deleted_event_replay(self):
+        self.assertTrue(self.store.delete("backup-test-1"))
+        backup = self.root / "backups" / "source-erasure-backup.sqlite3"
+        backup.parent.mkdir(mode=0o700)
+        backup_database(self.source, backup)
+        restored = self.root / "restored-erasure.sqlite3"
+        restore_database(backup, restored)
+        reopened = SQLiteSourceEventStore(str(restored))
+        self.assertEqual(reopened.count(), 0)
+        with self.assertRaises(Exception):
+            reopened.append({
+                "id": "backup-test-1", "observed_at": "2026-11-20T10:00:00Z",
+                "station_id": "station_north", "species": "vespa_velutina",
+                "confidence": 0.91, "prey_detected": False,
+            })
+
     def test_refuses_to_overwrite_existing_backup(self):
         destination = self.root / "existing.sqlite3"
         destination.write_bytes(b"keep-me")

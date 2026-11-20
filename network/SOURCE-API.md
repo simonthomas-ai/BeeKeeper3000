@@ -74,3 +74,35 @@ python -m unittest network.test_source_api network.test_triangulation -v
 ```
 
 The suite tests 250-event pagination, restart/resume, tampered/stale cursors, retention, duplicate delivery, capacity, authentication and privacy-field rejection. These are software tests, not radio coverage or field-validation tests.
+
+## Authenticated source-event erasure
+
+The source journal supports an authenticated operator deletion request:
+
+`DELETE /api/events?id=<URL-encoded-event-id>`
+
+Use the same `X-API-Key` header as for source event ingestion and cursor reads.
+The endpoint accepts exactly one printable ASCII event ID, rejects request bodies
+and returns `{"deleted":true}` only when the row was removed. Repeating a deletion
+is idempotent and returns `{"deleted":false}`. Invalid query parameters are
+rejected; unauthenticated deletion returns 401.
+
+Deletion creates a tombstone containing only the event ID and deletion time.
+It prevents a delayed retry from recreating the deleted event during the source
+journal retention horizon. The tombstone is itself expired with that retention
+window. Tombstones are bounded to twice the configured event row limit; if that
+separate ledger is full, deletion fails closed with HTTP 503 rather than
+silently allowing a replay.
+
+Explicit deletion does not move the cursor retention watermark or recycle
+sequence numbers. The bridge can continue over the intentional sequence hole.
+Normal age-based retention still advances the watermark and causes stale
+cursors to receive HTTP 410. Backups preserve tombstones.
+
+**Important:** source deletion is local to the source journal. It does not recall
+a Monitor event already accepted by a receiver, remove a copy already present in
+a backup/export, retract a radio packet already transmitted or remove a browser
+export. Operators must separately delete downstream Monitor copies and expire
+or destroy other copies according to the deployment's approved data-lifecycle
+procedure. An already fetched in-flight bridge page can still contain the event;
+repeat the downstream deletion check after any in-flight page has settled.
