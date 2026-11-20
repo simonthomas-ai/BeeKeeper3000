@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "network/**"
+      - "monitor-bridge/**"
       - ".github/workflows/network-tests.yml"
   pull_request:
     paths:
@@ -24,6 +25,19 @@ jobs:
           python-version: "3.11"
       - name: Run triangulation tests
         run: python -m unittest network.test_triangulation -v
+
+
+  monitor-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run bridge contract, privacy and retry tests
+        working-directory: monitor-bridge
+        run: node --test bridge.test.mjs
 
   meshcore-protocol:
     runs-on: ubuntu-latest
