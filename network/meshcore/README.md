@@ -33,3 +33,22 @@ For receiving, subscribe to the configured channel/data type and pass raw payloa
 - Receiving stations must provision public keys and map the short station identifier to a local station record and calibrated coordinates. Without that mapping, the bearing cannot be transformed into a geographic ray.
 - This adapter is independent of Meshtastic, Freenet and Mosquitto. It does not activate those transports.
 - Validate German/EU frequency, duty-cycle, channel-width and EIRP constraints for the selected hardware before deployment.
+
+## Receive and convert bearings
+
+A receiving station installs the MeshCore public-key allowlist and its own local
+station registry. Station coordinates are not transmitted over the radio; the
+receiver resolves the short station identifier to coordinates held locally.
+
+The MeshCoreEventReceiver verifies Ed25519 signatures and expiry, rejects
+unknown keys and unknown station hashes for bearing events, downgrades expert
+claims unless the signer is in the explicit expert-key allowlist, filters
+duplicates in a bounded in-memory cache and passes a normalized event plus an
+optional local Bearing object to the application sink. The sink must persist
+events idempotently across process restarts; the RAM cache is only an additional
+short-term duplicate filter.
+
+For triangulation, the local registry maps each signed station hash to a stable
+station ID and calibrated latitude/longitude. Only a bearing event is converted
+to a local network.triangulation.Bearing instance. No coordinate is added to
+the radio packet.
