@@ -35,6 +35,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         # The station identifier hash is derived exactly as in protocol v1.
         import hashlib
         station_hash = hashlib.sha256(b"station-north").digest()[:16].hex()
+        self.station_hash = station_hash
         self.registry = StationRegistry({
             station_hash: {
                 "station_id": "north-roof",
@@ -66,6 +67,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={self.station_hash: {self.fingerprint}},
             station_registry=self.registry,
             sink=lambda event, bearing: received.append((event, bearing)),
         )
@@ -83,6 +85,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={self.station_hash: {self.fingerprint}},
             station_registry=StationRegistry({}),
             sink=lambda event, bearing: received.append(event),
         )
@@ -90,6 +93,35 @@ class MeshCoreReceiverTests(unittest.TestCase):
         self.assertFalse(asyncio.run(receiver.handle_payload(payload)))
         self.assertEqual(receiver.rejected_count, 1)
         self.assertEqual(received, [])
+
+    def test_signer_cannot_impersonate_another_station(self):
+        second_private = ECC.generate(curve="Ed25519")
+        second_public = second_private.public_key()
+        second_fingerprint = public_key_fingerprint(second_public)
+        received = []
+        receiver = MeshCoreEventReceiver(
+            transport=object(),
+            trusted_public_keys={
+                self.fingerprint: self.public,
+                second_fingerprint: second_public,
+            },
+            trusted_station_keys={self.station_hash: {second_fingerprint}},
+            station_registry=self.registry,
+            sink=lambda event, bearing: received.append(event),
+        )
+        payload = encode_event(self.event, self.private, now_epoch=self.now)
+        self.assertFalse(asyncio.run(receiver.handle_payload(payload)))
+        self.assertEqual(receiver.rejected_count, 1)
+        self.assertEqual(received, [])
+
+    def test_receiver_requires_explicit_station_key_binding(self):
+        with self.assertRaises(TypeError):
+            MeshCoreEventReceiver(
+                transport=object(),
+                trusted_public_keys={self.fingerprint: self.public},
+                station_registry=self.registry,
+                sink=lambda event, bearing: None,
+            )
 
     def test_async_sink_is_awaited(self):
         received = []
@@ -99,6 +131,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={self.station_hash: {self.fingerprint}},
             station_registry=self.registry,
             sink=sink,
         )
