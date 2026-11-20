@@ -200,7 +200,7 @@ def decode_event(payload: bytes, trusted_public_keys: Mapping[str, object], *,
     if candidate_key is None:
         raise MeshCoreProtocolError("signing key is not trusted")
     public = _public_key(candidate_key)
-    expected_fingerprint = hashlib.sha256(public.export_key(format="raw")).digest()[:8].hex()
+    expected_fingerprint = hashlib.sha256(public.export_key(format="raw")).digest()[:16].hex()
     if expected_fingerprint != fingerprint:
         raise MeshCoreProtocolError("public-key fingerprint mismatch")
     try:
