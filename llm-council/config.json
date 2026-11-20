@@ -13,9 +13,9 @@
     {
       "name": "OpenRouter Free",
       "provider_type": "openai_compatible",
-      "enabled": true,
-      "free_access_verified": true,
-      "provider_enforced_hard_cap_eur": 0,
+      "enabled": false,
+      "free_access_verified": false,
+      "provider_enforced_hard_cap_eur": null,
       "terms_reviewed_on": "2026-11-20",
       "base_url": "https://openrouter.ai/api/v1",
       "model": "openrouter/free",
