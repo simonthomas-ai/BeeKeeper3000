@@ -21,7 +21,7 @@ The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. T
 - The Python SBOM covers the optional MeshCore binding lock only. The bridge is a zero-external-dependency Node.js module. It does not inventory missing C++ build dependencies, firmware binaries, operating-system packages, inference runtime, camera SDKs, model weights, training datasets, photos, audio, map tiles or future adapters.
 - The MeshCore requirements lock is a Linux CI lock captured for the current optional binding; other operating systems and hardware require independent resolution and testing.
 - The SBOM generator and audit tools are themselves CI tools, not product runtime dependencies.
-- GitHub Actions references are version tags in existing workflows; immutable SHA pinning is not yet consistently applied.
+- All external GitHub Actions references in the reviewed workflow sets are pinned to immutable 40-character commit SHAs. Main-branch verification on 2026-11-20 covered 4 BeeKeeper3000 workflow files (6 references) and 19 Beekeeper-Monitor workflow files (13 references). New workflow actions must also be SHA-pinned; review Dependabot updates and rerun CI before merging.
 - Secret scanning depends on repository/account feature availability; do not treat CodeQL or dependency auditing as a substitute for secret scanning.
 
 ## Reproducible local commands

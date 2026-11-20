@@ -21,7 +21,7 @@ This is a dated engineering review of optional components named in this project.
 - The Node bridge uses Node built-ins only. Its committed npm lockfile currently contains no third-party npm package entries.
 - `.github/workflows/supply-chain.yml` runs pinned `pip-audit==2.10.1` against the optional Python lock, generates a CycloneDX 1.6 artifact with pinned `cyclonedx-bom==9.0.0`, and runs `npm audit` against the Node lock.
 - These checks cover only those exact manifests. They do not cover missing inherited C++/CMake sources, hardware firmware, operating-system packages, model runtimes, weights, datasets, image/audio assets or future adapters.
-- CI action references are still not consistently pinned to immutable commit SHAs; treat this as supply-chain hardening work before a public release.
+- GitHub Actions references in the reviewed first-party workflows are now pinned to immutable 40-character commit SHAs: BeeKeeper3000 (4 workflow files, 6 external action references) and Beekeeper-Monitor (19 workflow files, 13 external action references), verified against both repositories' `main` branches on 2026-11-20. Future workflow additions must keep this SHA-pinning rule; Dependabot updates should be reviewed and tested before merge.
 - The project root LICENSE and full inherited source archive are absent. The provenance notes describe the inherited 1.6.0 baseline as GPL-3.0-or-later, but a project-wide license cannot be declared until the full source/notice chain is restored and reconciled. Do not add a blanket root license by inference.
 
 ## Adoption gate
