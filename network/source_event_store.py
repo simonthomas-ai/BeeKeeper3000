@@ -192,6 +192,20 @@ class SQLiteSourceEventStore:
             )
             return {"sequence": sequence, "event": event}, True
 
+    def start_sequence(self) -> int:
+        """Return the position immediately before the earliest retained event.
+
+        A new consumer cannot recover data that has already expired. Starting
+        at the retention boundary is distinct from replaying an old signed
+        cursor, which must return CursorExpired instead of silently skipping.
+        """
+        self.purge_expired()
+        with self._db() as db:
+            earliest = int(db.execute(
+                "SELECT CAST(value AS INTEGER) FROM source_meta WHERE key='earliest_sequence'"
+            ).fetchone()[0])
+            return max(0, earliest - 1)
+
     def page(self, after_sequence: int, limit: int) -> dict:
         if type(after_sequence) is not int or after_sequence < 0:
             raise CursorError("cursor sequence must be a non-negative integer")
