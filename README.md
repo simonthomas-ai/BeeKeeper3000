@@ -45,6 +45,10 @@ Das Beispielmanifest ist absichtlich ungültig und es sind keine Modellgewichte 
 
 [mobile-pwa/](mobile-pwa/) enthält einen responsiven PWA-Teilnehmerclient für Android, iPhone und Tablets. Er unterstützt manuelle unbestätigte Sichtungsmeldungen, optionales Foto mit lokaler Neucodierung, einmaligen GPS-Fix, unkalibrierte Kompass-Rohwerte, Offline-Speicherung in IndexedDB und einen Metadatenexport mit exakt dem bestehenden Source-API-v1-Feldsatz. Fotos, Notizen, GPS, Kompassdaten und Diagnostik bleiben lokal und werden nicht exportiert. Es gibt noch keine automatische Synchronisierung und keine Hintergrundaufnahme. Geräte-/Browserabnahme: [docs/MOBILE-PWA-ACCEPTANCE.md](docs/MOBILE-PWA-ACCEPTANCE.md).
 
+### Smartphone-Meldungen an die Station übergeben
+
+Für Windows gibt es einen lokalen Importer: `scripts/import_mobile_export.py` validiert den JSON-Export gegen den Source-API-v1-Vertrag und sendet die Ereignisse einzeln an die fest codierte Loopback-Adresse `127.0.0.1:8787`. Der API-Schlüssel kommt ausschließlich aus der DPAPI-geschützten Stationsdatei über `scripts/Import-BeeKeeperMobileExport.ps1`; er wird weder im Telefon gespeichert noch als Kommandozeilenargument übergeben. Weiteres siehe [Mobile PWA README](mobile-pwa/README.md). Der Transfer der JSON-Datei bleibt eine bewusste Betreiberaktion.
+
 ## Multi-Quellen- und Hardwareplattform
 
 Die Integrationsarchitektur ist herstellerneutral ausgelegt. Die aktuelle Kompatibilitätsmatrix unterscheidet Smartphone-/Tablet-Meldungen, USB-/UVC- und IP-Kameras, CSI/MIPI, Depth-/Thermal-Sensoren, Windows/Linux/ARM64/Jetson-Edge-Systeme, GNSS/IMU, BLE/Modbus-Sensoren sowie HTTPS/MQTT, MeshCore, Meshtastic, LoRaWAN und optionale P2P-IP-Synchronisierung. **Die Auflistung ist eine Ziel-/Adaptermatrix und keine Behauptung, dass alle Adapter bereits implementiert oder auf Hardware getestet sind.** Jede Kombination erhält einen Status von geplant bis feldvalidiert.
@@ -61,7 +65,7 @@ Die Referenzschaltbilder zeigen Smartphone-only, PoE-Kamera/Edge-Host, Solar-Nie
 Aus dem Repository-Hauptverzeichnis:
 
 ```sh
-python -m unittest network.test_triangulation -v
+python -m unittest network.test_triangulation tests.test_mobile_export_import -v
 ```
 
 Für den optionalen MeshCore-Adapter:

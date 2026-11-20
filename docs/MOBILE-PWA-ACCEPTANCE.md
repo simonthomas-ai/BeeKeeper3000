@@ -30,3 +30,9 @@ A passed browser unit test is not a device acceptance. iOS background execution,
 2. Open the address on the phone and add it to the home screen.
 3. Create an observation; optional camera/photo and location permissions are requested only when selected.
 4. Export the metadata JSON and transfer it deliberately to a trusted station operator for reviewed ingestion. Do not upload private media or exact coordinates to public services.
+## Übergabe-/Stationsimport
+
+- Importer-Tests prüfen strikte Umschlag-/Ereignis-Schemata, Ausschluss zusätzlicher GPS-/Medienfelder, Zeitzonen, doppelte Ereignis-IDs und feste Loopback-Zieladresse.
+- Auf Windows erfolgt die Schlüsselübergabe aus `%LOCALAPPDATA%\\BeeKeeper3000\\station-secrets.clixml` über DPAPI; der Schlüssel darf weder in der PWA noch in der Exportdatei erscheinen.
+- Vor produktiver Nutzung einen Testexport mit synthetischen Ereignissen importieren und die gespeicherte Station-/Monitoransicht prüfen.
+- Der Importer ist keine automatische Synchronisierung und kein öffentlicher API-Endpunkt. Dateiübertragung und Freigabe bleiben unter Betreiberkontrolle.
