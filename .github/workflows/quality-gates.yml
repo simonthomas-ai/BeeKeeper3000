@@ -1,0 +1,60 @@
+name: Quality gates
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-gates-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-core:
+    name: Python core and safety tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Run dependency-free core and LLM safety tests
+        run: python -m unittest network.test_triangulation tests.test_llm_council -v
+      - name: Install pinned optional MeshCore runtime
+        run: python -m pip install --disable-pip-version-check --requirement network/meshcore/requirements.lock
+      - name: Check Python environment
+        run: python -m pip check
+      - name: Run MeshCore protocol, receiver, persistence and transport tests
+        run: >-
+          python -m unittest
+          network.meshcore.test_protocol
+          network.meshcore.test_receiver
+          network.meshcore.test_event_store
+          network.meshcore.test_transport
+          -v
+
+  monitor-bridge:
+    name: Monitor bridge tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: monitor-bridge/package-lock.json
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm --prefix monitor-bridge ci --ignore-scripts --no-audit --no-fund
+      - name: Run bridge tests
+        run: npm --prefix monitor-bridge test
