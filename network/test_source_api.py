@@ -250,10 +250,15 @@ class SourceApiTests(unittest.TestCase):
         old = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
         with store._db() as db:
             db.execute("UPDATE source_events SET created_at=? WHERE sequence=1", (old,))
-        store.purge_expired()
-        self.store = store
-        status, payload, _ = self.request("GET", "/api/events?limit=100")
-        self.assertEqual(status, 200)
+        self.assertEqual(store.purge_expired(), 1)
+        # Restart the handler with the retained journal before requesting the cursor.
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=3)
+        self.store = SQLiteSourceEventStore(self.db_path, retention_days=1, max_rows=1000)
+        self.server = make_server(API_KEY, CURSOR_SECRET, self.store, port=0)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
         # A token from before the retained boundary cannot be silently reset.
         stale = CursorSigner(CURSOR_SECRET).issue(0)
         status, payload, _ = self.request("GET", "/api/events?limit=100&cursor=" + quote(stale, safe=""))
