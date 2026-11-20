@@ -51,7 +51,7 @@ $env:BEEKEEPER_CAMERA_COOLDOWN_SECONDS = '30'
 .\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe'
 ~~~
 
-The camera launcher retrieves the source API key from the base station's current-user DPAPI secret file and passes it only through the child process environment; it does not put the key on the command line or in logs. Start the base station services separately first with scripts/Start-BeeKeeperStation.ps1. The source URL is restricted to loopback (127.0.0.1, ::1 or localhost); authenticated HTTP requests are not allowed to follow redirects. The camera source is local configuration; do not paste RTSP credentials into tickets or logs.
+The camera launcher retrieves the source API key from the base station's current-user DPAPI secret file and passes it only through the child process environment; it does not put the key on the command line or in logs. Start the base station services separately first with scripts/Start-BeeKeeperStation.ps1. The source URL is restricted to loopback (127.0.0.1 or ::1); authenticated HTTP requests are not allowed to follow redirects. The camera source is local configuration; do not paste RTSP credentials into tickets or logs.
 
 ## Offline queue and failure behaviour
 
