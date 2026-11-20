@@ -5,7 +5,7 @@ The local Node.js adapter transfers selected **metadata only** from Hornet3000 t
 ## Requirements
 
 - Node.js 22 LTS (Node.js 20+ may work, but CI currently tests Node.js 22).
-- Hornet3000's authenticated local API at `GET /api/events?limit=100`; lossless delivery requires the cursor contract in [SOURCE-CURSOR-CONTRACT.md](./SOURCE-CURSOR-CONTRACT.md).
+- An authenticated source API at `GET /api/events?limit=100`. The standalone durable reference service is documented in [network/SOURCE-API.md](../network/SOURCE-API.md); lossless delivery requires its signed cursor contract.
 - Beekeeper-Monitor's local receiver and PWA.
 - Separate source API key and random receiver token (at least 24 characters). Never reuse credentials.
 
@@ -54,11 +54,15 @@ Run the local receiver and bridge under separate service identities or terminal 
 - Source and receiver JSON responses are size-bounded; redirects are rejected; requests time out.
 - All source detections remain unverified candidates until human/expert review.
 
-## Cursor catch-up and current source limitation
+## Cursor catch-up and source API readiness
 
-The bridge now supports source-side opaque cursor pagination. It persists a version-2 checkpoint containing a cursor and bounded forwarded-ID set, accepts existing version-1 state files, processes multiple 100-event pages per poll, and advances a cursor only after every event in that page has been acknowledged by the Monitor. If a partial page fails, the cursor remains at the previous page boundary; previously accepted events are skipped on replay and the receiver's idempotent hash prevents duplicate rows. Cursor-mode pages reject invalid events rather than advancing past them.
+The bridge client supports opaque cursor pagination. It persists a version-2 checkpoint containing a cursor and bounded forwarded-ID set, accepts existing version-1 state files, processes multiple 100-event pages per poll, and advances a cursor only after every event in that page has been acknowledged by the Monitor. Partial page failures retain the previous cursor; replay is protected by stable source IDs and the Monitor's SQLite idempotency key. Cursor-mode pages reject invalid events rather than advancing past them.
 
-The existing Hornet3000 API in this repository still exposes only `GET /api/events?limit=100`; the source-side cursor implementation is not present here. Until that API returns `events`, `next_cursor` and `has_more` according to [SOURCE-CURSOR-CONTRACT.md](./SOURCE-CURSOR-CONTRACT.md), the default backward-compatible bridge mode still uses the latest-100 feed and is **not lossless**. Set `BRIDGE_REQUIRE_CURSOR=true` to make production operation fail closed unless the cursor contract is available. Do not mark issue #7 complete until the source API, retention and backlog acceptance tests exist. No client-side retry can recover records already omitted by the source API. See [BeeKeeper3000 issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7).
+The repository now includes a standalone authenticated SQLite source journal in `network/source_api.py`. It implements `GET /api/events`, signed opaque cursors, strict metadata-only `POST /api/events`, idempotent immutable IDs, bounded retention/capacity and explicit HTTP 410 for cursors older than retained data. See [network/SOURCE-API.md](../network/SOURCE-API.md) and [SOURCE-CURSOR-CONTRACT.md](./SOURCE-CURSOR-CONTRACT.md).
+
+**Important integration boundary:** this source API is an independently runnable reference adapter. The complete inherited Hornet3000 1.6.0 C++ source tree is still not present in this repository, and no camera/model producer is automatically wired to POST events into this service. A trusted local producer must be configured before the bridge receives real detections. Do not treat the standalone API as a completed retrofit of the original C++ daemon.
+
+The bridge now defaults `BRIDGE_REQUIRE_CURSOR=true`; it fails closed rather than silently falling back to the lossy latest-100 mode. To test legacy compatibility only, an operator may explicitly set it to `false`, understanding that missed events cannot be recovered from a latest-only endpoint. Keep the default true for production deployments. Do not close issue #7 until the standalone service is deployed with the actual producer path and end-to-end acceptance tests have been completed.
 
 ## Verification boundary
 

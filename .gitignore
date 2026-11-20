@@ -7,6 +7,9 @@
 *.p12
 *.pfx
 
+# Local source API event journal
+network/data/
+
 # Bridge state and local databases
 monitor-bridge-state.json
 monitor-bridge-state.json.*

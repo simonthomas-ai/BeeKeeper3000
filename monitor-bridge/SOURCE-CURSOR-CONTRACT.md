@@ -1,6 +1,6 @@
 # Hornet3000 source API cursor contract
 
-This document defines the source-side API required for lossless bridge catch-up. The current repository contains the bridge client but does not contain the Hornet3000 HTTP server implementation. Therefore this is an implementation contract, not a claim that the source endpoint already supports it.
+This document defines the source-side API required for lossless bridge catch-up. The repository now includes an independently runnable reference implementation at `network/source_api.py` with SQLite journaling and HMAC-SHA256 cursors. It is not yet wired into the missing inherited Hornet3000 1.6.0 C++ service or a real camera/model producer; see [network/SOURCE-API.md](../network/SOURCE-API.md).
 
 ## Request
 
@@ -77,4 +77,4 @@ HTTP 200 JSON:
 6. Test API-key authorization, request timeouts, size limits, rate limiting and no sensitive media/GPS fields.
 7. Run an end-to-end test with a local Monitor receiver and assert each source ID maps to exactly one logical receiver event.
 
-Only after these tests pass against the actual Hornet3000 service can bridge issue #7 be closed.
+The reference implementation's software tests cover the 250-event backlog, restart/resume, duplicate/conflicting IDs, retention expiry, cursor tampering and authentication. Issue #7 must remain open until the actual producer is connected to this service and these checks pass in a deployed source→bridge→Monitor installation.
