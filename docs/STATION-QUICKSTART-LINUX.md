@@ -1,28 +1,25 @@
-# BeeKeeper local station — Linux / Raspberry Pi
+# BeeKeeper-Station – Linux / Raspberry Pi
 
-Status: installable base services; camera and radio remain optional, separately configured components.
+**Status:** Installierbare Basisdienste. Kamera und Funk sind optionale Komponenten und müssen separat eingerichtet werden.
 
-The installer provisions three services:
+Der Installer richtet drei Dienste ein:
+1. **Monitor:** lokale PWA und authentifizierter SQLite-Empfänger unter `127.0.0.1:8765`.
+2. **Quell-API:** authentifiziertes SQLite-Quelljournal unter `127.0.0.1:8787`.
+3. **Bridge:** über Cursor gesteuerte Metadatenübertragung vom Quelljournal zum Monitor.
 
-1. **Monitor** — local PWA and authenticated SQLite receiver at 127.0.0.1:8765.
-2. **Source API** — authenticated SQLite source journal at 127.0.0.1:8787.
-3. **Bridge** — cursor-based metadata delivery from the source journal to the Monitor.
+Verwendet werden systemd, ein eigener unprivilegierter Benutzer `beekeeper`, ein privates Datenverzeichnis, eine betriebssystemgeschützte Konfigurationsdatei und versionierte Programmstände im Besitz von root. Alle Dienste binden ausschließlich an die lokale Loopback-Schnittstelle und dürfen nicht direkt ins Internet gestellt werden.
 
-It uses systemd, a dedicated unprivileged beekeeper account, a private state directory, an OS-protected environment file and root-owned versioned application releases. The services bind to loopback and must not be exposed directly to the internet.
+## Voraussetzungen
+- Linux mit systemd (empfohlen: Debian Bookworm / Raspberry Pi OS Bookworm oder neuer).
+- Python 3.11 oder neuer.
+- Node.js 20 oder neuer.
+- Administratorrechte (root) zur Installation.
+- Lokale Kopien beider GitHub-Repositories.
 
-## Requirements
+Die Basisdienste nutzen die Standardbibliotheken von Python und Node.js. Zusätzliche Kamera- und MeshCore-Abhängigkeiten werden nicht automatisch installiert.
 
-- A systemd-based Linux distribution (Debian Bookworm / Raspberry Pi OS Bookworm or newer recommended).
-- Python 3.11 or newer.
-- Node.js 20 or newer.
-- Root access for installation.
-- Local clones of both repositories.
-
-The base services use Python and Node standard libraries; optional camera and MeshCore dependencies are not installed by this script.
-
-## Install
-
-From a BeeKeeper3000 checkout with a sibling Beekeeper-Monitor checkout:
+## Installation
+Im Verzeichnis `BeeKeeper3000` ausführen; daneben muss `Beekeeper-Monitor` liegen:
 
 ~~~sh
 sudo bash scripts/install-linux.sh \
@@ -30,44 +27,40 @@ sudo bash scripts/install-linux.sh \
   --monitor-repo "../Beekeeper-Monitor"
 ~~~
 
-The installer creates:
+Der Installer legt folgende Pfade an:
 
-| Path | Purpose |
+| Pfad | Bedeutung |
 |---|---|
-| /opt/beekeeper3000/current | Active BeeKeeper3000 code release |
-| /opt/beekeeper-monitor/current | Active Monitor code release |
-| /opt/beekeeper3000/releases and /opt/beekeeper-monitor/releases | Versioned read-only code snapshots; previous releases are retained |
-| /var/lib/beekeeper3000 | SQLite databases and bridge checkpoint |
-| /etc/beekeeper3000/station.env | API keys and local settings; root-owned, group-readable only by beekeeper, mode 0640 |
+| `/opt/beekeeper3000/current` | Aktive BeeKeeper3000-Version |
+| `/opt/beekeeper-monitor/current` | Aktive Monitor-Version |
+| `/opt/beekeeper3000/releases` und `/opt/beekeeper-monitor/releases` | Versionierte, schreibgeschützte Programmstände; ältere Versionen bleiben erhalten |
+| `/var/lib/beekeeper3000` | SQLite-Datenbanken und Bridge-Prüfpunkt |
+| `/etc/beekeeper3000/station.env` | API-Schlüssel und lokale Einstellungen; Eigentümer root, nur für Gruppe `beekeeper` lesbar (0640) |
 
-Random source API, cursor-signing and Monitor receiver secrets are generated locally and are never printed. The secrets file is reused on upgrades. Database files and the bridge cursor are preserved across code upgrades.
+Zufällige Geheimnisse für Quell-API, Cursor-Signatur und Monitor-Empfänger werden lokal erzeugt und **niemals ausgegeben**. Bei Aktualisierungen wird die vorhandene Schlüsseldatei weiterverwendet. Datenbanken und Bridge-Cursor bleiben erhalten.
 
-After installation the installer health-checks the Monitor root page and authenticated, cursor-paginated source API. Inspect service state and logs:
+Nach der Installation prüft der Installer die Monitor-Startseite und die authentifizierte, per Cursor paginierte Quell-API. Dienststatus und Protokolle prüfen:
 
 ~~~sh
 systemctl status beekeeper-monitor beekeeper-source-api beekeeper-bridge
 journalctl -u beekeeper-monitor -u beekeeper-source-api -u beekeeper-bridge
 ~~~
 
-Open the PWA locally:
+Lokale PWA öffnen: http://127.0.0.1:8765/
 
-http://127.0.0.1:8765/
+## Aktualisierung
+Den Installer erneut mit aktualisierten lokalen Repository-Kopien ausführen. Er stoppt nur die BeeKeeper-Dienste, legt neue versionierte Programmdateien ab, wechselt die aktiven symbolischen Links atomar, lädt systemd neu und startet die Dienste. Frühere Versionen unter `/opt` und Stationsdatenbanken bleiben erhalten.
 
-## Upgrade
+Die vorhandene `station.env` wird weiterverwendet. **Den Cursor-Signaturschlüssel niemals bei erhaltenem Bridge-Prüfpunkt neu erzeugen:** Der bestehende signierte Quell-Cursor wäre danach ungültig.
 
-Run the same installer with updated source checkouts. It stops only the BeeKeeper services, stages new versioned code, switches active symlinks atomically, reloads systemd and restarts the stack. Previous code releases remain under /opt; the installer does not delete them or touch station databases.
-
-The existing station.env is reused. Never regenerate the cursor-signing secret while retaining the bridge checkpoint: doing so invalidates the signed source cursor.
-
-## Stop / remove services
-
-Stop the stack:
+## Dienste stoppen oder entfernen
+Alle Dienste anhalten und deaktivieren:
 
 ~~~sh
 sudo systemctl disable --now beekeeper-bridge beekeeper-source-api beekeeper-monitor
 ~~~
 
-To remove only service definitions while preserving every database, key and code release:
+Nur die Dienstdefinitionen entfernen, ohne Datenbanken, Schlüssel oder Programmversionen zu löschen:
 
 ~~~sh
 sudo rm -f /etc/systemd/system/beekeeper-monitor.service \
@@ -76,33 +69,30 @@ sudo rm -f /etc/systemd/system/beekeeper-monitor.service \
 sudo systemctl daemon-reload
 ~~~
 
-No destructive data-purge command is provided. Protect the state and configuration directories with encrypted-disk, access-control and backup policies.
+Ein Befehl zum unwiederbringlichen Löschen von Daten wird bewusst nicht bereitgestellt. Daten- und Konfigurationsverzeichnisse mit Datenträgerverschlüsselung, Zugriffsrechten und Sicherungsregeln schützen.
 
-## Optional camera runtime
+## Optionale Kamera
+Der Basisinstaller installiert **weder OpenCV noch ONNX Runtime**, startet keine Kamera und schaltet keine KI-Erkennung ein. So werden Raspberry-Pi-Ressourcen geschont und unberechtigte Sicherheitserwartungen vermieden.
 
-The base installer does **not** install OpenCV / ONNX Runtime, start a camera or enable AI detection. This avoids consuming Raspberry Pi resources or creating false confidence before a model has been reviewed.
+Erst nachdem ein lokal beschafftes Modell die individuelle Herkunfts-/Lizenzprüfung, SHA-256-Prüfung, Ein-/Ausgabeschnittstellenprüfung und menschliche Freigabe bestanden hat:
 
-After a locally obtained model has passed per-file source/license review, SHA-256 verification, the input/output contract check and human review:
+1. Geschütztes Modellverzeichnis anlegen und ONNX-Datei samt Manifest ablegen. Das Manifest muss die Lizenzprüfung als genehmigt oder gemeinfrei kennzeichnen und den exakten Modell-Hash enthalten; ungeprüfte Lizenzen und ungültige Hashes werden abgewiesen.
+2. `docs/camera.env.example` nach `/etc/beekeeper3000/camera.env` kopieren. Mit `sudoedit` Stationspseudonym und Kameraquelle setzen, Eigentümer `root:beekeeper` und Berechtigung `0640` vergeben. RTSP-Zugangsdaten nur in dieser geschützten Datei aufbewahren.
+3. `sudo bash scripts/install-camera-linux.sh` ausführen. Das Skript richtet eine eigene virtuelle Kameraumgebung ein, installiert versionsgebundene OpenCV-/ONNX-Runtime-Abhängigkeiten und prüft das Modellmanifest. Der zusätzliche systemd-Dienst wird installiert, aber **nicht automatisch gestartet**.
+4. Erst nach Prüfung von Kameraquelle und experimentellem Modellstatus aktivieren: `sudo systemctl enable --now beekeeper-camera`. Bei einer lokalen `/dev/video`-Kamera fügt der Installer das Dienstkonto der Gruppe `video` hinzu. Bei RTSP ist diese Gruppe nicht erforderlich.
+5. Mit `journalctl -u beekeeper-camera -f` Bildaufnahme, CPU-Auslastung, Versandwarteschlange und Fehlererholung prüfen, bevor die Station unbeaufsichtigt betrieben wird.
 
-1. Create the protected model directory and place the ONNX file plus manifest there. The manifest must set the licence review to approved/public-domain and carry the exact model hash; the validator rejects unreviewed licences and invalid hashes.
-2. Copy docs/camera.env.example to /etc/beekeeper3000/camera.env, edit it with sudoedit, set a station pseudonym and camera source, then set root:beekeeper ownership and mode 0640. Keep RTSP credentials only in this protected file.
-3. Run sudo bash scripts/install-camera-linux.sh. This creates an isolated camera virtual environment, installs pinned OpenCV/ONNX Runtime dependencies and verifies the model manifest. It installs the separate systemd unit but does not start it by default.
-4. Start only after the operator has checked the camera source and the model's experimental/validation status: sudo systemctl enable --now beekeeper-camera. For a local /dev/video camera, the installer adds the service account to the video group. For RTSP, no local video-device group is needed.
-5. Inspect journalctl -u beekeeper-camera -f and confirm stable capture, CPU load, outbox delivery and recovery behaviour before leaving the station unattended.
+Der optionale Dienst nutzt V4L2 für lokale Linux-Kameras, DirectShow unter Windows und FFmpeg für Netzwerk-/Dateiquellen. Der Installer lädt weder Modellgewichte noch Kamerabilder herunter. Erkennungen bleiben bis zur menschlichen Prüfung **unbestätigte Kandidaten**, keine gesicherte Art- oder Nestbestimmung.
 
-The optional service uses V4L2 for local Linux cameras, DirectShow for Windows, and FFmpeg for network/file sources. No model weights or camera images are downloaded by the installer. All detections remain candidate events until human review; the service does not make confirmed species or nest-location claims.
+## Netzwerk, Datenschutz und Funk
+- Beide HTTP-Dienste hören ausschließlich lokal. Für Fernzugriff ist ein separat geprüfter, authentifizierter TLS-VPN-/Reverse-Proxy-Zugang nötig; Ports 8765 und 8787 **niemals per Portweiterleitung freigeben**.
+- Die Bridge überträgt begrenzte Metadaten, keine Rohbilder, Videos, Audiodaten oder genauen GPS-Koordinaten.
+- Stationsereignisse sind schutzbedürftig. Datenträgerverschlüsselung und Sicherungswerkzeuge verwenden; Backups werden von der Anwendung selbst nicht verschlüsselt.
+- MeshCore wird durch den Basisinstaller weder installiert noch gestartet. Funkhardware, Antennen, Sendezeiten, Reichweite, Frequenzregeln, Richtungskalibrierung und echte Triangulation benötigen gesonderte Feldprüfungen.
+- Ein Triangulationsergebnis ist eine **Suchhypothese**, kein bestätigter Neststandort.
 
-## Network, privacy and radio boundaries
-
-- Both HTTP services listen on loopback only. For remote access, use a separately reviewed authenticated TLS VPN/reverse proxy; never port-forward ports 8765 or 8787.
-- The bridge transfers bounded metadata, not raw images, video, audio or precise GPS.
-- Station event data is sensitive. Use full-disk encryption and station backup tooling; backups are not application-encrypted.
-- MeshCore is not installed or started by this base installer. Radio hardware, antennas, airtime, coverage, frequency rules, station bearing calibration and real triangulation require separate field verification.
-- A triangulation result is a search hypothesis, not a confirmed nest location.
-
-## Validate without installing
-
-This mode checks repository structure and Python/Node versions without root access, creating secrets or starting processes:
+## Prüfen ohne Installation
+Dieser Modus prüft Repository-Struktur sowie Python-/Node-Versionen, ohne root-Rechte, Schlüssel oder gestartete Prozesse:
 
 ~~~sh
 bash scripts/install-linux.sh \

@@ -1,175 +1,134 @@
-# BeeKeeper3000 local station quick start (Windows 10/11)
+# BeeKeeper3000 – lokale Station unter Windows 10/11 einrichten
 
-This starts the three software services already implemented:
+Diese Anleitung startet die drei bereits implementierten Basisdienste:
+1. Lokale Beekeeper-Monitor-PWA mit authentifiziertem SQLite-Empfänger.
+2. Authentifiziertes SQLite-Quelljournal von BeeKeeper3000.
+3. Node.js-Bridge von BeeKeeper3000 mit verpflichtender Cursor-Paginierung.
 
-1. Beekeeper-Monitor local PWA + authenticated SQLite receiver.
-2. BeeKeeper3000 authenticated SQLite source journal.
-3. BeeKeeper3000 Node.js bridge with cursor pagination required.
+**Nicht enthalten:** automatische Installation von Kameratreibern, Start des ursprünglichen Hornet3000-C++-Dienstes, MeshCore-Funk oder eines Freenet-Knotens. Die optionale ONNX-Kamera benötigt ein lokal beschafftes, rechtlich geprüftes Modell und wird separat gestartet; siehe [Kameradokumentation](../camera/README.md).
 
-It does not install camera drivers or start an original Hornet3000 C++ daemon or MeshCore radio. The optional ONNX camera producer is a separately started process that requires a locally rights-reviewed model; see [camera/README.md](../camera/README.md). A Freenet node is not started.
+## Voraussetzungen
+- Windows 10 oder 11 mit Benutzerprofil.
+- Python 3.11 oder neuer.
+- Node.js 20 oder neuer.
+- Lokale Kopien beider Repositories, möglichst als Nachbarverzeichnisse `BeeKeeper3000` und `Beekeeper-Monitor`.
+- PowerShell 5.1 oder neuer.
 
-## Requirements
-
-- Windows 10/11, current user profile.
-- Python 3.11 or newer.
-- Node.js 20 or newer.
-- Local clones of both repositories, preferably sibling directories named BeeKeeper3000 and Beekeeper-Monitor.
-- PowerShell 5.1 or newer.
-
-## Start
-
-Open PowerShell in the BeeKeeper3000 checkout:
+## Starten
+PowerShell im Verzeichnis `BeeKeeper3000` öffnen:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\Start-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
 ```
 
-The Monitor path may be omitted when Beekeeper-Monitor is a sibling directory beside BeeKeeper3000.
+Liegt `Beekeeper-Monitor` direkt neben `BeeKeeper3000`, kann `-MonitorRepo` entfallen.
 
-First start creates three independent random secrets and stores them as Windows DPAPI-protected SecureString values under:
+Beim ersten Start werden drei unabhängige Zufallsschlüssel erzeugt und mit Windows-DPAPI als geschützte SecureString-Werte gespeichert:
 
 `%LOCALAPPDATA%\BeeKeeper3000\station-secrets.clixml`
 
-Only the current Windows user can decrypt them. Do not copy this file to another Windows account or machine. Keeping it is necessary: the signed source cursor key and bridge checkpoint must survive service restarts. Deleting or replacing the secrets while an existing checkpoint is active invalidates that checkpoint.
+Nur das aktuelle Windows-Benutzerkonto kann sie entschlüsseln. Die Datei nicht auf andere Benutzerkonten oder Rechner kopieren. Sie muss bei Neustarts erhalten bleiben: Wird der Signaturschlüssel ersetzt, während ein alter Bridge-Prüfpunkt existiert, ist dieser ungültig.
 
-The launcher applies a restrictive user/SYSTEM ACL to the local state directory. SQLite databases, bridge state and service logs are kept under `%LOCALAPPDATA%\BeeKeeper3000\`. They are not application-encrypted; use BitLocker or an encrypted volume.
+Der Starter setzt restriktive Zugriffsrechte für Benutzer und SYSTEM auf das lokale Datenverzeichnis. SQLite-Datenbanken, Bridge-Status und Protokolle liegen unter `%LOCALAPPDATA%\BeeKeeper3000\`. Sie sind nicht anwendungsseitig verschlüsselt; BitLocker oder ein verschlüsseltes Laufwerk verwenden.
 
 ## PWA-Anmeldeschlüssel sicher übernehmen
-
-Der Monitor-Empfangsschlüssel liegt ausschließlich DPAPI-geschützt in der lokalen Schlüsseldatei. Für die Anmeldung in der PWA kann er bei Bedarf gezielt in die Windows-Zwischenablage kopiert werden:
+Der Monitor-Empfangsschlüssel liegt ausschließlich DPAPI-geschützt in der lokalen Schlüsseldatei. Für die Anmeldung kann er gezielt in die Windows-Zwischenablage kopiert werden:
 
 ```powershell
 .\scripts\Copy-BeeKeeperStationToken.ps1
 ```
 
-Anschließend den Schlüssel nur in das Feld „Lokaler Empfangsschlüssel“ unter `http://127.0.0.1:8765/` einfügen. Die PWA hält ihn nur im Arbeitsspeicher. Danach die Zwischenablage leeren:
+Den Schlüssel nur im Feld „Lokaler Empfangsschlüssel“ unter http://127.0.0.1:8765/ einfügen. Die PWA hält ihn nur im Arbeitsspeicher. Anschließend die Zwischenablage leeren:
 
 ```powershell
 Set-Clipboard -Value ''
 ```
 
-Keine Zwischenablage-Synchronisierung oder -Historie für diesen Vorgang verwenden. Den Schlüssel niemals in Chat, Tickets, Screenshots, Logs oder fremde Webseiten einfügen.
+Für diesen Vorgang keine Zwischenablage-Synchronisierung oder -Historie verwenden. Schlüssel niemals in Chats, Tickets, Screenshots, Protokolle oder fremde Webseiten einfügen.
 
-## Open and stop
+## Öffnen und beenden
+Die lokale PWA auf demselben Rechner öffnen: http://127.0.0.1:8765/
 
-Open the local PWA on the same PC:
+Die Quell-API ist ausschließlich lokal auf Port 8787 erreichbar. Keinen der beiden HTTP-Dienste ins öffentliche Internet stellen.
 
-`http://127.0.0.1:8765/`
-
-The source API is loopback-only on port 8787. Do not publish either HTTP service to the public internet.
-
-Stop processes started by this launcher:
+Mit diesem Befehl nur die vom Starter erzeugten Prozesse beenden:
 
 ```powershell
 .\scripts\Stop-BeeKeeperStation.ps1
 ```
 
-The stop script checks the recorded executable and command line before terminating a PID. It does not kill an unrelated process if a PID has been reused.
+Das Skript prüft vor dem Beenden die aufgezeichnete ausführbare Datei und Befehlszeile. Eine anderweitig wiederverwendete Prozess-ID wird nicht blind beendet.
 
-The launcher is a per-user process supervisor, not a Windows Service and not an automatic startup task. Re-run it after login to start the station again. Logs are retained locally; apply a rotation/retention policy before long-term unattended use.
+Der Starter verwaltet Prozesse pro Benutzer, ist aber **kein Windows-Dienst und kein automatischer Autostart**. Nach der Anmeldung erneut starten, sofern die optionale Autostart-Aufgabe nicht eingerichtet wurde. Protokolle bleiben lokal gespeichert; für Dauerbetrieb Aufbewahrungs- und Rotationsregeln festlegen.
 
-## Optional camera producer
+## Optionale Kamera
+Vor dem KI-Betrieb mit `scripts/Test-BeeKeeperCamera.ps1` einen sicheren Einzelbild-Hardwaretest durchführen (verdeckte Quellenangabe, kein gespeichertes Bild); siehe [Kamera-Abnahme](CAMERA-ACCEPTANCE.md).
 
-For a safe one-frame hardware check before starting inference, run `scripts/Test-BeeKeeperCamera.ps1` (hidden source input, no image saved); see [camera acceptance](CAMERA-ACCEPTANCE.md).
-
-After the base station has been started, install the optional runtime from camera/requirements.txt in a dedicated Python environment. Set only the local manifest and camera source in the current PowerShell session, then use the launcher:
+Nach dem Start der Basisstation die optionalen Abhängigkeiten aus `camera/requirements.txt` in einer eigenen Python-Umgebung installieren. Modellmanifest und Kameraquelle nur in der aktuellen PowerShell-Sitzung setzen:
 
 ~~~powershell
 $env:BEEKEEPER_MODEL_MANIFEST = 'C:\secure\beekeeper\model-manifest.json'
-$env:BEEKEEPER_CAMERA_SOURCE = '0' # or a local file / RTSP URL
+$env:BEEKEEPER_CAMERA_SOURCE = '0' # alternativ lokale Datei / RTSP-Adresse
 .\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe'
 ~~~
 
-The launcher retrieves the source API key from the current-user DPAPI station secret file; it does not ask the operator to copy the key into a command or file. Camera processing stays separate from the three base services. The example model manifest cannot run until a real model, hash, source, license and review status are supplied. Every predicted species remains unverified. Stop the camera process with Ctrl+C.
+Der Starter liest den Quell-API-Schlüssel aus der DPAPI-Datei des aktuellen Benutzers. Der Schlüssel muss nicht in Befehle oder Dateien kopiert werden. Die Kamera läuft getrennt von den drei Basisdiensten. Das Beispielmanifest funktioniert erst, wenn ein echtes Modell, Prüfsumme, Herkunft, Lizenz und Prüfstatus eingetragen sind. **Jede vorhergesagte Art bleibt unbestätigt.** Kamera mit `Ctrl+C` stoppen.
 
-## Create a verified local backup
-
-With both services running, create a consistent snapshot of the BeeKeeper source
-journal, Monitor event database, optional camera outbox and bridge checkpoint:
+## Verifiziertes lokales Backup
+Bei laufenden Diensten einen konsistenten Schnappschuss des Quelljournals, der Monitor-Datenbank, der optionalen Kamera-Versandwarteschlange und des Bridge-Prüfpunkts erstellen:
 
 ```powershell
 .\scripts\Backup-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
 ```
 
-The script writes a timestamped backup set under
-`%LOCALAPPDATA%\BeeKeeper3000\backups\`, verifies both SQLite snapshots,
-validates and copies the bridge checkpoint and the camera outbox when present, and writes a SHA-256
-manifest. It stages the set privately and publishes it only after all required
-steps succeed. It refuses backup paths outside the protected station directory.
-The DPAPI secret file is intentionally excluded; it is user/machine-bound and
-must be protected and recovered separately. Backups contain sensitive station
-metadata; use BitLocker and define a retention policy. See
-[SOURCE-JOURNAL-BACKUP.md](SOURCE-JOURNAL-BACKUP.md) for standalone verification
-and restore commands.
+Das Skript erstellt unter `%LOCALAPPDATA%\BeeKeeper3000\backups\` einen zeitgestempelten Sicherungssatz, prüft beide SQLite-Schnappschüsse, prüft und kopiert Bridge-Prüfpunkt und gegebenenfalls Kamera-Warteschlange und schreibt ein SHA-256-Manifest. Es erstellt den Sicherungssatz zunächst geschützt und veröffentlicht ihn erst nach erfolgreichen Prüfungen. Sicherungsziele außerhalb des geschützten Stationsverzeichnisses werden abgewiesen.
 
-## Validation without starting services
+Die DPAPI-Schlüsseldatei wird **bewusst nicht mitgesichert**, da sie an Benutzer und Rechner gebunden ist. Sie muss separat geschützt und wiederhergestellt werden. Sicherungen enthalten sensible Stationsmetadaten; BitLocker und eine Aufbewahrungsfrist verwenden. Einzelheiten: [Sicherung und Wiederherstellung](SOURCE-JOURNAL-BACKUP.md).
 
+## Prüfung ohne Dienststart
 ```powershell
 .\scripts\Start-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor" -ValidateOnly
 ```
 
-This checks repository files, Python and Node versions and creates no secrets or processes.
+Dieser Modus prüft Repository-Dateien sowie Python-/Node-Versionen und erstellt weder Schlüssel noch Prozesse.
 
-## Current end-to-end boundary
+## Grenzen der Ende-zu-Ende-Funktion
+Quell-API, Bridge und Monitor-Empfänger sind lokale Softwarebausteine. Ein vertrauenswürdiger Detektor muss geprüfte Metadaten noch per HTTP POST an die Quell-API übergeben. Der signierte MeshCore-Richtungsempfänger und der lokale Triangulationsspeicher sind separate Module; Richtungsdaten erscheinen nicht automatisch in der Monitor-Ereignisliste. Vor einem operativen Einsatz fehlen weiterhin echte Kamera- und Funkprüfungen, Feldtests mit drei Stationen, Neustart-/Rückstautests und eine Abnahme eines öffentlichen Netzwerk-Gateways.
 
-The source API, bridge and Monitor receiver are local software components. A trusted detector/producer still has to POST validated metadata to the source API. MeshCore's signed bearing receiver and local triangulation store are a separate module; bearing data is not automatically added to the Monitor event list. Real camera, radio, three-station field, restart/backlog and public network gateway acceptance tests remain required before operational deployment.
+## Konsistentes Stations-Backup und Wiederherstellung
+Während die Station läuft, lässt sich mit `Backup-BeeKeeperStation.ps1` ein konsistenter SQLite-Schnappschuss erstellen. Live-Datenbanken werden nicht direkt kopiert oder verändert. Das Skript verweigert Sicherungsziele außerhalb des geschützten Stationsverzeichnisses.
 
-## Konsistentes Stations-Backup
-
-Während die Station läuft, kann ein konsistenter Datenbank-Snapshot erstellt werden:
-
-```powershell
-.\scripts\Backup-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
-```
-
-Der Sicherungslauf erstellt unter `%LOCALAPPDATA%\BeeKeeper3000\backups\<UTC-Zeitstempel>\` ein Backup des BeeKeeper-Quelljournals, der Monitor-SQLite-Datenbank, soweit vorhanden des Bridge-Checkpoints sowie ein Manifest mit SHA-256-Prüfsummen und Dateigrößen. SQLite wird über die Online-Backup-API gesichert; die Live-Datenbanken werden nicht kopiert oder verändert. Das Skript verweigert Ziele außerhalb des geschützten Stationsdatenverzeichnisses.
-
-**Wichtig: Die DPAPI-Schlüsseldatei wird absichtlich nicht in dieses Datenbank-Backup aufgenommen.** Sie liegt unter `%LOCALAPPDATA%\BeeKeeper3000\station-secrets.clixml`, ist an das Windows-Benutzerkonto und den Rechner gebunden und muss auf demselben Konto/Rechner erhalten bleiben. Das Backup ist nicht automatisch verschlüsselt; verwende BitLocker und bewahre eine zusätzliche, geschützte Sicherung außerhalb des PCs auf.
+**Wichtig:** Die Datei `%LOCALAPPDATA%\BeeKeeper3000\station-secrets.clixml` wird nicht gesichert und ist nicht auf andere Windows-Benutzerkonten oder Rechner übertragbar. Die Backups sind nicht automatisch verschlüsselt; zusätzlich geschützte Sicherungen aufbewahren.
 
 ### Wiederherstellung auf demselben Rechner und Benutzerkonto
+1. Station mit `.\scripts\Stop-BeeKeeperStation.ps1` stoppen.
+2. Manifest und SHA-256-Prüfsummen kontrollieren; Dateien mit `network.source_backup verify` und `integrations.store_backup verify` prüfen.
+3. Beide Datenbanken mit den jeweiligen `restore`-Unterbefehlen zunächst in **neue Dateien** wiederherstellen; die Befehle überschreiben keine bestehenden Dateien.
+4. Nach Integritätsprüfung bei gestoppten Diensten die aktiven Datenbanken kontrolliert ersetzen und die bisherigen Dateien separat aufbewahren.
+5. Bestehende DPAPI-Schlüsseldatei und zugehörigen Bridge-Prüfpunkt nicht austauschen. Station neu starten und Ereignisstände kontrollieren.
 
-1. Station stoppen: `.scripts\Stop-BeeKeeperStation.ps1`.
-2. Manifest und SHA-256-Prüfsummen prüfen; die Dateien anschließend mit `network.source_backup verify` und `integrations.store_backup verify` kontrollieren.
-3. Beide Datenbanken mit den jeweiligen `restore`-Unterbefehlen zunächst in neue Dateien wiederherstellen. Die Restore-Befehle überschreiben keine bestehenden Dateien.
-4. Nach erfolgreicher Integritätsprüfung die aktiven Datenbankdateien bei gestoppten Diensten kontrolliert ersetzen und die alten Dateien separat aufbewahren.
-5. Die bestehende DPAPI-Schlüsseldatei und den dazugehörigen Bridge-Checkpoint nicht austauschen. Danach die Station starten und die Ereignisstände kontrollieren.
+### Umzug auf anderen Rechner oder anderes Windows-Konto
+1. Quell- und Monitor-Datenbanken aus verifizierten Sicherungen wiederherstellen.
+2. Alte `station-secrets.clixml` und `data\bridge-state.json` **nicht übernehmen**. Falls bereits kopiert, vor dem ersten Start aus dem neuen Stationsprofil entfernen; Originale auf dem alten Gerät erhalten.
+3. Starter auf dem neuen Gerät ausführen. Er erzeugt neue unabhängige Schlüssel.
+4. Ohne alten Prüfpunkt beginnt die Bridge beim ältesten noch vorhandenen Quellereignis. Bereits bekannte Ereignisse werden im Monitor anhand stabiler IDs dedupliziert.
 
-### Umzug auf einen anderen Rechner oder ein anderes Windows-Konto
+Nur noch vorhandene, gesicherte Quellereignisse lassen sich wiederherstellen. Gelöschte oder abgelaufene Daten werden durch neue Schlüssel nicht zurückgewonnen. Vor produktivem Betrieb eine Wiederherstellung anhand einer Testkopie und kontrollierter Wiederholung prüfen.
 
-Eine DPAPI-Datei ist nicht portabel. Auf dem neuen Gerät darf der alte Bridge-Checkpoint nicht mit einem neu erzeugten Cursor-Schlüssel verwendet werden:
+## Optionaler Start nach Windows-Anmeldung
+Standardmäßig startet die Station manuell. Optional eine Aufgabe der Windows-Aufgabenplanung für den aktuellen Benutzer registrieren:
 
-1. Die Quell- und Monitor-Datenbanken aus den verifizierten Backups wiederherstellen.
-2. Die alte `station-secrets.clixml` und `data\bridge-state.json` nicht übernehmen. Falls sie bereits kopiert wurden, vor dem ersten Start aus dem neuen Stationsprofil entfernen; die Originale am alten Gerät unverändert lassen.
-3. Den Launcher auf dem neuen Gerät starten. Er erzeugt neue unabhängige Schlüssel.
-4. Die Bridge beginnt ohne alten Checkpoint beim ältesten noch aufbewahrten Quellereignis. Die Monitor-Datenbank dedupliziert bereits vorhandene Ereignisse anhand ihrer stabilen IDs.
+```powershell
+.\scripts\Register-BeeKeeperStationStartup.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
+```
 
-Der neue Rechner kann nur Ereignisse wiederherstellen, die im gesicherten Quelljournal noch vorhanden waren. Ein abgelaufener oder bereits gelöschter Datensatz lässt sich durch einen neuen Schlüssel nicht zurückholen. Vor produktivem Betrieb ist die Wiederherstellung mit einer Testkopie der Datenbanken und einem kontrollierten Replay zu prüfen.
+Der Befehl prüft zunächst die Voraussetzungen, ohne etwas zu verändern. Danach wird eine Aufgabe für die interaktive Anmeldung des aktuellen Benutzers mit 30 Sekunden Verzögerung erstellt. Sie speichert kein Passwort, nutzt die DPAPI-Schlüssel des Benutzers und läuft ohne Administratorrechte. Der Basisstarter richtet diese Aufgabe **nicht automatisch** ein.
 
+Aufgabe ohne Löschung von Stationsdaten oder Schlüsseln entfernen:
 
+```powershell
+.\scripts\Register-BeeKeeperStationStartup.ps1 -Unregister
+```
 
-## Optional start after Windows logon
-
-By default the station is started manually in the current user session. To
-start the three base services after the current user logs on, register the
-optional Task Scheduler entry:
-
-    .\scripts\Register-BeeKeeperStationStartup.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
-
-The command first runs the non-mutating prerequisite check. It creates a
-current-user scheduled task with an interactive logon trigger and a 30-second
-delay. It stores no password, uses the current user's DPAPI-protected secrets,
-and runs without elevation. The task is optional; no task is created by the
-base station launcher itself.
-
-Remove the task without deleting station data or secrets:
-
-    .\scripts\Register-BeeKeeperStationStartup.ps1 -Unregister
-
-This is a logon start mechanism, not a Windows Service or a crash-restarting
-watchdog. The current Windows launcher starts the three base processes and
-health-checks them at startup, but it does not automatically restart an
-individual process if it later exits. Use the Linux/systemd deployment for
-managed service restart behaviour, or keep the Windows stack under operator
-supervision until a dedicated Windows service host has been field-tested.
-Camera AI and MeshCore radio are never started by this logon task.
+Das ist ein Anmeldestart, **kein Windows-Dienst und keine automatische Neustartüberwachung**. Der Windows-Starter prüft die drei Prozesse beim Start, startet einen später abgestürzten Einzelprozess aber nicht automatisch neu. Für verwaltete Dienstneustarts Linux/systemd verwenden oder die Windows-Station bis zur gesonderten Abnahme eines Diensthosts beaufsichtigen. Kamera-KI und MeshCore-Funk werden durch diese Aufgabe niemals gestartet.
