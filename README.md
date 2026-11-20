@@ -1,7 +1,10 @@
-# Hornet3000 – Früherkennung der Asiatischen Hornisse
+# Beekeeper3000 – Früherkennung der Asiatischen Hornisse
 
 Freie Software für Imkerinnen und Imker: Eine Kamera am Bienenstand erkennt die Asiatische Hornisse (*Vespa velutina*) und alarmiert früh,
 damit Völker geschützt werden können. Ohne Gewinnabsicht, kostenlos, quelloffen.
+
+**Beekeeper3000** ist der Name dieses Gesamtprojekts. Die Erkennungssoftware darin heißt im Programm, in den Installern und auf der Website
+weiterhin **Hornet3000** (Ordner `hornet3000-…`); sie wurde bisher nicht umbenannt.
 
 | Ordner | Inhalt | Einstieg |
 |---|---|---|
