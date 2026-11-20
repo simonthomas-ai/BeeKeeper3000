@@ -157,19 +157,24 @@ def run(config: dict, prompt: str, outdir: Path) -> dict:
             if not isinstance(models, list):
                 raise CouncilError("Ollama model inventory is invalid.")
             names = [m.get("name") for m in models if isinstance(m, dict) and isinstance(m.get("name"), str)]
-            selected = local.get("models") or names
-            for model in selected[:int(config.get("max_models_per_run", 8))]:
-                item = {"provider": "ollama-local", "model": model, "status": "skipped", "cost_eur": 0}
-                if model not in names:
-                    item["reason"] = "model not installed locally"
-                else:
-                    try:
-                        item["answer"] = call_chat(base, model, prompt, None, timeout, max_tokens)
-                        item["status"] = "answered"
-                        item["answer_sha256"] = sha256(item["answer"].encode("utf-8"))
-                    except CouncilError as exc:
-                        item["status"], item["reason"] = "error", str(exc)
-                report["results"].append(item)
+            selected = local.get("models", [])
+            if not isinstance(selected, list) or not selected:
+                report["results"].append({"provider": "ollama-local", "status": "skipped", "reason": "no local model IDs explicitly allowlisted in config.json", "cost_eur": 0})
+            else:
+                for model in selected[:int(config.get("max_models_per_run", 8))]:
+                    item = {"provider": "ollama-local", "model": model, "status": "skipped", "cost_eur": 0}
+                    if not isinstance(model, str) or model not in names:
+                        item["reason"] = "model not installed locally"
+                    elif model.lower().endswith(":cloud") or ".cloud" in model.lower():
+                        item["reason"] = "cloud model identifiers are prohibited by the zero-cost policy"
+                    else:
+                        try:
+                            item["answer"] = call_chat(base, model, prompt, None, timeout, max_tokens)
+                            item["status"] = "answered"
+                            item["answer_sha256"] = sha256(item["answer"].encode("utf-8"))
+                        except CouncilError as exc:
+                            item["status"], item["reason"] = "error", str(exc)
+                    report["results"].append(item)
         except CouncilError as exc:
             report["results"].append({"provider": "ollama-local", "status": "unavailable", "reason": str(exc), "cost_eur": 0})
 
