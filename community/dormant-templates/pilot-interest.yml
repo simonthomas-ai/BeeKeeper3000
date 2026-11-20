@@ -1,0 +1,82 @@
+# DORMANT TEMPLATE — NOT ENABLED FOR PUBLIC SUBMISSIONS.
+# Keep here as preparation material only. Do not move this file into
+# .github/ISSUE_TEMPLATE or publish it until the readiness gate is passed
+# and the project owner explicitly authorizes opening pilot intake.
+name: Pilot interest
+description: Register non-sensitive interest in a BeeKeeper3000 pilot or collaboration.
+title: "[Pilot interest] "
+labels: ["community", "pilot"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest. This issue is public and visible to everyone.
+        Do **not** post personal email addresses, phone numbers, exact apiary or nest
+        coordinates, photos, camera URLs, credentials or private information here.
+        Use only a country and broad region. This form is not an official sighting report.
+  - type: dropdown
+    id: country
+    attributes:
+      label: Country
+      options:
+        - Germany
+        - Belgium
+        - France
+        - Netherlands
+        - Luxembourg
+        - Austria
+        - Switzerland
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: region
+    attributes:
+      label: Broad region
+      description: Federal state, province or broad region only; no street, apiary or nest location.
+      placeholder: "e.g. Lower Rhine / North Rhine-Westphalia"
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: How would you like to participate?
+      options:
+        - Beekeeper / apiary pilot
+        - Beekeeping association
+        - Hornet or insect expert
+        - Research / public authority
+        - Developer / maker
+        - Interested citizen
+    validations:
+      required: true
+  - type: checkboxes
+    id: capabilities
+    attributes:
+      label: Current capabilities (optional)
+      options:
+        - label: Camera at an apiary
+        - label: Local PC / Raspberry Pi
+        - label: LoRa / MeshCore hardware
+        - label: Species identification / expert review
+        - label: Software development / testing
+  - type: dropdown
+    id: language
+    attributes:
+      label: Preferred language
+      options:
+        - German
+        - English
+        - French
+        - Dutch
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: message
+    attributes:
+      label: Short non-sensitive note
+      description: Tell us what you could test or what you need. Do not include personal or precise location data.
+      render: text
+    validations:
+      required: false
