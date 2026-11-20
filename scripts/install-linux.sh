@@ -138,9 +138,9 @@ render_unit() {
   chown root:root "$2"
   chmod 0644 "$2"
 }
-render_unit "$APP_ROOT/current/deploy/systemd/beekeeper-monitor.service" /etc/systemd/system/beekeeper-monitor.service
-render_unit "$APP_ROOT/current/deploy/systemd/beekeeper-source-api.service" /etc/systemd/system/beekeeper-source-api.service
-render_unit "$APP_ROOT/current/deploy/systemd/beekeeper-bridge.service" /etc/systemd/system/beekeeper-bridge.service
+render_unit "$new_app/deploy/systemd/beekeeper-monitor.service" /etc/systemd/system/beekeeper-monitor.service
+render_unit "$new_app/deploy/systemd/beekeeper-source-api.service" /etc/systemd/system/beekeeper-source-api.service
+render_unit "$new_app/deploy/systemd/beekeeper-bridge.service" /etc/systemd/system/beekeeper-bridge.service
 
 # Do not stop a running station until the replacement code, secrets and unit
 # files have all been staged and validated successfully.
