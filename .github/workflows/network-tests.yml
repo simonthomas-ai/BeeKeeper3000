@@ -1,0 +1,22 @@
+name: Network reference tests
+
+on:
+  push:
+    paths:
+      - "network/**"
+      - ".github/workflows/network-tests.yml"
+  pull_request:
+    paths:
+      - "network/**"
+      - ".github/workflows/network-tests.yml"
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run triangulation tests
+        run: python -m unittest discover -s network -p 'test_*.py' -v
