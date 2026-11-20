@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toMonitorEvent, forwardBatch, readJsonLimited } from './bridge.mjs';
+import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -51,7 +51,7 @@ test('forwardBatch is logically idempotent and persists only successful sends', 
     token: 'test-only-token-long-enough-123',
     fetchImpl: async (url, options) => {
       sent.push({ url, options, payload: JSON.parse(options.body) });
-      return new Response(null, { status: 202 });
+      return new Response(JSON.stringify({ accepted: true }), { status: 202, headers: { 'content-type': 'application/json' } });
     },
     saveState: async current => saved.push([...current])
   });
@@ -84,4 +84,59 @@ test('rejects unbounded or malformed source JSON responses', async () => {
 
 test('rejects oversized event batch', async () => {
   await assert.rejects(() => forwardBatch(new Array(1001).fill(sampleEvent), new Set()), /oversized/);
+});
+
+test('does not checkpoint an event when the receiver does not confirm persistence', async () => {
+  const state = new Set();
+  const options = {
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-only-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({ accepted: false }), {
+      status: 202, headers: { 'content-type': 'application/json' }
+    }),
+    saveState: async () => assert.fail('state must not be persisted')
+  };
+  await assert.rejects(() => forwardBatch([sampleEvent], state, options), /durable event storage/);
+  assert.equal(state.has('event-1'), false);
+});
+
+test('rolls back in-memory checkpoint when state file write fails', async () => {
+  const state = new Set();
+  const options = {
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-only-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({ accepted: true }), {
+      status: 202, headers: { 'content-type': 'application/json' }
+    }),
+    saveState: async () => { throw new Error('disk unavailable'); }
+  };
+  await assert.rejects(() => forwardBatch([sampleEvent], state, options), /disk unavailable/);
+  assert.equal(state.has('event-1'), false);
+});
+
+test('rejects missing, invalid and oversized receiver acknowledgements', async () => {
+  const badBodies = [
+    new Response(null, { status: 202 }),
+    new Response('{broken', { status: 202 }),
+    new Response(JSON.stringify({ accepted: false }), { status: 202 }),
+    new Response('x'.repeat(4097), { status: 202 })
+  ];
+  for (const response of badBodies) {
+    const state = new Set();
+    await assert.rejects(() => forwardBatch([sampleEvent], state, {
+      endpoint: 'http://127.0.0.1:8765/api/v1/events',
+      token: 'test-only-token-long-enough-123',
+      fetchImpl: async () => response,
+      saveState: async () => assert.fail('invalid acknowledgement must not be checkpointed')
+    }));
+    assert.equal(state.has('event-1'), false);
+  }
+});
+
+test('pollOnce rejects source responses larger than the configured limit', async () => {
+  await assert.rejects(() => pollOnce(new Set(), {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    fetchImpl: async () => new Response('x'.repeat(2 * 1024 * 1024 + 1), { status: 200 })
+  }), /size limit/);
 });
