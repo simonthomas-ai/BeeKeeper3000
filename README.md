@@ -63,7 +63,7 @@ cd monitor-bridge
 npm test
 ```
 
-GitHub Actions prüft Triangulation, signiertes MeshCore-Protokoll, Empfänger, persistenten Speicher und Transport sowie die Bridge separat. Erfolgreiche CI belegt Softwaretests und synthetische Datenpfade, aber keinen realen Funkbetrieb oder Feldgenauigkeit.
+GitHub Actions führt mit `.github/workflows/quality-gates.yml` die Python-Kern-/Sicherheitstests, signiertes MeshCore-Protokoll, Empfänger, persistenten Speicher, Transport und die Node.js-Bridge-Tests aus. Der separate Supply-Chain-Workflow prüft die erfassten Abhängigkeiten und erzeugt SBOM-Artefakte; CodeQL analysiert Python und JavaScript/TypeScript. Erfolgreiche CI belegt ausschließlich die jeweils ausgeführten Softwaretests und synthetischen Datenpfade, nicht realen Funkbetrieb, Kameragüte oder Feldgenauigkeit.
 
 ## Was noch nicht als einsatzbereit gilt
 
