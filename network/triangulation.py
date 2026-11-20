@@ -137,8 +137,6 @@ def _angular_residual(bearing: Bearing, point: tuple[float, float], x: float, y:
         raise ValueError("estimated target is too close to a bearing station")
     theta = radians(float(bearing.azimuth_deg))
     along = dx * sin(theta) + dy * cos(theta)
-    if along <= 0:
-        raise ValueError("estimated target lies behind at least one bearing")
     predicted = atan2(dx, dy)
     residual = _wrap_angle(predicted - theta)
     jx = dy / distance_sq
@@ -293,6 +291,14 @@ def triangulate(
                 )
             )
         rejected_indices.append(active_indices.pop(worst))
+
+    for row in records:
+        if row["along"] <= 0:
+            raise ValueError(
+                "estimated target lies behind inlier station {}".format(
+                    row["bearing"].station_id
+                )
+            )
 
     weighted_cross = sum(
         row["cross_track"] ** 2 / (row["sigma"] ** 2) for row in records
