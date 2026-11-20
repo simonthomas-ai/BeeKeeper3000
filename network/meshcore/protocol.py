@@ -19,7 +19,7 @@ MAGIC = b"BK"
 VERSION = 1
 MAX_WIRE_BYTES = 163
 SIGNATURE_BYTES = 64
-_HEADER = struct.Struct("<2sBBBBBB8s8s16sII")
+_HEADER = struct.Struct("<2sBBBBBB16s16s16sII")
 _FLAG_BEARING = 0x01
 _ALLOWED_FLAGS = _FLAG_BEARING
 MAX_TTL_SECONDS = 7 * 24 * 60 * 60
@@ -87,7 +87,7 @@ def public_key_fingerprint(key) -> str:
     else:
         public = _public_key(key)
     raw = public.export_key(format="raw")
-    return hashlib.sha256(raw).digest()[:8].hex()
+    return hashlib.sha256(raw).digest()[:16].hex()
 
 
 def encode_event(event: Mapping, signing_key, *, key_id: str | None = None,
@@ -104,16 +104,16 @@ def encode_event(event: Mapping, signing_key, *, key_id: str | None = None,
         event_type = EVENT_TYPES[event["event_type"]]
         taxon = TAXA[event["candidate_taxon"]]
         verification = VERIFICATION[event.get("verification_status", "unverified")]
-        station_hash = _hex_or_hash(event["station_id"], 8)
+        station_hash = _hex_or_hash(event["station_id"], 16)
         event_hash = _hex_or_hash(event["event_id"], 16)
     except KeyError as exc:
         raise MeshCoreProtocolError(f"unsupported or missing event field: {exc.args[0]}") from exc
 
     private = _private_key(signing_key)
-    key_fingerprint = hashlib.sha256(private.public_key().export_key(format="raw")).digest()[:8]
+    key_fingerprint = hashlib.sha256(private.public_key().export_key(format="raw")).digest()[:16]
     if key_id is not None:
-        if not isinstance(key_id, str) or not re.fullmatch(r"[0-9a-fA-F]{16}", key_id):
-            raise MeshCoreProtocolError("key_id must be a 16-character public-key fingerprint")
+        if not isinstance(key_id, str) or not re.fullmatch(r"[0-9a-fA-F]{32}", key_id):
+            raise MeshCoreProtocolError("key_id must be a 32-character public-key fingerprint")
         key_fingerprint = bytes.fromhex(key_id)
         expected = hashlib.sha256(private.public_key().export_key(format="raw")).digest()[:8]
         if key_fingerprint != expected:
