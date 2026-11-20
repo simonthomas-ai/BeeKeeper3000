@@ -65,10 +65,14 @@ Every adapter must declare a stable ID/version, class, device/backend, capabilit
 
 Existing camera/contracts.py and network/protocol-v1.schema.json remain authoritative event boundaries until a versioned migration is reviewed. Do not bypass signature, expiry, verification-status or privacy checks.
 
+## Smartphone-PWA – current implementation boundary
+
+The client in `mobile-pwa/` is the first implemented multi-source participant endpoint. It stores reports and optional media/location/sensor values locally; there is no server upload, remote API key, auto-sync, background capture or radio pairing. The metadata export intentionally emits only the existing six-field source API v1 event contract. Device interfaces such as Web Bluetooth, WebUSB, Web Serial and NFC are feature-detected only; the browser capability list is not a connection test or compatibility guarantee. See [Mobile PWA acceptance plan](MOBILE-PWA-ACCEPTANCE.md).
+
 ## Proposed adapter inventory
 | Adapter | Target | State |
 |---|---|---|
-| mobile-pwa | Manual report, consented photo, optional GPS/compass, offline drafts | Planned |
+| mobile-pwa | Manual report, local photo, optional one-shot GPS/compass, offline queue, metadata-only export | Implemented; browser-independent tests pass; physical Android/iOS acceptance pending |
 | camera-uvc | USB webcam / microscope | Planned |
 | camera-rtsp | RTSP/ONVIF | Partial existing source path; hardware acceptance pending |
 | camera-files | User-selected image/video, local-only | Planned |

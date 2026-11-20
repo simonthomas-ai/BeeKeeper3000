@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#163d33">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icon.svg" type="image/svg+xml"><link rel="stylesheet" href="./app.css">
+<title>BeeKeeper3000 – Mobile Meldestelle</title>
+</head>
+<body>
+<header><div class="brand">🐝 BeeKeeper3000</div><h1>Mobile Meldestelle</h1><p>Beobachtungen erfassen – auch ohne Netz. Alle Angaben bleiben zunächst auf diesem Gerät.</p></header>
+<main>
+<section class="panel"><div class="row"><h2>Neue Beobachtung</h2><span id="connection-state" class="tag">Prüfe Verbindung …</span></div>
+<form id="report-form">
+<label for="species">Beobachteter Insektentyp</label><select id="species" required>
+<option>Vespa velutina (Verdacht; unbestätigt)</option><option>Vespa crabro (Beobachtung; unbestätigt)</option><option>Biene oder Hummel (Beobachtung)</option><option>Andere Wespe oder anderes Insekt</option><option>Unbekanntes Insekt</option></select>
+<label for="certainty">Eigene Einschätzung</label><select id="certainty"><option value="low">Unsicher</option><option value="medium" selected>Mittlere Sicherheit</option><option value="high">Ziemlich sicher</option></select>
+<p class="hint">Das ist deine Einschätzung, keine KI-Wahrscheinlichkeit und keine Artbestätigung.</p>
+<label class="check"><input id="prey-detected" type="checkbox"> Beute / Insekt im Flug beobachtet</label>
+<label for="photo">Foto (optional, bleibt lokal)</label><input id="photo" type="file" accept="image/*" capture="environment">
+<div id="photo-state" class="hint">Kein Foto ausgewählt.</div><button id="remove-photo" type="button" class="secondary" hidden>Foto entfernen</button>
+<div class="actions"><button id="capture-location" type="button" class="secondary">Standort einmalig erfassen</button><button id="clear-location" type="button" class="secondary" hidden>Standort löschen</button></div><div id="location-state" class="hint">Standort: nicht erfasst</div>
+<div class="actions"><button id="capture-orientation" type="button" class="secondary">Kompass-Rohwert erfassen</button><button id="clear-orientation" type="button" class="secondary" hidden>Rohwert löschen</button></div><div id="orientation-state" class="hint">Kompass: nicht erfasst</div>
+<label for="note">Eigene Notiz (optional, lokal)</label><textarea id="note" rows="3" maxlength="500" placeholder="Keine privaten Namen oder sensiblen Details eintragen."></textarea>
+<button type="submit">Beobachtung lokal speichern</button><p id="form-error" class="error" role="alert" hidden></p></form>
+</section>
+<section class="panel"><div class="row"><h2>Lokaler Speicher</h2><strong id="record-count">0</strong></div><p class="hint" id="storage-state">Wird initialisiert …</p><div id="records-list"></div>
+<div class="actions"><button id="export-events" type="button" disabled>Metadaten exportieren</button><button id="clear-records" type="button" class="danger" disabled>Alle Einträge löschen</button></div>
+<p class="hint">Der Export enthält ausschließlich die sechs Felder des Source-API-v1-Vertrags. Fotos, Notizen, exakte Koordinaten und Kompasswerte werden nicht exportiert. Es gibt keine automatische Übertragung.</p></section>
+<section class="panel"><div class="row"><h2>Gerätefunktionen</h2><button id="refresh-capabilities" type="button" class="secondary">Neu prüfen</button></div><ul id="capability-list"></ul><p class="hint">Die Anzeige erkennt nur Browser-APIs. Sie beweist weder Gerätekompatibilität noch eine bestehende Funk- oder Sensorverbindung.</p></section>
+</main><footer>BeeKeeper3000 · lokale Meldestelle · keine automatische Artbestätigung oder Nestortung</footer>
+<script type="module" src="./app.mjs"></script>
+</body></html>

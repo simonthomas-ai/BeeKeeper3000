@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run dependency-free core and LLM safety tests
-        run: python -m unittest network.test_triangulation tests.test_llm_council -v
+        run: python -m unittest network.test_triangulation tests.test_llm_council tests.test_mobile_export_import -v
       - name: Install pinned optional MeshCore runtime
         run: python -m pip install --disable-pip-version-check --requirement network/meshcore/requirements.lock
       - name: Check Python environment
@@ -79,7 +79,7 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          foreach ($script in @("scripts/Start-BeeKeeperCamera.ps1", "scripts/Test-BeeKeeperCamera.ps1")) {
+          foreach ($script in @("scripts/Start-BeeKeeperCamera.ps1", "scripts/Test-BeeKeeperCamera.ps1", "scripts/Import-BeeKeeperMobileExport.ps1")) {
             [System.Management.Automation.Language.Parser]::ParseFile(
               (Join-Path $PWD $script),
               [ref]$tokens,
@@ -110,3 +110,8 @@ jobs:
         run: npm --prefix monitor-bridge ci --ignore-scripts --no-audit --no-fund
       - name: Run bridge tests
         run: npm --prefix monitor-bridge test
+      - name: Check mobile PWA syntax and contracts
+        run: |
+          node --check mobile-pwa/app.mjs
+          node --check mobile-pwa/sw.js
+          node --test mobile-pwa/*.test.mjs

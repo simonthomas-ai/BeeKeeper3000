@@ -79,3 +79,11 @@ This reference intentionally covers low-voltage DC only. Do not use it as DIY ma
 
 ## Drawing release checklist
 A build-to-print drawing needs exact part numbers/revisions, datasheets, pinout, wire gauge/length, fuse, voltage/current limits, connector ratings, enclosure/IP rating, thermal analysis, RF configuration, firmware, assembly steps and independent review. These generic diagrams are not build-to-print drawings.
+
+## Design E – smartphone-only participant client
+
+The first mobile implementation is a local-first PWA in `mobile-pwa/`. The phone uses its built-in camera/photo picker, one-shot location and optional orientation sensor only after a user action. Reports stay in IndexedDB; a manually initiated export contains only the Source-API-v1 metadata fields. It does not pair to MeshCore radios or continuously track location. See [MOBILE-PWA-ACCEPTANCE.md](MOBILE-PWA-ACCEPTANCE.md).
+
+## Detailed low-voltage wiring templates
+
+The connector-level examples, UART/I²C signal direction, RS-485 bus topology, DC fuse/power-tree checklist and procurement/BOM template are documented in [LOW-VOLTAGE-WIRING-TEMPLATES.md](LOW-VOLTAGE-WIRING-TEMPLATES.md). They deliberately avoid universal GPIO numbers or unverified part numbers; the exact board revision and datasheets must be selected before a build-to-print schematic can be released.
