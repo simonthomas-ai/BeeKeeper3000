@@ -31,3 +31,14 @@
 - ONNX inference and the Vespa-velutina classifier are not validated as operational.
 - Automated SQLite backup/verify/restore is available, but encrypted backup media, schedule/rotation and Windows ACL provisioning remain deployment responsibilities. Hardware field validation and the complete source/license inventory still require release acceptance.
 - No GDPR compliance claim is made. A deployment-specific assessment of roles, purposes, legal basis, DPIA necessity, retention, rights handling and processors is still required.
+
+
+## Coordinated vulnerability disclosure
+
+Do not publish exploitable vulnerability details, credentials, personal data or live station locations in public issues. Use GitHub private vulnerability reporting for this repository if enabled. If private reporting is unavailable, first open a minimal issue asking maintainers for a secure contact channel without including exploit details. Do not test systems you do not own or have explicit permission to assess.
+
+Maintainers should acknowledge reports, assess severity, coordinate a fix and disclosure timeline, and document affected versions. No response-time or remediation guarantee is made until a staffed security process and responsible legal entity exist.
+
+## Legal and operational limitation
+
+Security controls described here are design goals or implementation claims, not a certification or guarantee. Verify the actual release and deployment configuration before use.
