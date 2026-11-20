@@ -95,6 +95,7 @@ Die Root-Lizenz und die vollständige Rechtekette des veröffentlichten Teilbaum
 
 Der öffentliche Pilot- und Release-Status bleibt **BLOCKIERT**, bis die anwendbare Checkliste für Träger-/Betreiberrollen, Lizenzkette, Datenschutz, Produktsicherheit, Funkrecht und fachliche Erkennungsqualität dokumentiert freigegeben wurde. Siehe:
 - [Sicher nutzbarer Umfang und Betriebsgrenzen](docs/SAFE-USE-STATUS.md)
+- [Verifizierte CI- und Lieferketten-Ergebnisse vom 20.11.2026](docs/CI-RESULTS-2026-11-20.md)
 - [Recht und Gemeinnützigkeit](docs/LEGAL-COMPLIANCE.md)
 - [Verbindliches Release-/Pilot-Gate](docs/RELEASE-LEGAL-GATE.md)
 - [Mitwirkungsregeln](CONTRIBUTING.md)
