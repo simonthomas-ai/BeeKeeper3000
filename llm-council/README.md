@@ -26,7 +26,7 @@
    python3 tools/llm_council.py
    ```
 
-6. Berichte erscheinen unter `llm-council/runs/`. Antworten werden nicht automatisch als wahr oder als Honig-Score bewertet.
+6. Berichte erscheinen unter `llm-council/runs/`. Im geplanten Windows-Runner speichert der Workflow sie dauerhaft lokal unter `%USERPROFILE%\\BEEKEEPER3000\\llm-council\\runs`. Es werden keine Actions-Artefakte hochgeladen. Antworten werden nicht automatisch als wahr oder als Honig-Score bewertet.
 
 ## Externe kostenlose Modelle
 
