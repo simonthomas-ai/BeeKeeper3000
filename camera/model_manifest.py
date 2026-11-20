@@ -42,6 +42,11 @@ class ModelManifest:
     model_source_url: str
     model_license: str
     license_review_status: str
+    license_evidence_url: str
+    license_reviewed_by: str
+    license_reviewed_at: str
+    inference_use_allowed: bool
+    redistribution_allowed: bool
     input_name: str
     width: int
     height: int
@@ -92,12 +97,37 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if not isinstance(version, str) or not version.strip() or len(version) > 100:
         raise ModelManifestError("model_version is required")
     parsed_source = urlparse(source) if isinstance(source, str) else None
-    if parsed_source is None or parsed_source.scheme != "https" or not parsed_source.netloc:
-        raise ModelManifestError("model_source_url must be an HTTPS provenance URL")
+    if (parsed_source is None or parsed_source.scheme != "https" or not parsed_source.netloc
+            or parsed_source.username or parsed_source.password):
+        raise ModelManifestError("model_source_url must be a credential-free HTTPS provenance URL")
     if not isinstance(license_id, str) or not _SPDX.fullmatch(license_id):
         raise ModelManifestError("model_license must be an SPDX-like identifier")
     if license_review not in {"approved", "public-domain"}:
         raise ModelManifestError("model license must be explicitly reviewed before inference")
+
+    evidence_url = raw.get("license_evidence_url")
+    evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
+    if (evidence is None or evidence.scheme != "https" or not evidence.netloc
+            or evidence.username or evidence.password):
+        raise ModelManifestError("license_evidence_url must be a credential-free HTTPS source")
+    reviewer = raw.get("license_reviewed_by")
+    if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 160:
+        raise ModelManifestError("license_reviewed_by must identify the responsible reviewer")
+    reviewed_at = raw.get("license_reviewed_at")
+    if not isinstance(reviewed_at, str):
+        raise ModelManifestError("license_reviewed_at must be an ISO-8601 timestamp")
+    try:
+        reviewed_stamp = __import__("datetime").datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ModelManifestError("license_reviewed_at must be an ISO-8601 timestamp") from exc
+    if reviewed_stamp.tzinfo is None or reviewed_stamp.utcoffset() is None:
+        raise ModelManifestError("license_reviewed_at must include a timezone")
+    inference_use_allowed = raw.get("inference_use_allowed")
+    redistribution_allowed = raw.get("redistribution_allowed")
+    if type(inference_use_allowed) is not bool or type(redistribution_allowed) is not bool:
+        raise ModelManifestError("inference_use_allowed and redistribution_allowed must be explicit booleans")
+    if not inference_use_allowed:
+        raise ModelManifestError("model license review does not permit inference use")
     if raw.get("inference_status") not in {"experimental", "independently_validated"}:
         raise ModelManifestError("inference_status must be experimental or independently_validated")
     if raw.get("inference_status") == "independently_validated":
@@ -161,6 +191,11 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         model_source_url=source,
         model_license=license_id,
         license_review_status=license_review,
+        license_evidence_url=evidence_url,
+        license_reviewed_by=reviewer.strip(),
+        license_reviewed_at=reviewed_at,
+        inference_use_allowed=inference_use_allowed,
+        redistribution_allowed=redistribution_allowed,
         input_name=input_name.strip(),
         width=width,
         height=height,
