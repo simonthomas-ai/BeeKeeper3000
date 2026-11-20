@@ -1,10 +1,45 @@
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from camera.contracts import Detection
 from camera.outbox import SQLiteOutbox
-from camera.runtime import LocalCameraRuntime
+from camera.runtime import LocalCameraRuntime, _capture_source
 from camera.source_client import SourceClientError
+
+
+class FakeCapture:
+    def __init__(self, source, backend):
+        self.source = source
+        self.backend = backend
+        self.buffer_size = None
+
+    def set(self, prop, value):
+        self.buffer_size = (prop, value)
+
+    def isOpened(self):
+        return True
+
+    def release(self):
+        pass
+
+
+class FakeCV2:
+    CAP_DSHOW = 700
+    CAP_FFMPEG = 1900
+    CAP_V4L2 = 200
+    CAP_AVFOUNDATION = 1200
+    CAP_ANY = 0
+    CAP_PROP_BUFFERSIZE = 38
+
+    def __init__(self):
+        self.calls = []
+
+    def VideoCapture(self, source, backend):
+        capture = FakeCapture(source, backend)
+        self.calls.append(capture)
+        return capture
 
 
 class FakeDetector:
@@ -18,6 +53,34 @@ class OfflineClient:
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_linux_local_camera_uses_v4l2(self):
+        fake = FakeCV2()
+        with patch.dict(sys.modules, {"cv2": fake}), patch("camera.runtime.sys.platform", "linux"):
+            _capture_source("0")
+        self.assertEqual(fake.calls[0].source, 0)
+        self.assertEqual(fake.calls[0].backend, fake.CAP_V4L2)
+        self.assertEqual(fake.calls[0].buffer_size, (fake.CAP_PROP_BUFFERSIZE, 1))
+
+    def test_linux_video_device_path_uses_v4l2(self):
+        fake = FakeCV2()
+        with patch.dict(sys.modules, {"cv2": fake}), patch("camera.runtime.sys.platform", "linux"):
+            _capture_source("/dev/video0")
+        self.assertEqual(fake.calls[0].source, "/dev/video0")
+        self.assertEqual(fake.calls[0].backend, fake.CAP_V4L2)
+
+    def test_network_camera_uses_ffmpeg(self):
+        fake = FakeCV2()
+        with patch.dict(sys.modules, {"cv2": fake}), patch("camera.runtime.sys.platform", "linux"):
+            _capture_source("rtsp://127.0.0.1:554/stream")
+        self.assertEqual(fake.calls[0].backend, fake.CAP_FFMPEG)
+
+    def test_windows_local_camera_uses_directshow(self):
+        fake = FakeCV2()
+        with patch.dict(sys.modules, {"cv2": fake}), patch("camera.runtime.sys.platform", "win32"):
+            _capture_source("0")
+        self.assertEqual(fake.calls[0].source, 0)
+        self.assertEqual(fake.calls[0].backend, fake.CAP_DSHOW)
+
     def test_cooldown_and_offline_queue_preservation(self):
         with tempfile.TemporaryDirectory() as tmp:
             box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))

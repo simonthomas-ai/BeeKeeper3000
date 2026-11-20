@@ -82,14 +82,15 @@ No destructive data-purge command is provided. Protect the state and configurati
 
 The base installer does **not** install OpenCV / ONNX Runtime, start a camera or enable AI detection. This avoids consuming Raspberry Pi resources or creating false confidence before a model has been reviewed.
 
-After a locally obtained model has passed source/license, checksum, input/output-contract and human evaluation review:
+After a locally obtained model has passed per-file source/license review, SHA-256 verification, the input/output contract check and human review:
 
-1. Create a dedicated Python virtual environment for camera/requirements.txt.
-2. Set camera source, station ID, API URL/key, outbox path and approved model manifest in a root-controlled systemd drop-in or environment file readable by the beekeeper service account.
-3. Keep the outbox under /var/lib/beekeeper3000 so station backups can include it.
-4. Enable a separate camera unit only after local camera and inference tests pass.
+1. Create the protected model directory and place the ONNX file plus manifest there. The manifest must set the licence review to approved/public-domain and carry the exact model hash; the validator rejects unreviewed licences and invalid hashes.
+2. Copy docs/camera.env.example to /etc/beekeeper3000/camera.env, edit it with sudoedit, set a station pseudonym and camera source, then set root:beekeeper ownership and mode 0640. Keep RTSP credentials only in this protected file.
+3. Run sudo bash scripts/install-camera-linux.sh. This creates an isolated camera virtual environment, installs pinned OpenCV/ONNX Runtime dependencies and verifies the model manifest. It installs the separate systemd unit but does not start it by default.
+4. Start only after the operator has checked the camera source and the model's experimental/validation status: sudo systemctl enable --now beekeeper-camera. For a local /dev/video camera, the installer adds the service account to the video group. For RTSP, no local video-device group is needed.
+5. Inspect journalctl -u beekeeper-camera -f and confirm stable capture, CPU load, outbox delivery and recovery behaviour before leaving the station unattended.
 
-All detections remain unverified candidates until human review. The installer does not download unreviewed weights or claim accuracy.
+The optional service uses V4L2 for local Linux cameras, DirectShow for Windows, and FFmpeg for network/file sources. No model weights or camera images are downloaded by the installer. All detections remain candidate events until human review; the service does not make confirmed species or nest-location claims.
 
 ## Network, privacy and radio boundaries
 

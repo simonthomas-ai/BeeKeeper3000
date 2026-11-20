@@ -1,0 +1,39 @@
+[Unit]
+Description=BeeKeeper local camera capture and experimental ONNX detection
+Requires=beekeeper-source-api.service
+After=network.target beekeeper-source-api.service
+ConditionPathExists=/etc/beekeeper3000/camera.env
+ConditionPathExists=/var/lib/beekeeper3000/models/manifest.json
+
+[Service]
+Type=simple
+User=beekeeper
+Group=beekeeper
+WorkingDirectory=@BEEKEEPER_ROOT@
+EnvironmentFile=/etc/beekeeper3000/station.env
+EnvironmentFile=/etc/beekeeper3000/camera.env
+Environment=PYTHONPATH=@BEEKEEPER_ROOT@
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/beekeeper3000/venv-camera/bin/python -m camera.runtime
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20
+KillSignal=SIGINT
+UMask=0077
+Nice=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/beekeeper3000
+LimitNOFILE=2048
+TasksMax=96
+
+[Install]
+WantedBy=multi-user.target

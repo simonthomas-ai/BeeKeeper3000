@@ -23,10 +23,29 @@ def _capture_source(value: str):
         raise CameraRuntimeError("Install optional OpenCV from camera/requirements.txt") from exc
     if not isinstance(value, str) or not value.strip():
         raise ValueError("BEEKEEPER_CAMERA_SOURCE is required")
+    value = value.strip()
+    if not value:
+        raise ValueError("BEEKEEPER_CAMERA_SOURCE is required")
     source = int(value) if value.isdecimal() else value
     if isinstance(source, str) and not source.startswith(("rtsp://", "rtsps://", "http://", "https://")):
         source = str(Path(source).expanduser())
-    backend = cv2.CAP_DSHOW if isinstance(source, int) and sys.platform == "win32" else cv2.CAP_FFMPEG
+
+    # Use native camera backends for local devices. Forcing FFmpeg on Linux can
+    # break V4L2 webcams and Raspberry Pi camera bridges; keep FFmpeg for files
+    # and network streams where it is the appropriate decoder.
+    local_device = isinstance(source, int) or (
+        isinstance(source, str) and source.startswith("/dev/video")
+    )
+    if local_device and sys.platform == "win32":
+        backend = cv2.CAP_DSHOW
+    elif local_device and sys.platform.startswith("linux"):
+        backend = getattr(cv2, "CAP_V4L2", cv2.CAP_ANY)
+    elif local_device and sys.platform == "darwin":
+        backend = getattr(cv2, "CAP_AVFOUNDATION", cv2.CAP_ANY)
+    elif local_device:
+        backend = cv2.CAP_ANY
+    else:
+        backend = cv2.CAP_FFMPEG
     capture = cv2.VideoCapture(source, backend)
     if hasattr(cv2, "CAP_PROP_BUFFERSIZE"):
         capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
