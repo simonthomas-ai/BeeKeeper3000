@@ -5,11 +5,16 @@ import ipaddress
 import json
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit, urlunsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 class SourceClientError(RuntimeError):
     pass
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, new_url):
+        return None
 
 
 def _loopback_endpoint(base_url: str) -> str:
@@ -43,7 +48,8 @@ class SourceApiClient:
             "X-API-Key": self.api_key,
         })
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            opener = build_opener(_NoRedirectHandler())
+            with opener.open(request, timeout=self.timeout) as response:
                 if response.status not in (200, 201):
                     raise SourceClientError(f"source API returned HTTP {response.status}")
                 return True
