@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from camera.outbox import SQLiteOutbox
 from camera.outbox_backup import backup, verify, restore, OutboxBackupError
@@ -49,8 +50,9 @@ class OutboxBackupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             wrong = Path(tmp) / "wrong.sqlite3"
             import sqlite3
-            with sqlite3.connect(wrong) as db:
-                db.execute("CREATE TABLE not_outbox(value TEXT)")
+            with closing(sqlite3.connect(wrong)) as db:
+                with db:
+                    db.execute("CREATE TABLE not_outbox(value TEXT)")
             with self.assertRaises(OutboxBackupError):
                 verify(wrong)
 
