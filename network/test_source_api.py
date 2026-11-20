@@ -213,6 +213,17 @@ class SourceApiTests(unittest.TestCase):
         self.assertEqual(payload["error"], "source_event_id_conflict")
         self.assertEqual(self.store.count(), 1)
 
+    def test_post_when_journal_is_full_returns_503_without_evicting_events(self):
+        self.store.max_rows = 100
+        for index in range(100):
+            self.store.append(sample_event(index))
+        status, payload, _ = self.request(
+            "POST", "/api/events", body=json.dumps(sample_event(1000))
+        )
+        self.assertEqual(status, 503)
+        self.assertEqual(payload["error"], "source_journal_capacity")
+        self.assertEqual(self.store.count(), 100)
+
     def test_post_rejects_location_and_media_fields(self):
         event = sample_event(1)
         event["latitude"] = 51.2
