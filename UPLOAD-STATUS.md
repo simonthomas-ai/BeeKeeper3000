@@ -38,7 +38,7 @@ Diese Ergebnisse belegen die automatisierte Softwarestrecke mit Testdaten. Sie b
 
 ## Noch nicht veröffentlichte bzw. nicht vollständig belegte Bestandteile
 
-Der vollständige ursprüngliche Hornet3000-Wächter-Quellbaum 1.6.0 ist im aktuellen GitHub-Tree nicht enthalten. Insbesondere fehlen weiterhin der vollständige ursprüngliche C++-Dienst, zugehörige CMake-/Build-Manifeste, vollständige Packaging-/Installer-Bestandteile und eine durchgehende Artefakt-Provenienzkette. Der Repository-Baum darf nicht mit einem vollständigen Upload des ursprünglichen Produkts verwechselt werden.
+Der vollständige ursprüngliche Hornet3000-Wächter-Quellbaum 1.6.0 wurde aus dem bereitgestellten Bibliotheksarchiv wiederhergestellt. Der SHA-256 des Ausgangsarchivs `Hornet3000-1.6.0-source.zip` stimmt mit `SHA256SUMS.txt` überein: `ffb4040bf1facf2d08f880b73c06c3933f801e5de2a97a497bfabaa9ca9c007a`. Daraus wurde lokal eine gehärtete 1.6.1-Version gebaut und getestet (GCC 14.2, CMake Release, CTest 1/1, HTTP/JPEG/Privacy-Smoke, MeshCore/Freenet-Protokolltests 10/10). Das 1.6.1-Paket liegt als lokales Arbeitsartefakt vor; es ist in diesem Stand noch nicht als entpackter Quellbaum oder Release-Asset in GitHub veröffentlicht.
 
 Nicht als integriert oder betriebsbereit behauptet werden:
 - validierte lokale KI-Inferenz bzw. ein nach unabhängigen Daten geprüftes Vespa-velutina-Modell,
@@ -52,7 +52,7 @@ Nicht als integriert oder betriebsbereit behauptet werden:
 
 ## Noch offene Freigabe- und Betriebsarbeiten
 
-1. Vollständige ursprüngliche C++-Quellbasis, Lizenztexte, Urheberhinweise und Provenienz aus vertrauenswürdiger Quelle wiederherstellen und abgleichen. GitHub erkennt für das Repository weiterhin keine Root-Lizenz; keine pauschale Weiterverteilungslizenz ableiten.
+1. Wiederhergestellten 1.6.0-Quellbaum und gehärtete 1.6.1-Module in GitHub veröffentlichen; für alle Drittanbieter-Artefakte die Provenienz weiter prüfen. Es gibt weiterhin keine pauschale Repository-Lizenz. GitHub erkennt für das Repository weiterhin keine Root-Lizenz; keine pauschale Weiterverteilungslizenz ableiten.
 2. Vollständige SBOM-/Lizenzabdeckung für alle tatsächlich veröffentlichten Runtime-, OS-, Firmware-, Modell-, Datensatz- und Kartenartefakte herstellen. Die vorhandenen SBOM-/Audit-Jobs decken die vorhandene Bridge-Abhängigkeitsstruktur und die optionale MeshCore-Python-Lockdatei ab, nicht das fehlende Gesamtprodukt.
 3. Physische MeshCore-Hardwaretests einschließlich unterstützter Boards/Firmware, Paketverlust, Reichweite, Antennen-/Standortkonfiguration und gesetzlicher Funkparameter durchführen.
 4. Peilung mit kalibrierten Sensoren, dokumentiertem Fehlerbudget und unabhängig vermessenen Zielpositionen im Feld validieren.
