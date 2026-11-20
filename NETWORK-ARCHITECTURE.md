@@ -45,10 +45,10 @@ Ein Smartphone-only-Teilnehmer ist vollwertig: Es gibt keine Pflicht, Funkhardwa
 Eine Meldung enthält Artkandidat, Zeit, Stationskennung, Position/Positionsgenauigkeit, Belegart und Qualitätswerte. Fotos bleiben standardmäßig lokal; eine freiwillig freigegebene Aufnahme kann separat über HTTPS übermittelt werden.
 
 ### Stufe B – Richtungspeilung
-Eine kalibrierte Kamera oder ein geschulter Beobachter erfasst die beobachtete Abflug-/Flugrichtung als Azimut (Grad von geografisch Nord, im Uhrzeigersinn) plus Unsicherheit. Smartphone-Kompasswerte sind nur nach Kalibrierung und Qualitätsprüfung zulässig. Magnetische Störungen in Gebäuden und an Metallmasten müssen erkannt werden.
+Eine kalibrierte Kamera oder ein geschulter Beobachter erfasst die beobachtete Abflug-/Flugrichtung als Azimut (Grad von geografisch Nord, im Uhrzeigersinn) plus kalibrierte Standardunsicherheit. Smartphone-Kompasswerte sind nur nach Kalibrierung und Qualitätsprüfung zulässig. Magnetische Störungen in Gebäuden und an Metallmasten müssen erkannt werden.
 
 ### Stufe C – räumliche Zusammenführung
-Mindestens drei zeitlich passende, räumlich unabhängige Peilungen sollen ein Suchgebiet erzeugen. Die Referenzimplementierung in `network/triangulation.py` berechnet einen gewichteten Schnittpunkt der Peillinien in einem lokalen ebenen Koordinatensystem. Sie weist schlechte Geometrie, rückwärts gerichtete Strahlen und große Restfehler zurück. Der berechnete Punkt ist **nur ein Suchhinweis**, kein bestätigter Neststandort.
+Mindestens drei zeitlich passende, räumlich unabhängige Peilungen sollen ein Suchgebiet erzeugen. Die Referenzimplementierung in `network/triangulation.py` minimiert winkelgewichtete Peilresiduen in einer lokalen Ost-/Nord-Projektion, verwendet robuste Huber-Gewichtung und kann begrenzt statistisch inkonsistente Messungen verwerfen. Sie weist schlechte Geometrie, rückwärts gerichtete Inlier-Strahlen, ungültige Zeit-/Messwerte und große Restfehler zurück. Die Ausgabe enthält eine lokale linearisierte 95-%-Unsicherheitsellipse. Der Mittelpunkt ist **nur ein Suchhinweis**, kein bestätigter Neststandort; systematische Kalibrierfehler und reale Feldabdeckung müssen separat geprüft werden.
 
 ### Stufe D – fachliche Verifikation
 Suchteams prüfen den Bereich vor Ort. Bei Bedarf kann ein sachkundiges Team eine Hornisse mit einem geeigneten Telemetriesender markieren und per Empfänger verfolgen. Die Auswahl, Masse und Befestigung eines Senders müssen tierwohlgerecht und fachlich geprüft sein; kein LoRa-Tag an frei fliegenden Tieren als Standard voraussetzen.

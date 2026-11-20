@@ -17,7 +17,7 @@ Dieses Repository enthält aktuell eine veröffentlichte Teilmenge der BeeKeeper
 
 ### Netzwerk und Triangulation
 
-- `network/triangulation.py`: gewichtete Least-Squares-Schnittpunktberechnung aus mindestens drei unabhängigen, zeitlich passenden Peilungen.
+- `network/triangulation.py`: winkelgewichtete iterative Peilschnittberechnung mit Huber-Robustifizierung, begrenzter Ausreißererkennung und lokaler linearer 95-%-Unsicherheitsellipse. Mindestens drei unabhängige, zeitlich passende Stationen bleiben erforderlich; Ergebnis bleibt eine Suchhypothese.
 - `network/protocol-v1.schema.json`: JSON-Vertrag für künftige und lokale IP-/Netzwerkereignisse.
 - `network/meshcore/`: optionaler MeshCore-Serialadapter mit binärem Ereignisformat v1, Ed25519-Signaturen, 128-Bit-Fingerprints, Ablaufzeit, Duplikatfilter und lokalem Stationskoordinatenregister.
 - `network/meshcore/event_store.py`: lokaler SQLite-Speicher mit dauerhafter Ereignis-ID-Deduplizierung, Aufbewahrungs-/Datensatzlimit und lokaler Speicherung der zur Peilung aufgelösten Stationskoordinaten. Doppelte signierte Ereignisse werden auch nach einem Empfänger-Neustart nicht erneut gespeichert.
@@ -29,7 +29,7 @@ Die Node.js-Komponente in [monitor-bridge/](monitor-bridge/) fragt den Hornet300
 
 Der Monitor-Hauptzweig verfügt über einen loopback-gebundenen Empfangsdienst mit SQLite-Ereignisspeicher und einer lokalen Stationsereignis-Ansicht. Die lokale Ansicht wird unter `http://127.0.0.1:8765/` geöffnet. Die öffentliche GitHub-Pages-Seite greift absichtlich nicht auf einen privaten localhost-Dienst zu.
 
-**Synchronisationsgrenze:** Die Bridge liest derzeit nur die jüngsten 100 Ereignisse pro Abfrage. Ohne Cursor-/Sequenzunterstützung der Quell-API ist verlustfreie Nachholung bei größeren Rückständen nicht garantiert. Siehe [Issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7).
+**Synchronisationsgrenze:** Die Bridge unterstützt inzwischen Cursor-Paginierung, persistente Seiten-Checkpoints und Wiederaufnahme nach Teilfehlern. Die aktuell veröffentlichte Hornet3000-Quell-API liefert aber weiterhin nur die jüngsten 100 Ereignisse und implementiert den Cursor-Vertrag noch nicht. Der Legacy-Modus ist deshalb weiterhin verlustbehaftet; für einen produktiven Betrieb kann `BRIDGE_REQUIRE_CURSOR=true` die Bridge sicher anhalten, statt stillschweigend den unvollständigen Feed zu verwenden. Der notwendige Server-Vertrag steht in [SOURCE-CURSOR-CONTRACT.md](monitor-bridge/SOURCE-CURSOR-CONTRACT.md); [Issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7) bleibt offen.
 
 ## Tests
 
