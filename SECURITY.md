@@ -20,7 +20,7 @@
 - SQLite data is not encrypted by the application. Use BitLocker, FileVault, LUKS or an approved encrypted volume; configure restricted filesystem ACLs.
 - Backups, browser IndexedDB, exports, reverse-proxy logs and source-side events require their own retention and deletion handling.
 - Keep exact nest/private-property coordinates off public maps; use aggregation and role-based disclosure.
-- Keep dependencies pinned, generate SBOMs and review advisories before release.
+- Keep dependencies pinned, generate SBOMs and review advisories before release. The CI supply-chain workflow audits the captured optional MeshCore requirements and zero-dependency bridge, and uploads a CycloneDX artifact; it is not a complete SBOM for the absent full C++ source/runtime. See `SUPPLY_CHAIN.md`.
 
 ## Known release gaps
 
@@ -28,5 +28,5 @@
 - MeshCore has only simulated protocol/transport tests; no real radio, antenna, repeater or multi-station field test is claimed.
 - Freenet, Meshtastic, Mosquitto and MapLibre are not active runtime dependencies of BeeKeeper3000.
 - ONNX inference and the Vespa-velutina classifier are not validated as operational.
-- Backup/restore, Windows ACL provisioning, hardware field validation and the complete source/license inventory still require release acceptance.
+- Automated SQLite backup/verify/restore is available, but encrypted backup media, schedule/rotation and Windows ACL provisioning remain deployment responsibilities. Hardware field validation and the complete source/license inventory still require release acceptance.
 - No GDPR compliance claim is made. A deployment-specific assessment of roles, purposes, legal basis, DPIA necessity, retention, rights handling and processors is still required.
