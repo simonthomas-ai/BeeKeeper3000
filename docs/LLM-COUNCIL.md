@@ -66,7 +66,7 @@ Es gibt keine Abstimmung „Modell gegen Modell“ über die Wahrheit. Mehrheits
 - `llm-council/config.json` setzt `budget_eur: 0`; Ollama ist auf Loopback begrenzt. Lokale Modelle müssen in `llm-council/config.json` explizit freigegeben sein; Cloud-Modellkennungen werden abgewiesen.
 - Externe Endpunkte bleiben standardmäßig deaktiviert. Erforderlich sind eine aktuelle (maximal 30 Tage alte) Nutzungsbedingungenprüfung, explizit bestätigter kostenloser Zugriff und ein vom Anbieter durchgesetztes hartes Ausgabenlimit von exakt 0 EUR. Fehlt eine Bedingung, wird der Anbieter übersprungen.
 - `tests/test_llm_council.py` prüft Kosten-Gates, HTTPS, Loopback-Bindung, Secret-Blockierung und Promptgrößenlimit.
-- `.github/workflows/llm-council.yml` startet wöchentlich oder manuell ausschließlich auf einem selbstverwalteten Runner mit den Labels `self-hosted`, `linux`, `x64`, `llm-council`. Es werden keine kostenpflichtigen GitHub-gehosteten Runner verwendet.
+- `.github/workflows/llm-council.yml` startet wöchentlich oder manuell ausschließlich auf einem selbstverwalteten Runner mit den Labels `self-hosted`, `windows`, `x64`, `llm-council`. Es werden keine kostenpflichtigen GitHub-gehosteten Runner verwendet.
 - Der Workflow lädt einen Bericht als Artefakt hoch; er erstellt keine PRs, verändert keine Projektdateien und merged niemals automatisch.
 - Berichte enthalten Antwort-Hashes und Status. Honig-Punkte werden nicht automatisch vergeben, sondern erst nach unabhängiger menschlicher Prüfung.
 
