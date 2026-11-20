@@ -16,14 +16,31 @@ It does not install camera drivers or start an original Hornet3000 C++ daemon or
 - Local clones of both repositories, preferably sibling directories named BeeKeeper3000 and Beekeeper-Monitor.
 - PowerShell 5.1 or newer.
 
+## Install the station environment
+
+Install or provide Python 3.11+ and Node.js 20+ first. The project installer does not require administrator privileges or download external system runtimes. Open PowerShell in the BeeKeeper3000 checkout and create the isolated environment:
+
+~~~powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\Install-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
+~~~
+
+The installer creates a private Python virtual environment and protected data/log/process directories under `%LOCALAPPDATA%\BeeKeeper3000\`. The base services use Python's standard library and Node's built-in modules. Add optional CPU camera dependencies only when needed:
+
+~~~powershell
+.\scripts\Install-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor" -WithCamera
+~~~
+
+The camera setup installs pinned direct packages from `camera/requirements.txt`; transitive dependencies are not yet a fully hash-locked release SBOM. It does not download a model, configure a camera, start a service or activate inference. MeshCore radio dependencies remain separate: the current lock file is validated for Linux CI, not certified as a Windows radio-driver bundle.
+
 ## Start
 
-Open PowerShell in the BeeKeeper3000 checkout:
+Use the private Python runtime created by the installer:
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\Start-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
-```
+~~~powershell
+$Python = "$env:LOCALAPPDATA\BeeKeeper3000\venv\Scripts\python.exe"
+.\scripts\Start-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor" -PythonExe $Python
+~~~
 
 The Monitor path may be omitted when Beekeeper-Monitor is a sibling directory beside BeeKeeper3000.
 
@@ -71,12 +88,12 @@ The launcher is a per-user process supervisor, not a Windows Service and not an 
 
 ## Optional camera producer
 
-After the base station has been started, install the optional runtime from camera/requirements.txt in a dedicated Python environment. Set only the local manifest and camera source in the current PowerShell session, then use the launcher:
+After the base station has been started and the installer was run with `-WithCamera`, use the same station Python environment for the optional runtime. Set only the local manifest and camera source in the current PowerShell session, then use the launcher:
 
 ~~~powershell
 $env:BEEKEEPER_MODEL_MANIFEST = 'C:\secure\beekeeper\model-manifest.json'
 $env:BEEKEEPER_CAMERA_SOURCE = '0' # or a local file / RTSP URL
-.\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe'
+.\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe "$env:LOCALAPPDATA\BeeKeeper3000\venv\Scripts\python.exe"
 ~~~
 
 The launcher retrieves the source API key from the current-user DPAPI station secret file; it does not ask the operator to copy the key into a command or file. Camera processing stays separate from the three base services. The example model manifest cannot run until a real model, hash, source, license and review status are supplied. Every predicted species remains unverified. Stop the camera process with Ctrl+C.
