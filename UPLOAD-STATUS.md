@@ -10,6 +10,15 @@
 
 The complete 1.6.0 source tree (C++ service, web UI, firmware, bridges, packaging, and full test suite) is prepared as a local source archive but has **not** been committed into this GitHub repository. Do not mistake the adapter/documentation commits for a complete source upload.
 
+## Network implementation added
+
+- `NETWORK-ARCHITECTURE.md`: bundesweite Architektur mit Teilnehmerklassen, LoRa/MeshCore, Freenet-P2P, IP-Fallback, Datenschutz und Pilot-Abnahme.
+- `network/triangulation.py`: gewichtete Peilungs-Triangulation mit Zeitfenster-, Geometrie-, Rückwärtsstrahl- und Restfehlerprüfung.
+- `network/protocol-v1.schema.json`: versionierter Ereignisrahmen für künftige Funk-/IP-Adapter.
+- `network/test_triangulation.py`: synthetische Regressionstests; lokale numerische Referenzprüfung durchgeführt. GitHub Actions führt die Tests bei Push/PR aus.
+
+Diese Komponenten sind ein Software-Referenzstart, noch kein fertig installierbares bundesweites Funknetz. Hardware-/Feldtests und echte Funkadapter fehlen.
+
 ## Validation
 
 - C++ release build: passed.
