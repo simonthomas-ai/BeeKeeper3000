@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 
@@ -15,7 +16,7 @@ def _validate(path: str | Path) -> None:
     if not source.is_file():
         raise OutboxBackupError("outbox database is not a regular file")
     try:
-        with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True, timeout=5) as db:
+        with closing(sqlite3.connect(source.as_uri() + "?mode=ro", uri=True, timeout=5)) as db:
             result = db.execute("PRAGMA integrity_check").fetchone()
             if result != ("ok",):
                 raise OutboxBackupError("SQLite integrity check failed")
@@ -41,7 +42,7 @@ def backup(source: str | Path, destination: str | Path) -> Path:
     _validate(src)
     dst.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with sqlite3.connect(src, timeout=5) as source_db, sqlite3.connect(dst) as target_db:
+        with closing(sqlite3.connect(src, timeout=5)) as source_db, closing(sqlite3.connect(dst)) as target_db:
             source_db.backup(target_db)
         _validate(dst)
         return dst
