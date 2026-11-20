@@ -120,6 +120,21 @@ class SQLiteSourceStoreTests(unittest.TestCase):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 self.store.delete(invalid)
 
+    def test_deleted_event_tombstone_expires_with_retention_without_sequence_reuse(self):
+        for index in range(1, 4):
+            self.store.append(sample_event(index))
+        self.assertTrue(self.store.delete("source-event-0001"))
+        expired = (datetime.now(timezone.utc) - timedelta(days=31)).isoformat()
+        with self.store._db() as db:
+            db.execute(
+                "UPDATE source_tombstones SET deleted_at=? WHERE event_id=?",
+                (expired, "source-event-0001"),
+            )
+        self.store.purge_expired()
+        record, inserted = self.store.append(sample_event(1))
+        self.assertTrue(inserted)
+        self.assertGreater(record["sequence"], 3)
+
     def test_duplicate_delivery_is_idempotent_but_conflicting_reuse_is_rejected(self):
         record, inserted = self.store.append(sample_event(1))
         self.assertTrue(inserted)
