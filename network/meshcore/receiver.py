@@ -67,11 +67,11 @@ class StationRegistry:
 
 
 class MeshCoreEventReceiver:
-    """Verify received MeshCore packets before forwarding normalized metadata.
+    """Verify MeshCore packets before delivering normalized metadata to a sink.
 
-    sink(event, bearing) is called only after signature, expiry and schema
-    validation. bearing is None for non-bearing events. The sink should persist
-    event IDs idempotently; this receiver additionally caches recent IDs in RAM.
+    The sink receives (event, receiver_local_bearing). A persistent sink may
+    return False for an already-stored event. That signal prevents a duplicate
+    from being counted as newly accepted even after this receiver restarts.
     """
 
     def __init__(
@@ -122,7 +122,10 @@ class MeshCoreEventReceiver:
                 bearing = self.station_registry.bearing(event)
             result = self.sink(event, bearing)
             if inspect.isawaitable(result):
-                await result
+                result = await result
+            if result is False:
+                self.duplicate_count += 1
+                return False
             self._seen.add(event_id)
             self._seen_order.append(event_id)
             while len(self._seen_order) > self.max_seen:
