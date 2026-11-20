@@ -41,7 +41,7 @@ npm --prefix monitor-bridge ci --ignore-scripts --no-audit --no-fund
 npm --prefix monitor-bridge test
 ```
 
-Die gleiche Teststrecke wird durch `.github/workflows/quality-gates.yml` auf GitHub Actions ausgeführt. Die Workflows laufen auf dem öffentlichen Repository und verwenden keine API-Secrets oder kostenpflichtigen LLM-Dienste. Ergebnisse sind nach dem ersten erfolgreichen Workflow-Lauf zu prüfen; das bloße Vorhandensein der Workflow-Datei ist kein Testergebnis.
+Die Teststrecke wurde am 20.11.2026 auf GitHub Actions erfolgreich ausgeführt: Linux- und Windows-Kamera-/Outbox-Tests, Python-/MeshCore- und Node-Bridge-Tests. Zusätzlich bestanden die Network-Reference-Tests und der erfasste Supply-Chain-Audit mit SBOM-Erzeugung. Die konkreten Läufe, Testzahlen und Grenzen stehen in [CI-RESULTS-2026-11-20.md](CI-RESULTS-2026-11-20.md). Diese Ergebnisse belegen nur synthetische Softwaretests und die aufgeführten Dependency-Sets, keine Hardware-, Funk-, Feld-, Rechts- oder Lizenzfreigabe. Die Workflows verwenden keine API-Secrets oder kostenpflichtigen LLM-Dienste.
 
 ## Gesperrt bis zur belegten Freigabe
 
