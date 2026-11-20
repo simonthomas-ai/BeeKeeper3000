@@ -65,6 +65,8 @@ getent group beekeeper >/dev/null || groupadd --system beekeeper
 getent passwd beekeeper >/dev/null || useradd --system --gid beekeeper --home-dir "$STATE_ROOT" --no-create-home --shell /usr/sbin/nologin beekeeper
 install -d -o root -g root -m 0755 "$APP_ROOT/releases" "$MONITOR_ROOT/releases"
 install -d -o beekeeper -g beekeeper -m 0700 "$STATE_ROOT"
+chown beekeeper:beekeeper "$STATE_ROOT"
+chmod 0700 "$STATE_ROOT"
 install -d -o root -g beekeeper -m 0750 "$CONFIG_ROOT"
 
 copy_release() {
@@ -94,15 +96,8 @@ atomic_link() {
   ln -s -- "$target" "$temporary"
   mv -Tf -- "$temporary" "$link"
 }
-old_app=""
-old_monitor=""
-[[ -L "$APP_ROOT/current" ]] && old_app=$(readlink "$APP_ROOT/current")
-[[ -L "$MONITOR_ROOT/current" ]] && old_monitor=$(readlink "$MONITOR_ROOT/current")
-systemctl stop beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service >/dev/null 2>&1 || true
 new_app=$(copy_release "$BEEKEEPER_REPO" "$APP_ROOT")
 new_monitor=$(copy_release "$MONITOR_REPO" "$MONITOR_ROOT")
-atomic_link "$new_app" "$APP_ROOT/current"
-atomic_link "$new_monitor" "$MONITOR_ROOT/current"
 
 if [[ ! -e "$ENV_FILE" ]]; then
   "$PYTHON" - "$ENV_FILE" "$STATE_ROOT" <<'PY'
@@ -147,6 +142,16 @@ render_unit "$APP_ROOT/current/deploy/systemd/beekeeper-monitor.service" /etc/sy
 render_unit "$APP_ROOT/current/deploy/systemd/beekeeper-source-api.service" /etc/systemd/system/beekeeper-source-api.service
 render_unit "$APP_ROOT/current/deploy/systemd/beekeeper-bridge.service" /etc/systemd/system/beekeeper-bridge.service
 
+# Do not stop a running station until the replacement code, secrets and unit
+# files have all been staged and validated successfully.
+old_app=""
+old_monitor=""
+[[ -L "$APP_ROOT/current" ]] && old_app=$(readlink "$APP_ROOT/current")
+[[ -L "$MONITOR_ROOT/current" ]] && old_monitor=$(readlink "$MONITOR_ROOT/current")
+systemctl stop beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service >/dev/null 2>&1 || true
+atomic_link "$new_app" "$APP_ROOT/current"
+atomic_link "$new_monitor" "$MONITOR_ROOT/current"
+
 rollback() {
   log "Activation failed; restoring previous code links."
   systemctl disable --now beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service >/dev/null 2>&1 || true
@@ -161,6 +166,10 @@ if ! systemctl daemon-reload; then rollback; die "systemd could not reload unit 
 if ! systemctl enable --now beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service; then
   rollback
   die "Services failed to start; previous links were restored where available."
+fi
+if ! systemctl is-active --quiet beekeeper-bridge.service; then
+  rollback
+  die "The Monitor bridge did not remain active after startup."
 fi
 
 if ! "$PYTHON" - "$ENV_FILE" <<'PY'
