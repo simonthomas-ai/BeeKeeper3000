@@ -1,19 +1,17 @@
-# Local camera and ONNX inference (experimental)
+# Lokale Kamera und ONNX-Erkennung (experimentell)
 
-This optional module is the first local producer for the BeeKeeper3000 source API. It captures a USB camera, local video file or RTSP/HTTP stream using OpenCV, runs a documented ONNX object-detection graph on the CPU, and queues **metadata only** for the local source API. It does not upload, persist or log frames, thumbnails, audio, camera URLs, GPS coordinates or model tensors.
+Dieses optionale Modul ist der erste lokale Ereignislieferant für die Quell-API von BeeKeeper3000. Es liest eine USB-Kamera, eine lokale Videodatei oder einen RTSP-/HTTP-Stream über OpenCV, führt ein dokumentiertes ONNX-Objekterkennungsmodell auf der CPU aus und stellt **ausschließlich Metadaten** für die lokale Quell-API in eine Warteschlange. Einzelbilder, Vorschaubilder, Ton, Kameraadressen, GPS-Koordinaten und Modelltensoren werden weder hochgeladen noch dauerhaft gespeichert oder protokolliert.
 
-## Safety and readiness boundary
+## Sicherheit und Voraussetzungen
+- Jede Beobachtung wird im strengen Schema der Quell-API als **unbestätigter Kandidat** ausgegeben. Der Monitor-Adapter kennzeichnet sie weiterhin als ungeprüft. Es gibt keine automatische Bestätigung einer Art, Nestlokalisierung oder Entscheidung zur Nestbekämpfung.
+- Modellgewichte und Datensätze sind **nicht enthalten**. Das Beispielmanifest ist absichtlich ungültig (Platzhalter-Prüfsumme und ungeprüfte Lizenz) und kann keine Erkennung starten.
+- Vor dem Modellstart müssen Originaladresse, unveränderliche Version/Prüfsumme, tatsächliche SPDX-Lizenz, Rechte an Weitergabe und Training sowie eine ausdrückliche Lizenzprüfung im lokalen Manifest dokumentiert werden. Die standardmäßig sperrende Manifestprüfung verlangt eine ohne Zugangsdaten erreichbare HTTPS-Adresse für Lizenznachweise, Identität der prüfenden Person, Prüfzeitstempel mit Zeitzone und ausdrückliche Wahr/Falsch-Angaben zur Erlaubnis für Inferenz und Weitergabe. Ein syntaktisch gültiger SPDX-ähnlicher Text ist **kein Nachweis** der tatsächlichen Rechte. Gemeinnützige Nutzung setzt NC-/ND-Bedingungen oder fehlende Rechte nicht außer Kraft.
+- Nur Modelle mit `license_review_status` = `approved` oder `public-domain` bestehen die technische Freigabeprüfung. Das Feld dokumentiert eine Betreiberprüfung; es ist weder Rechtsberatung noch automatischer Rechtebeweis.
+- Das Modell muss entweder drei benannte Ausgaben erzeugen (normalisierte `xyxy`-Rechtecke nach modellinterner NMS, Konfidenzwerte von 0 bis 1 und ganzzahlige Klassen-IDs) oder den ausdrücklich unterstützten Ultralytics-Post-NMS-Vertrag `matrix6` (`output0`: `xyxy`-Pixelkoordinaten, Konfidenz, Klassen-ID). Die Vorverarbeitung verwendet RGB, NCHW, float32 von 0 bis 1 und den im Manifest gewählten Modus `stretch` oder `letterbox`. Andere Ausgabeformen benötigen einen gesonderten Adapter mit Tests; die Tensorreihenfolge darf nicht geraten werden.
+- Experimentelle Ergebnisse bleiben ungeprüft. Nicht zur Nestzerstörung, zum Fang, zur Pestizidanwendung oder zu anderen unumkehrbaren Maßnahmen verwenden.
 
-- Every observation is emitted as a candidate in the existing strict source API schema. The Monitor adapter continues to mark it unverified. No automatic species confirmation, nest localization or extermination decision is made.
-- No model weights or datasets are included. The example manifest is deliberately invalid (placeholder hash and unreviewed license state) and cannot start inference.
-- Before running a model, record the original artifact URL, immutable version/hash, actual SPDX license, redistribution/training rights and an explicit license review in a local manifest. The fail-closed manifest now requires a credential-free HTTPS license-evidence URL, reviewer identity, timezone-aware review timestamp, and explicit inference/redistribution permission booleans. The reviewer must verify the actual upstream license and the rights for the exact weight artifact; a syntactically valid SPDX-like string is not proof of a valid license. Nonprofit intent does not override NC/ND terms or missing permissions.
-- Only a model with license_review_status set to approved or public-domain passes the technical gate. This field records an operator review; it is not legal advice or automatic proof of rights.
-- The graph must emit either three named outputs (normalized xyxy boxes after model-side NMS, scores in 0..1 and integer class IDs) or the explicit Ultralytics post-NMS matrix6 contract (`output0`: xyxy pixel coordinates, confidence, class_id). Preprocessing is RGB, NCHW, float32 0..1 and explicitly selected `stretch` or `letterbox`; the manifest carries the resize mode. Other signatures need an adapter and tests; do not guess tensor order.
-- Experimental model output remains unverified. Do not use this pipeline for nest destruction, trapping, pesticide use or other irreversible action.
-
-## Install (Python 3.11+)
-
-From BeeKeeper3000 repository root:
+## Installation (Python 3.11 oder neuer)
+Im Hauptverzeichnis von BeeKeeper3000 unter Windows:
 
 ~~~powershell
 python -m venv .venv-camera
@@ -22,7 +20,7 @@ python -m pip install --upgrade pip
 python -m pip install -r camera/requirements.txt
 ~~~
 
-Linux:
+Unter Linux:
 
 ~~~sh
 python3 -m venv .venv-camera
@@ -31,40 +29,38 @@ python -m pip install --upgrade pip
 python -m pip install -r camera/requirements.txt
 ~~~
 
-The inference runtime is CPU-only. ONNX Runtime is MIT; opencv-python-headless is Apache-2.0. These are optional direct dependencies, not a complete transitive SBOM. Re-audit and pin transitive packages for each target platform before a release.
+Die Erkennung nutzt nur die CPU. ONNX Runtime steht unter MIT, `opencv-python-headless` unter Apache-2.0. Dies sind optionale direkte Abhängigkeiten, keine vollständige Aufstellung aller transitiven Pakete (SBOM). Vor jeder Veröffentlichung müssen die transitiven Abhängigkeiten erneut geprüft und ihre Versionen für die Zielplattform festgelegt werden.
 
-## Configure
-
-Copy camera/model-manifest.example.json to a local, private file next to the ONNX model and replace every placeholder with verified source data. The model path must remain beneath the manifest directory. Generate its hash locally:
+## Konfiguration
+`camera/model-manifest.example.json` in eine lokale, geschützte Datei neben dem ONNX-Modell kopieren und **sämtliche Platzhalter** durch überprüfte Herkunftsdaten ersetzen. Der Modellpfad muss innerhalb des Verzeichnisses mit dem Manifest liegen. SHA-256 lokal berechnen:
 
 ~~~powershell
 Get-FileHash .\models\your-model.onnx -Algorithm SHA256
 ~~~
 
-Set environment variables in the same terminal. Do not store real credentials in scripts, source control or command-line arguments:
+Umgebungsvariablen im selben Terminal setzen. Echte Zugangsdaten niemals in Skripten, im Quellcode oder als Befehlszeilenargumente speichern:
 
 ~~~powershell
 $env:BEEKEEPER_MODEL_MANIFEST = 'C:\secure\beekeeper\model-manifest.json'
-$env:BEEKEEPER_CAMERA_SOURCE = '0' # USB camera index; or local file / rtsp(s):// URL
+$env:BEEKEEPER_CAMERA_SOURCE = '0' # USB-Kameraindex; alternativ lokale Datei / rtsp(s)://-Adresse
 $env:BEEKEEPER_CAMERA_MAX_FPS = '5'
 $env:BEEKEEPER_CAMERA_COOLDOWN_SECONDS = '30'
 .\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe'
 ~~~
 
-The camera launcher retrieves the source API key from the base station's current-user DPAPI secret file and passes it only through the child process environment; it does not put the key on the command line or in logs. Start the base station services separately first with scripts/Start-BeeKeeperStation.ps1. The source URL is restricted to loopback (127.0.0.1 or ::1); authenticated HTTP requests are not allowed to follow redirects. The camera source is local configuration; do not paste RTSP credentials into tickets or logs.
+Der Kamerastarter liest den Quell-API-Schlüssel aus der DPAPI-geschützten Schlüsseldatei der Basisstation und übergibt ihn ausschließlich über die Prozessumgebung an den Kindprozess. Der Schlüssel erscheint nicht in Befehlszeile oder Protokollen. Die Basisdienste zuvor separat mit `scripts/Start-BeeKeeperStation.ps1` starten. Die Quelladresse ist auf Loopback (`127.0.0.1` oder `::1`) beschränkt; authentifizierte HTTP-Anfragen dürfen Weiterleitungen nicht folgen. Die Kameraquelle ist eine lokale Einstellung. RTSP-Zugangsdaten niemals in Tickets oder Protokolle kopieren.
 
-## Offline queue and failure behaviour
+## Offline-Warteschlange und Fehlerverhalten
+- Erkennungen werden vor der Übertragung in einer privaten lokalen SQLite-Versandwarteschlange gespeichert.
+- Ereignisse werden erst entfernt, wenn die Quell-API HTTP 200 oder 201 bestätigt.
+- Bei vorübergehenden Verbindungsfehlern bleiben Ereignisse erhalten; die Bildaufnahme läuft weiter.
+- Ist die begrenzte Warteschlange voll, beendet sich die Laufzeit kontrolliert, statt Beobachtungen stillschweigend zu verwerfen.
+- Eine bestehende Ereignis-ID darf nicht für veränderte Inhalte wiederverwendet werden.
+- Nach Kameraabbrüchen wird die Verbindung mit begrenzter exponentieller Wartezeit erneut aufgebaut. Einstellbare Bildrate und ONNX-Worker-Threads begrenzen die CPU-Last.
+- Für Netzwerk-/Dateiquellen fordert OpenCV/FFmpeg beim Öffnen und Lesen ein Zeitlimit von fünf Sekunden an. Ohne Unterstützung dafür wird die Verarbeitung sicher abgebrochen. Diese Backend-Anforderung garantiert nicht, dass jeder Treiber oder jede Firmware niemals hängen bleibt.
+- Rohbilder bleiben ausschließlich während der Auswertung im Arbeitsspeicher und werden von diesem Modul nicht dauerhaft gespeichert.
 
-- Detections are stored in a private local SQLite outbox before network delivery.
-- Events are removed only after the source API returns HTTP 200 or 201.
-- Temporary connection failures leave queued events intact and capture continues.
-- A full bounded outbox stops the runtime rather than silently dropping observations.
-- A stable event ID cannot be reused with changed payload content.
-- Camera reconnect uses capped exponential backoff. Processing is CPU-bounded by configurable FPS and ONNX worker threads.
-- Network/file capture uses OpenCV FFmpeg open/read timeouts of 5 seconds; builds without timeout support fail closed instead of silently using an unbounded network read. This is a backend timeout request, not a guarantee against every driver/firmware hang.
-- Raw images are held only in process memory for inference and are not retained by this module.
-
-Windows NTFS ACLs must be restrictive; Linux/macOS directories are mode 0700 and database files mode 0600. SQLite is not application-encrypted: use BitLocker or an encrypted volume. The outbox is a separate database and must be included in a future full station backup/restore drill before deployment.
+Unter Windows müssen NTFS-Zugriffsrechte eingeschränkt sein; unter Linux/macOS erhalten Verzeichnisse den Modus 0700 und Datenbankdateien 0600. SQLite ist nicht anwendungsseitig verschlüsselt: BitLocker oder verschlüsselten Datenträger einsetzen. Die Versandwarteschlange ist eine eigene Datenbank und muss vor dem produktiven Einsatz in einem vollständigen Sicherungs-/Wiederherstellungstest berücksichtigt werden.
 
 ## Tests
 
@@ -72,4 +68,4 @@ Windows NTFS ACLs must be restrictive; Linux/macOS directories are mode 0700 and
 python -m unittest discover -s camera -p 'test_*.py' -v
 ~~~
 
-Tests use synthetic metadata and fake components. They do not establish camera compatibility, model quality, ONNX model signature compatibility, field performance or GDPR compliance. The optional [held-out detection evaluation tool](../docs/MODEL-EVALUATION.md) computes reproducible metrics only when supplied with independently annotated test data. Verify on the exact camera, stream, PC and model before any pilot.
+Diese Tests verwenden künstliche Metadaten und simulierte Komponenten. Sie belegen **weder Kamerakompatibilität noch Modellqualität, ONNX-Schnittstellenkompatibilität, Feldleistung oder DSGVO-Konformität**. Das optionale [Werkzeug zur Bewertung mit unabhängigen Testbildern](../docs/MODEL-EVALUATION.md) berechnet reproduzierbare Kennzahlen nur mit tatsächlich bereitgestellten, unabhängig annotierten Testdaten. Vor einem Pilotbetrieb auf der genauen Kamera, dem Stream, dem Rechner und dem Modell prüfen.
