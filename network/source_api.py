@@ -12,7 +12,9 @@ from socketserver import ThreadingMixIn
 from urllib.parse import parse_qs, urlsplit
 
 from .source_cursors import CursorError, CursorExpired, CursorSigner
-from .source_event_store import SQLiteSourceEventStore, SourceStoreError
+from .source_event_store import (
+    SQLiteSourceEventStore, SourceStoreError, SourceConflictError, SourceCapacityError,
+)
 from .source_events import SourceEventError
 
 MAX_BODY_BYTES = 32 * 1024
@@ -231,8 +233,16 @@ def make_handler(api_key: str, cursor_secret: str | bytes, store: SQLiteSourceEv
                     "accepted": True, "duplicate": not inserted,
                     "event_id": event["id"], "sequence": record["sequence"],
                 })
-            except (SourceEventError, SourceStoreError, UnicodeError, ValueError, TypeError, KeyError):
-                self._send_json(400, {"error": "invalid_or_conflicting_event"})
+            except SourceConflictError:
+                self._send_json(409, {"error": "source_event_id_conflict"})
+            except SourceCapacityError:
+                self._send_json(503, {"error": "source_journal_capacity"})
+            except SourceEventError:
+                self._send_json(400, {"error": "invalid_event"})
+            except (UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+                self._send_json(400, {"error": "invalid_json_or_event"})
+            except SourceStoreError:
+                self._send_json(503, {"error": "source_journal_unavailable"})
             except TimeoutError:
                 self._send_json(408, {"error": "request_body_timeout"})
             except OSError:
