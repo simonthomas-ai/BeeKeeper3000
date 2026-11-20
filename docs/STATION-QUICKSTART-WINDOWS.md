@@ -35,6 +35,22 @@ Only the current Windows user can decrypt them. Do not copy this file to another
 
 The launcher applies a restrictive user/SYSTEM ACL to the local state directory. SQLite databases, bridge state and service logs are kept under `%LOCALAPPDATA%\BeeKeeper3000\`. They are not application-encrypted; use BitLocker or an encrypted volume.
 
+## PWA-Anmeldeschlüssel sicher übernehmen
+
+Der Monitor-Empfangsschlüssel liegt ausschließlich DPAPI-geschützt in der lokalen Schlüsseldatei. Für die Anmeldung in der PWA kann er bei Bedarf gezielt in die Windows-Zwischenablage kopiert werden:
+
+```powershell
+.\scripts\Copy-BeeKeeperStationToken.ps1
+```
+
+Anschließend den Schlüssel nur in das Feld „Lokaler Empfangsschlüssel“ unter `http://127.0.0.1:8765/` einfügen. Die PWA hält ihn nur im Arbeitsspeicher. Danach die Zwischenablage leeren:
+
+```powershell
+Set-Clipboard -Value ''
+```
+
+Keine Zwischenablage-Synchronisierung oder -Historie für diesen Vorgang verwenden. Den Schlüssel niemals in Chat, Tickets, Screenshots, Logs oder fremde Webseiten einfügen.
+
 ## Open and stop
 
 Open the local PWA on the same PC:
