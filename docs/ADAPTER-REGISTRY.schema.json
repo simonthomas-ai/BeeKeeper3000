@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/simonthomas-ai/BeeKeeper3000/blob/main/docs/ADAPTER-REGISTRY.schema.json",
+  "title": "BeeKeeper3000 Adapter Registry Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["adapter_id", "version", "class", "status", "capabilities", "permissions", "data_policy", "acceptance"],
+  "properties": {
+    "adapter_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,79}$"},
+    "version": {"type": "string", "minLength": 1, "maxLength": 40},
+    "class": {"enum": ["mobile", "camera", "compute", "sensor", "positioning", "transport", "storage", "accelerator"]},
+    "status": {"enum": ["planned", "experimental", "implemented", "software-tested", "hardware-tested", "field-validated", "deprecated"]},
+    "vendor": {"type": ["string", "null"], "maxLength": 120},
+    "device_models": {"type": "array", "items": {"type": "string", "maxLength": 160}, "maxItems": 100},
+    "os_firmware": {"type": "array", "items": {"type": "string", "maxLength": 160}, "maxItems": 100},
+    "interfaces": {"type": "array", "items": {"enum": ["browser-api", "usb", "uvc", "csi", "mipi", "ethernet", "wifi", "ble", "uart", "i2c", "spi", "rs485", "modbus-tcp", "rtsp", "onvif", "mqtt", "https", "lora", "gnss-nmea", "file-import"]}, "uniqueItems": true},
+    "capabilities": {"type": "array", "items": {"enum": ["manual-observation", "image", "video", "thermal", "depth", "audio-local", "bearing", "gnss", "environmental-sensor", "metadata-transport", "offline-queue", "local-inference"]}, "uniqueItems": true},
+    "permissions": {"type": "array", "items": {"type": "string", "maxLength": 120}, "uniqueItems": true},
+    "data_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_media_default", "location_default", "credentials_in_logs"],
+      "properties": {
+        "raw_media_default": {"const": "local-only"},
+        "location_default": {"enum": ["none", "coarse", "explicit-consent"]},
+        "credentials_in_logs": {"const": false}
+      }
+    },
+    "calibration_required": {"type": "boolean"},
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automated_tests", "hardware_evidence", "field_evidence"],
+      "properties": {
+        "automated_tests": {"type": "boolean"},
+        "hardware_evidence": {"type": "boolean"},
+        "field_evidence": {"type": "boolean"},
+        "tested_at": {"type": ["string", "null"], "format": "date-time"},
+        "evidence_uri": {"type": ["string", "null"], "format": "uri"}
+      }
+    },
+    "limitations": {"type": "array", "items": {"type": "string", "maxLength": 500}, "maxItems": 50}
+  }
+}
