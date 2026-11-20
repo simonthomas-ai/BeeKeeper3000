@@ -129,6 +129,13 @@ class MeshCoreEventReceiver:
             ):
                 raise ValueError("station signing-key allowlists must reference trusted public keys")
             station_key_map[station_hash] = frozenset(authorized)
+        key_owners = {}
+        for station_hash, fingerprints in station_key_map.items():
+            for fingerprint in fingerprints:
+                previous_station = key_owners.get(fingerprint)
+                if previous_station is not None and previous_station != station_hash:
+                    raise ValueError("each signing key must be bound to exactly one station")
+                key_owners[fingerprint] = station_hash
         self.trusted_station_keys = station_key_map
         self.station_registry = station_registry
         self.sink = sink
