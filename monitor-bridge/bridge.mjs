@@ -12,7 +12,7 @@ const requestedInterval = Number(process.env.POLL_INTERVAL_MS || 10000);
 const intervalMs = Number.isFinite(requestedInterval)
   ? Math.min(3600000, Math.max(2000, requestedInterval))
   : Number.NaN;
-const requireCursor = (process.env.BRIDGE_REQUIRE_CURSOR || 'false').toLowerCase() === 'true';
+const requireCursor = (process.env.BRIDGE_REQUIRE_CURSOR || 'true').toLowerCase() === 'true';
 const statePath = path.resolve(process.env.BRIDGE_STATE_FILE || './monitor-bridge-state.json');
 const maxSeen = 10000;
 const maxSourceResponseBytes = 2 * 1024 * 1024;
