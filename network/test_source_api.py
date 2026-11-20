@@ -193,6 +193,12 @@ class SourceApiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(duplicate["duplicate"])
         self.assertEqual(self.store.count(), 1)
+        conflict = sample_event(1)
+        conflict["confidence"] = 0.12
+        status, payload, _ = self.request("POST", "/api/events", body=json.dumps(conflict))
+        self.assertEqual(status, 409)
+        self.assertEqual(payload["error"], "source_event_id_conflict")
+        self.assertEqual(self.store.count(), 1)
 
     def test_post_rejects_location_and_media_fields(self):
         event = sample_event(1)
