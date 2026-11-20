@@ -47,7 +47,7 @@ Run the local receiver and bridge under separate service identities or terminal 
 
 - Event IDs are checkpointed only after the receiver confirms HTTP 202 with `{"accepted":true}`.
 - If the checkpoint write fails, the in-memory ID is rolled back and will be retried on the next poll.
-- A crash after receiver commit but before checkpoint write can replay the event. The Monitor's SQLite receiver uses a canonical event hash and unique key to make that replay logically idempotent.
+- A crash after receiver commit but before checkpoint write can replay the event. The Monitor's SQLite receiver uses a canonical event hash and unique key to make that replay logically idempotent. If the local state file is temporarily unwritable, the in-memory checkpoint is rolled back and the next poll retries.
 - Bridge state is written atomically to a private state file; invalid or oversized state is rejected rather than silently treated as empty.
 - Source and receiver JSON responses are size-bounded; redirects are rejected; requests time out.
 - All source detections remain unverified candidates until human/expert review.
