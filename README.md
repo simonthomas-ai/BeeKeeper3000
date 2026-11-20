@@ -69,6 +69,10 @@ GitHub Actions prüft Triangulation, signiertes MeshCore-Protokoll, Empfänger, 
 
 Keine echten Zugangsdaten, privaten Schlüssel, Kamerapasswörter, privaten Aufnahmen, Audiodateien oder GPS-Spuren einchecken. Private Schlüssel müssen lokal geschützt und öffentliche Schlüssel außerhalb des Funknetzes vertrauenswürdig provisioniert werden. Dienste nur lokal oder hinter VPN und korrekt konfiguriertem HTTPS betreiben. SQLite ist nicht anwendungsseitig verschlüsselt; Datenträgerverschlüsselung und passende Dateisystemrechte sind erforderlich. Siehe [SECURITY.md](SECURITY.md).
 
+## Lieferkette und SBOM
+
+Die CI prüft die optionale MeshCore-Python-Abhängigkeitsliste mit `pip-audit`, erzeugt daraus einen CycloneDX-SBOM als CI-Artefakt und führt `npm audit` für die Bridge aus. Das ist ausdrücklich **kein vollständiger SBOM des ursprünglichen Hornet3000-Gesamtprodukts**, weil der komplette C++-Quellbaum und weitere Runtime-/Modell-/Firmware-Artefakte hier nicht vollständig vorliegen. Details und Grenzen stehen in [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md).
+
 ## Herkunft und Lizenz
 
 Die eingebrachte Ausgangsbasis stammt aus Hornet3000 Wächter 1.6.0. Dieses Repository behauptet keine Clean-Room-Neuentwicklung und keine pauschale Neulizenzierung. Die veröffentlichte Repository-Lizenzmetadaten- und Quellbaumprüfung ist noch nicht vollständig abgeschlossen; die Root-Datei `LICENSE` und die vollständige ursprüngliche Quellbasis sind vor einer Release-/Weiterverteilungsfreigabe zu prüfen. Siehe [PROVENANCE.md](PROVENANCE.md), [LICENSES.md](LICENSES.md) und [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
