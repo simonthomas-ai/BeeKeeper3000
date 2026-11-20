@@ -24,7 +24,7 @@ Create a dedicated Ed25519 key pair out of band and protect the private key usin
 
 Instantiate `MeshCoreSerialTransport` with a serial port, channel index, application data type, station ID and station private key. Open a connection before sending events. Disconnect the transport during orderly shutdown. The implementation is in `network/meshcore/transport.py`.
 
-For receiving, use `MeshCoreEventReceiver` with a public-key allowlist and a receiver-local `StationRegistry`. The allowlist is keyed by the 32-character public-key fingerprint. A separate trusted-expert fingerprint allowlist is required to accept expert-confirmed claims.
+For receiving, use `MeshCoreEventReceiver` with a public-key allowlist and a receiver-local `StationRegistry`. The allowlist is keyed by the 32-character public-key fingerprint. A separate trusted-expert fingerprint allowlist is required to accept expert-confirmed claims. In addition, every station hash must be explicitly bound to one or more authorized public-key fingerprints using `trusted_station_keys`. A key that is globally trusted but not authorized for a given station cannot submit events under that station's identity. Each signing fingerprint may be assigned to exactly one station; one station may temporarily have multiple fingerprints during rotation. Configure both old and new fingerprints for that station, verify the new station key, then remove the old fingerprint. Keep the public-key allowlist and station-key mapping local to the receiving station; never transmit private keys.
 
 ## Durable local event store
 
@@ -47,9 +47,17 @@ registry = StationRegistry({
         "longitude": 6.7890,
     }
 })
+# Bind every station hash to its authorized signing-key fingerprint(s).
+# Multiple fingerprints allow an explicit overlap period during key rotation.
+trusted_station_keys = {
+    "32_CHARACTER_STATION_HASH": {
+        "32_CHARACTER_PUBLIC_KEY_FINGERPRINT",
+    },
+}
 receiver = MeshCoreEventReceiver(
     transport=radio,
     trusted_public_keys=trusted_keys,
+    trusted_station_keys=trusted_station_keys,
     station_registry=registry,
     sink=store,
 )

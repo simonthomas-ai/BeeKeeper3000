@@ -61,6 +61,9 @@ class MeshCorePersistentStoreTests(unittest.TestCase):
         first_receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={
+                hashlib.sha256(b"station-west").digest()[:16].hex(): {self.fingerprint}
+            },
             station_registry=StationRegistry({}),
             sink=self.store,
         )
@@ -71,6 +74,9 @@ class MeshCorePersistentStoreTests(unittest.TestCase):
         second_receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={
+                hashlib.sha256(b"station-west").digest()[:16].hex(): {self.fingerprint}
+            },
             station_registry=StationRegistry({}),
             sink=reopened_store,
         )

@@ -38,7 +38,7 @@ class SQLiteMeshCoreEventStore:
             raise ValueError("A database path is required")
         if not 1 <= retention_days <= 3650:
             raise ValueError("retention_days must be between 1 and 3650")
-        if not 100 <= max_rows <= 2_000_000:
+        if type(max_rows) is not int or not 100 <= max_rows <= 2_000_000:
             raise ValueError("max_rows must be between 100 and 2000000")
 
         target = Path(path).expanduser().resolve()
@@ -164,7 +164,7 @@ class SQLiteMeshCoreEventStore:
             raise MeshCoreStoreError("event expiry must follow observation time")
         return (
             event_id, station_hash, event["event_type"], event["candidate_taxon"],
-            event["verification_status"], float(confidence),
+            event["verification_status"], confidence_number,
             observed.isoformat(), observed.timestamp(),
             expires.isoformat(), key_id, signature,
         )
@@ -201,7 +201,6 @@ class SQLiteMeshCoreEventStore:
 
         event_json = json.dumps(dict(event), sort_keys=True, separators=(",", ":"), allow_nan=False)
         received_at = datetime.now(timezone.utc).isoformat()
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
         record = (
             event_id, station_hash, station_id, event_type, taxon, verification, confidence,
             observed_at, observed_epoch, expires_at, key_id, signature,

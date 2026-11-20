@@ -35,6 +35,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         # The station identifier hash is derived exactly as in protocol v1.
         import hashlib
         station_hash = hashlib.sha256(b"station-north").digest()[:16].hex()
+        self.station_hash = station_hash
         self.registry = StationRegistry({
             station_hash: {
                 "station_id": "north-roof",
@@ -66,6 +67,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={self.station_hash: {self.fingerprint}},
             station_registry=self.registry,
             sink=lambda event, bearing: received.append((event, bearing)),
         )
@@ -83,6 +85,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={self.station_hash: {self.fingerprint}},
             station_registry=StationRegistry({}),
             sink=lambda event, bearing: received.append(event),
         )
@@ -90,6 +93,21 @@ class MeshCoreReceiverTests(unittest.TestCase):
         self.assertFalse(asyncio.run(receiver.handle_payload(payload)))
         self.assertEqual(receiver.rejected_count, 1)
         self.assertEqual(received, [])
+
+    def test_signer_cannot_be_authorized_for_two_station_ids(self):
+        import hashlib
+        second_station_hash = hashlib.sha256(b"another-station").digest()[:16].hex()
+        with self.assertRaises(ValueError):
+            MeshCoreEventReceiver(
+                transport=object(),
+                trusted_public_keys={self.fingerprint: self.public},
+                trusted_station_keys={
+                    self.station_hash: {self.fingerprint},
+                    second_station_hash: {self.fingerprint},
+                },
+                station_registry=self.registry,
+                sink=lambda event, bearing: None,
+            )
 
     def test_async_sink_is_awaited(self):
         received = []
@@ -99,6 +117,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         receiver = MeshCoreEventReceiver(
             transport=object(),
             trusted_public_keys={self.fingerprint: self.public},
+            trusted_station_keys={self.station_hash: {self.fingerprint}},
             station_registry=self.registry,
             sink=sink,
         )
