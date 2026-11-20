@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement } from './bridge.mjs';
+import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement, MAX_STATE_BYTES } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -449,6 +449,50 @@ test('version-one bridge state migrates safely to version two with a null cursor
   }
 });
 
+test('maximum valid bridge checkpoint survives restart within the bounded state size', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'beekeeper-bridge-large-state-'));
+  const file = join(directory, 'state.json');
+  try {
+    const state = new Set();
+    for (let index = 0; index < 10000; index++) {
+      state.add(index.toString(36).padStart(4, '0') + 'x'.repeat(124));
+    }
+    state.cursor = 'signed-source-cursor-maximum-checkpoint';
+    await writeState(state, file);
+    const raw = await readFile(file);
+    assert.ok(raw.byteLength <= MAX_STATE_BYTES);
+    const restored = await readState(file);
+    assert.equal(restored.size, 10000);
+    assert.equal(restored.cursor, state.cursor);
+    assert.equal(restored.has('0000' + 'x'.repeat(124)), true);
+    assert.equal(restored.has('07pr' + 'x'.repeat(124)), true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('bridge checkpoint rejects non-contract event IDs without writing them', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'beekeeper-bridge-invalid-state-'));
+  const file = join(directory, 'state.json');
+  try {
+    const state = new Set(['valid-id', 'event id with spaces']);
+    await assert.rejects(() => writeState(state, file), /printable ASCII/);
+    await assert.rejects(() => readFile(file), { code: 'ENOENT' });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('bridge checkpoint read rejects files larger than the configured bound', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'beekeeper-bridge-oversized-state-'));
+  const file = join(directory, 'state.json');
+  try {
+    await writeFile(file, 'x'.repeat(MAX_STATE_BYTES + 1));
+    await assert.rejects(() => readState(file), /2 MiB/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 test('corrupt bridge state fails closed instead of resetting the source cursor', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'beekeeper-bridge-corrupt-'));
   const file = join(directory, 'state.json');
