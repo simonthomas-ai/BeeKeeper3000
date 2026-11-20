@@ -158,6 +158,7 @@ def _consensus(
 ) -> list[int]:
     """Choose the best pairwise intersection supported by >=3 forward rays."""
     best_inliers: list[int] = []
+    best_point: tuple[float, float] | None = None
     best_score: tuple[int, float, float] | None = None
 
     for i, j in combinations(range(len(bearings)), 2):
@@ -190,12 +191,13 @@ def _consensus(
         if best_score is None or score > best_score:
             best_score = score
             best_inliers = inliers
+            best_point = candidate
 
-    if len(best_inliers) < 3:
+    if len(best_inliers) < 3 or best_point is None:
         raise ValueError(
             "fewer than three forward bearings agree within the consensus uncertainty"
         )
-    return best_inliers
+    return best_inliers, best_point
 
 
 def _weighted_solution(
@@ -321,10 +323,7 @@ def triangulate(
         raise ValueError("bearing stations exceed local projection area")
 
     all_terms = [_normal_terms(b, p) for b, p in zip(items, points)]
-    inliers = _consensus(items, all_terms, threshold_sigma=consensus_sigma)
-    initial = _line_intersection(all_terms[inliers[0]], all_terms[inliers[1]])
-    if initial is None:
-        raise ValueError("bearing consensus has unstable geometry")
+    inliers, initial = _consensus(items, all_terms, threshold_sigma=consensus_sigma)
 
     # Re-solve and remove any candidate that falls outside the standardized
     # uncertainty after robust weighting. Never publish with fewer than 3.
