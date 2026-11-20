@@ -54,6 +54,16 @@ class SourceApiClient:
                     raise SourceClientError(f"source API returned HTTP {response.status}")
                 return True
         except HTTPError as exc:
+            if exc.code == 410:
+                try:
+                    payload = json.loads(exc.read(64 * 1024 + 1).decode("utf-8"))
+                except (UnicodeError, json.JSONDecodeError):
+                    payload = None
+                if payload == {"error": "source_event_id_deleted"}:
+                    # This exact authenticated loopback response means an operator
+                    # erased this stable ID. The runtime may now acknowledge and
+                    # remove its local retry copy instead of resending forever.
+                    return True
             raise SourceClientError(f"source API rejected event with HTTP {exc.code}") from None
         except (URLError, TimeoutError, OSError) as exc:
             raise SourceClientError("source API is temporarily unavailable; event remains queued") from None
