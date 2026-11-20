@@ -34,7 +34,7 @@ class MeshCoreReceiverTests(unittest.TestCase):
         }
         # The station identifier hash is derived exactly as in protocol v1.
         import hashlib
-        station_hash = hashlib.sha256(b"station-north").digest()[:8].hex()
+        station_hash = hashlib.sha256(b"station-north").digest()[:16].hex()
         self.registry = StationRegistry({
             station_hash: {
                 "station_id": "north-roof",
