@@ -155,7 +155,7 @@ def _consensus(
     terms: list[tuple[float, ...]],
     *,
     threshold_sigma: float,
-) -> list[int]:
+) -> tuple[list[int], tuple[float, float]]:
     """Choose the best pairwise intersection supported by >=3 forward rays."""
     best_inliers: list[int] = []
     best_point: tuple[float, float] | None = None
