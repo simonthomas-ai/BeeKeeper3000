@@ -1,0 +1,34 @@
+name: LLM Council (zero-cost)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+# Self-hosted runner only: GitHub-hosted compute is not assumed free.
+# The runner owner is responsible for keeping the host powered and secured.
+jobs:
+  council:
+    if: github.repository == 'simonthomas-ai/BeeKeeper3000'
+    runs-on: [self-hosted, linux, x64, llm-council]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify Python
+        run: python3 --version
+      - name: Run safety tests
+        run: python3 -m unittest tests.test_llm_council -v
+      - name: Run council
+        run: python3 tools/llm_council.py
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-council-report
+          path: llm-council/runs/*.json
+          if-no-files-found: ignore
+          retention-days: 30
