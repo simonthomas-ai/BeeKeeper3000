@@ -20,6 +20,31 @@ class OutboxBackupTests(unittest.TestCase):
             with self.assertRaises(OutboxBackupError):
                 restore(backup_path, restored)
 
+    def test_backup_restore_preserves_detection_cooldown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.sqlite3"
+            box = SQLiteOutbox(str(source))
+            first = {"id":"first","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False}
+            box.enqueue_if_due(first, cooldown_seconds=30, now_epoch=1000)
+
+            saved = backup(source, root / "camera-backup.sqlite3")
+            restored_path = restore(saved, root / "camera-restored.sqlite3")
+            restored = SQLiteOutbox(str(restored_path))
+
+            during_cooldown = dict(first, id="second")
+            self.assertFalse(restored.enqueue_if_due(
+                during_cooldown, cooldown_seconds=30, now_epoch=1029
+            ))
+            after_cooldown = dict(first, id="third")
+            self.assertTrue(restored.enqueue_if_due(
+                after_cooldown, cooldown_seconds=30, now_epoch=1030
+            ))
+            self.assertEqual(
+                [item["id"] for item in restored.pending(10)],
+                ["first", "third"],
+            )
+
     def test_refuses_wrong_schema(self):
         with tempfile.TemporaryDirectory() as tmp:
             wrong = Path(tmp) / "wrong.sqlite3"
