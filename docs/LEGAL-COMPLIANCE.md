@@ -44,7 +44,7 @@ Bis eine Trägerstruktur wirksam besteht:
 
 ## 5. Lizenz- und Urheberrechtsregeln
 
-**Befund vom 20.11.2026:** Im Repository-Root wurde keine LICENSE-Datei gefunden. Deshalb ist die Lizenzierung des Gesamtprojekts nicht geklärt. Ohne Lizenz gilt nicht automatisch eine freie Nachnutzungserlaubnis.
+**Befund vom 20.11.2026:** Die Originalarchive Hornet3000 1.6.0 und die gehärtete 1.6.1-Ableitung wurden in der Projektbibliothek gefunden und ihre SHA-256-Prüfsummen verifiziert. Das Original-README erklärt den abgegrenzten Hornet3000-Projektcode als GPL-3.0-or-later und nennt © 2026 Simon Thomas. Die 1.6.1-Provenienznotiz begrenzt diese Erklärung ausdrücklich auf das abgegrenzte Unterprojekt. Die Archive liegen nicht im GitHub-Repository-Root; dort fehlt weiterhin eine LICENSE-Datei. Der heutige Gesamtquellbaum wurde noch nicht Datei für Datei mit den Archiven abgeglichen. Die Root-Lizenz des gesamten BeeKeeper3000-Repositories bleibt daher ungeklärt. Details: [Archiv- und Lizenzherkunftsprüfung](ARCHIVE-PROVENANCE-AUDIT-2026-11-20.md).
 
 Bis zur Lizenzprüfung:
 - keine pauschale MIT-, GPL-, AGPL- oder Apache-2.0-Kennzeichnung für das Gesamtprojekt hinzufügen;
