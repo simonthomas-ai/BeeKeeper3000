@@ -6,6 +6,7 @@ import json
 import math
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -117,7 +118,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if not isinstance(reviewed_at, str):
         raise ModelManifestError("license_reviewed_at must be an ISO-8601 timestamp")
     try:
-        reviewed_stamp = __import__("datetime").datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
+        reviewed_stamp = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise ModelManifestError("license_reviewed_at must be an ISO-8601 timestamp") from exc
     if reviewed_stamp.tzinfo is None or reviewed_stamp.utcoffset() is None:
