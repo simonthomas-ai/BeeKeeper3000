@@ -69,7 +69,7 @@ Station coordinates are receiver-local data: they are not transmitted over MeshC
 
 ## Receive and triangulate
 
-`store.recent_bearings(window_seconds=1800)` returns the most recent bearing for each independent locally resolved station. `store.triangulate_recent()` calls the reference weighted least-squares estimator. It requires at least three stations, compatible timestamps and stable crossing geometry; an output is only a `search_hypothesis`, never a confirmed nest. Survey calibration, outlier rejection, uncertainty geometry and independent field validation remain necessary before operational search use.
+`store.recent_bearings(window_seconds=1800)` returns the most recent bearing for each independent locally resolved station. `store.triangulate_recent()` calls the reference angular-residual estimator. It weights each observation by calibrated angular uncertainty, applies bounded robust outlier rejection, enforces at least three inlier stations and reports a local linearized 95% uncertainty ellipse. It requires compatible timestamps and stable crossing geometry; the output remains only a `search_hypothesis`, never a confirmed nest. See `network/TRIANGULATION-VALIDATION.md` for calibration assumptions and field acceptance. Survey calibration, outlier rejection, uncertainty geometry and independent field validation remain necessary before operational search use.
 
 ## Operational limits
 
