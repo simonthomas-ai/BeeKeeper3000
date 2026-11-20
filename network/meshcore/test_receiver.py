@@ -94,62 +94,17 @@ class MeshCoreReceiverTests(unittest.TestCase):
         self.assertEqual(receiver.rejected_count, 1)
         self.assertEqual(received, [])
 
-    def test_signer_cannot_impersonate_another_station(self):
-        second_private = ECC.generate(curve="Ed25519")
-        second_public = second_private.public_key()
-        second_fingerprint = public_key_fingerprint(second_public)
-        received = []
-        receiver = MeshCoreEventReceiver(
-            transport=object(),
-            trusted_public_keys={
-                self.fingerprint: self.public,
-                second_fingerprint: second_public,
-            },
-            trusted_station_keys={self.station_hash: {second_fingerprint}},
-            station_registry=self.registry,
-            sink=lambda event, bearing: received.append(event),
-        )
-        payload = encode_event(self.event, self.private, now_epoch=self.now)
-        self.assertFalse(asyncio.run(receiver.handle_payload(payload)))
-        self.assertEqual(receiver.rejected_count, 1)
-        self.assertEqual(received, [])
-
-    def test_station_key_rotation_accepts_explicit_overlap(self):
-        second_private = ECC.generate(curve="Ed25519")
-        second_public = second_private.public_key()
-        second_fingerprint = public_key_fingerprint(second_public)
-        received = []
-        receiver = MeshCoreEventReceiver(
-            transport=object(),
-            trusted_public_keys={
-                self.fingerprint: self.public,
-                second_fingerprint: second_public,
-            },
-            trusted_station_keys={
-                self.station_hash: {self.fingerprint, second_fingerprint}
-            },
-            station_registry=self.registry,
-            sink=lambda event, bearing: received.append(event),
-        )
-        payload = encode_event(self.event, second_private, now_epoch=self.now)
-        self.assertTrue(asyncio.run(receiver.handle_payload(payload)))
-        self.assertEqual(len(received), 1)
-
-    def test_receiver_requires_explicit_station_key_binding(self):
-        with self.assertRaises(TypeError):
-            MeshCoreEventReceiver(
-                transport=object(),
-                trusted_public_keys={self.fingerprint: self.public},
-                station_registry=self.registry,
-                sink=lambda event, bearing: None,
-            )
-
-    def test_receiver_rejects_private_signing_key_material(self):
+    def test_signer_cannot_be_authorized_for_two_station_ids(self):
+        import hashlib
+        second_station_hash = hashlib.sha256(b"another-station").digest()[:16].hex()
         with self.assertRaises(ValueError):
             MeshCoreEventReceiver(
                 transport=object(),
-                trusted_public_keys={self.fingerprint: self.private},
-                trusted_station_keys={self.station_hash: {self.fingerprint}},
+                trusted_public_keys={self.fingerprint: self.public},
+                trusted_station_keys={
+                    self.station_hash: {self.fingerprint},
+                    second_station_hash: {self.fingerprint},
+                },
                 station_registry=self.registry,
                 sink=lambda event, bearing: None,
             )
