@@ -43,3 +43,7 @@ MeshCore-Pakete übertragen keine exakten GPS-Koordinaten, Bilder, Audiodaten, Z
 Es wurden keine physischen Radios, Antennen, Repeater oder realen Stationen für diesen Softwaretest verwendet. Funkreichweite, Airtime, EU-Funkkonformität und echte Stations-Triangulation bleiben Feldabnahmen.
 
 Freenet ist ein optionales IP-P2P-Konzept und kein LoRa-Modem. Freenet, Meshtastic, Mosquitto und MapLibre sind in diesem Repository noch keine aktiv integrierten Laufzeitadapter.
+
+## Durable Hornet3000 source API
+
+The optional authenticated, cursor-paginated SQLite source journal is documented in [SOURCE-API.md](./SOURCE-API.md). It is an independently runnable adapter, not a retrofit of the absent original C++ HTTP server. It accepts strict metadata only and binds to loopback.
