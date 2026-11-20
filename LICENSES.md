@@ -1,8 +1,12 @@
 # License inventory
 
-- Inherited Hornet3000 source: GPL-3.0-or-later; see LICENSE and preserve all upstream copyright and license notices.
-- C++ and Node/Python source dependencies: see CMakeLists.txt and package manifests; generate a complete SBOM and verify exact resolved versions before a production release.
-- Beekeeper-Monitor connector: authored adapter code; no additional third-party runtime dependency beyond Node.js built-ins.
-- No model weights or datasets are included. Do not assume model, image, audio, firmware, or dataset rights without a separate license review.
+This is a preliminary engineering inventory, not legal advice and not a complete release clearance.
 
-This inventory is preliminary and is not a legal opinion or a complete binary/SBOM audit.
+- The inherited Hornet3000 Wächter 1.6.0 source baseline is documented as GPL-3.0-or-later in the provenance notes. Preserve all original copyright and license notices.
+- The currently published BeeKeeper3000 repository tree must be checked against the complete upstream source package before redistribution. A root `LICENSE` file and the full source archive are not present in the reviewed published tree; do not infer that the repository-wide license metadata is complete.
+- The optional MeshCore binding is pinned to `meshcore==2.3.19`; its upstream Python project declares MIT. Its transitive dependencies are captured in the optional Linux CI lock file, but the complete product SBOM and all-platform lockfiles remain release tasks.
+- The Beekeeper-Monitor bridge uses Node.js built-in modules only.
+- No model weights or training datasets are bundled here. Model weights, datasets, photos, audio, firmware binaries, map tiles and generated assets require separate source, hash, license and redistribution checks.
+- The optional components in `OPEN_SOURCE_COMPONENTS.md` are not automatically copied or bundled simply because a license is permissive.
+
+Before a release, produce an SPDX or CycloneDX SBOM for every runtime/build, include authoritative full license texts and notices, verify all transitive dependencies, and have the inherited source/license chain reviewed.
