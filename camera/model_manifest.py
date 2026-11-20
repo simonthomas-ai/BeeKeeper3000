@@ -51,7 +51,7 @@ class ModelManifest:
     scores_output: str | None
     class_ids_output: str | None
     detections_output: str | None
-    classes: dict[int, ModelClass>
+    classes: dict[int, ModelClass]
 
 
 def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManifest:
