@@ -4,7 +4,7 @@ Optional serial adapter for MeshCore companion radios. The adapter sends compact
 
 ## Install
 
-From the repository root, install the optional dependency file at network/meshcore/requirements.txt. The reviewed upstream binding is meshcore 2.3.19, MIT, Python 3.10 or newer. This library is optional and is not imported by the core triangulation runtime.
+From the repository root, install the optional dependency file at network/meshcore/requirements.lock. The reviewed upstream binding is meshcore 2.3.19, MIT, Python 3.10 or newer. This library is optional and is not imported by the core triangulation runtime.
 
 ## Wire protocol v1
 
