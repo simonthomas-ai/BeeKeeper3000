@@ -47,6 +47,7 @@ $dataRoot = Join-Path $StateRoot "data"
 $sourceDb = Join-Path $dataRoot "source-events.sqlite3"
 $monitorDb = Join-Path $dataRoot "monitor-events.sqlite3"
 $bridgeState = Join-Path $dataRoot "bridge-state.json"
+$cameraOutbox = Join-Path $dataRoot "camera-outbox.sqlite3"
 if (-not (Test-Path $sourceDb -PathType Leaf)) { throw "BeeKeeper source database not found: $sourceDb" }
 if (-not (Test-Path $monitorDb -PathType Leaf)) { throw "Monitor database not found: $monitorDb" }
 if (-not (Test-Path (Join-Path $MonitorRepo "integrations\store_backup.py") -PathType Leaf)) {
@@ -63,6 +64,7 @@ try {
     $sourceBackup = Join-Path $stagingDir "source-events.sqlite3"
     $monitorBackup = Join-Path $stagingDir "monitor-events.sqlite3"
     $bridgeBackup = Join-Path $stagingDir "bridge-state.json"
+    $cameraBackup = Join-Path $stagingDir "camera-outbox.sqlite3"
 
     Push-Location $repoRoot
     try {
@@ -80,10 +82,23 @@ try {
         Pop-Location
     }
 
+    if (Test-Path $cameraOutbox -PathType Leaf) {
+        Push-Location $repoRoot
+        try {
+            & $pythonPath -m camera.outbox_backup backup --source $cameraOutbox --destination $cameraBackup
+            if ($LASTEXITCODE -ne 0) { throw "Camera outbox backup failed with exit code $LASTEXITCODE." }
+        } finally {
+            Pop-Location
+        }
+    }
+
     $files = @(
         [pscustomobject]@{ name = "source-events.sqlite3"; path = $sourceBackup },
         [pscustomobject]@{ name = "monitor-events.sqlite3"; path = $monitorBackup }
     )
+    if (Test-Path $cameraBackup -PathType Leaf) {
+        $files += [pscustomobject]@{ name = "camera-outbox.sqlite3"; path = $cameraBackup }
+    }
     if (Test-Path $bridgeState -PathType Leaf) {
         # Bridge state is published with write+fsync+atomic rename; copy a complete
         # old or new version and validate the copied JSON before including it.
@@ -111,6 +126,7 @@ try {
         notes = @(
             "Database snapshots were created with SQLite online backup APIs and integrity checks.",
             "Bridge checkpoint is copied only when present and schema-valid.",
+            "Camera outbox is copied only when present and schema-valid.",
             "DPAPI station secrets are not included and are not portable to another Windows user or host.",
             "Backups contain sensitive station metadata; protect this directory with NTFS ACLs and BitLocker."
         )
