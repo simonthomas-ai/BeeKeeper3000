@@ -232,6 +232,7 @@ test('pollOnce retries a rate-limited source API', async () => {
   const result = await pollOnce(new Set(), {
     sourceUrl: 'http://127.0.0.1:8787',
     sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
     maxAttempts: 3,
     sleep: async ms => sleeps.push(ms),
     fetchImpl: async () => {
