@@ -88,12 +88,28 @@ class RuntimeTests(unittest.TestCase):
                 detector=FakeDetector(), outbox=box, client=OfflineClient(),
                 station_id="station-01", source="0", max_fps=2, cooldown_seconds=30,
             )
-            self.assertEqual(runtime.process_frame(object(), now_monotonic=100.0), 1)
-            self.assertEqual(runtime.process_frame(object(), now_monotonic=110.0), 0)
+            self.assertEqual(runtime.process_frame(object(), now_epoch=1000), 1)
+            self.assertEqual(runtime.process_frame(object(), now_epoch=1010), 0)
             self.assertEqual(box.count(), 1)
             with self.assertRaises(SourceClientError):
                 runtime.drain_outbox()
             self.assertEqual(box.count(), 1)
+
+    def test_cooldown_survives_runtime_restart(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "outbox.sqlite3")
+            first = LocalCameraRuntime(
+                detector=FakeDetector(), outbox=SQLiteOutbox(path), client=OfflineClient(),
+                station_id="station-01", source="0", cooldown_seconds=30,
+            )
+            self.assertEqual(first.process_frame(object(), now_epoch=2000), 1)
+            restarted = LocalCameraRuntime(
+                detector=FakeDetector(), outbox=SQLiteOutbox(path), client=OfflineClient(),
+                station_id="station-01", source="0", cooldown_seconds=30,
+            )
+            self.assertEqual(restarted.process_frame(object(), now_epoch=2029), 0)
+            self.assertEqual(restarted.process_frame(object(), now_epoch=2030), 1)
+            self.assertEqual(restarted.outbox.count(), 2)
 
 
 if __name__ == "__main__":

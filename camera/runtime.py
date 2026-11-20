@@ -67,20 +67,17 @@ class LocalCameraRuntime:
         self.frame_interval = 1.0 / float(max_fps)
         self.cooldown_seconds = float(cooldown_seconds)
         self.reconnect_max_seconds = float(reconnect_max_seconds)
-        self.last_emitted: dict[tuple[str, bool], float] = {}
 
-    def process_frame(self, frame, *, now_monotonic: float | None = None) -> int:
-        now = time.monotonic() if now_monotonic is None else now_monotonic
+    def process_frame(self, frame, *, now_epoch: float | None = None) -> int:
         queued = 0
         for detection in self.detector.detect(frame):
-            key = (detection.species, detection.prey_detected)
-            previous = self.last_emitted.get(key)
-            if previous is not None and now - previous < self.cooldown_seconds:
-                continue
             event = make_source_event(station_id=self.station_id, detection=detection)
-            self.outbox.enqueue(event)
-            self.last_emitted[key] = now
-            queued += 1
+            if self.outbox.enqueue_if_due(
+                event,
+                cooldown_seconds=self.cooldown_seconds,
+                now_epoch=now_epoch,
+            ):
+                queued += 1
         return queued
 
     def drain_outbox(self, limit: int = 50) -> int:
