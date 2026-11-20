@@ -81,7 +81,7 @@ def validate_external_provider(provider: dict, today: dt.date) -> str | None:
         return "disabled"
     if provider.get("free_access_verified") is not True:
         return "free access not verified"
-    if provider.get("provider_enforced_hard_cap_eur") != 0:
+    cap = provider.get("provider_enforced_hard_cap_eur")\n    if isinstance(cap, bool) or cap != 0:
         return "provider-enforced hard spending cap is not exactly 0 EUR"
     reviewed = provider.get("terms_reviewed_on", "")
     try:
@@ -92,7 +92,7 @@ def validate_external_provider(provider: dict, today: dt.date) -> str | None:
         return "terms review is older than 30 days or future-dated"
     endpoint = provider.get("base_url", "")
     parsed = urllib.parse.urlparse(endpoint)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+    if parsed.scheme != "https" or not parsed.hostname or parsed.hostname in {"localhost", "127.0.0.1", "::1"} or parsed.username or parsed.password or parsed.query or parsed.fragment:
         return "external endpoint must be a clean HTTPS URL"
     if provider.get("provider_type") != "openai_compatible":
         return "unsupported external provider type"
@@ -130,7 +130,7 @@ def call_chat(base_url: str, model: str, prompt: str, token: str | None, timeout
 
 
 def run(config: dict, prompt: str, outdir: Path) -> dict:
-    if config.get("budget_eur") != 0:
+    budget = config.get("budget_eur")\n    if isinstance(budget, bool) or budget != 0:
         raise CouncilError("Refusing to run: budget_eur must be exactly 0.")
     prompt = scrub_prompt(prompt)
     outdir.mkdir(parents=True, exist_ok=True)
