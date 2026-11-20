@@ -24,8 +24,8 @@ class StationRegistry:
     def __init__(self, entries: Mapping[str, Mapping]):
         self._entries = {}
         for station_hash, value in entries.items():
-            if not isinstance(station_hash, str) or not re.fullmatch(r"[0-9a-f]{16}", station_hash):
-                raise StationRegistryError("station registry keys must be 16-character lowercase hashes")
+            if not isinstance(station_hash, str) or not re.fullmatch(r"[0-9a-f]{32}", station_hash):
+                raise StationRegistryError("station registry keys must be 32-character lowercase hashes")
             if not isinstance(value, Mapping):
                 raise StationRegistryError("station registry entry must be an object")
             station_id = value.get("station_id")
