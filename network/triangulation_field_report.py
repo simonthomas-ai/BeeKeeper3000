@@ -9,10 +9,10 @@ import argparse
 import csv
 import json
 import math
+import os
 import statistics
 import sys
 from collections import defaultdict
-from dataclasses import asdict
 from pathlib import Path
 from typing import Iterable
 
@@ -131,11 +131,11 @@ def _circular_stats(errors: list[float], sigmas: list[float]) -> dict:
     }
 
 
-def _read_trials(path: str | Path) -> tuple[dict[str, list[Bearing]], dict[str, tuple[float, float]], dict[str, int]]:
+def _read_trials(path: str | Path) -> tuple[dict[str, list[Bearing]], dict[str, tuple[float, float]]]:
     source = Path(path).expanduser().resolve(strict=True)
     trials: dict[str, list[Bearing]] = defaultdict(list)
     targets: dict[str, tuple[float, float]] = {}
-    line_numbers: dict[str, int] = {}
+    station_locations: dict[str, tuple[float, float]] = {}
     seen_rows = 0
 
     with source.open("r", encoding="utf-8-sig", newline="") as handle:
@@ -178,6 +178,16 @@ def _read_trials(path: str | Path) -> tuple[dict[str, list[Bearing]], dict[str, 
                 raise FieldReportError(f"line {line}: surveyed target differs within trial {trial_id}")
             targets[trial_id] = (target_lat, target_lon)
 
+            station_location = station_locations.get(station_id)
+            if station_location is not None and (
+                abs(station_location[0] - station_lat) > 1e-7
+                or abs(station_location[1] - station_lon) > 1e-7
+            ):
+                raise FieldReportError(
+                    f"line {line}: station {station_id} changed coordinates; use a new station/calibration ID"
+                )
+            station_locations[station_id] = (station_lat, station_lon)
+
             bearing = Bearing(
                 station_id=station_id,
                 latitude=station_lat,
@@ -189,7 +199,6 @@ def _read_trials(path: str | Path) -> tuple[dict[str, list[Bearing]], dict[str, 
             if any(item.station_id == station_id for item in trials[trial_id]):
                 raise FieldReportError(f"line {line}: station {station_id} is duplicated in trial {trial_id}")
             trials[trial_id].append(bearing)
-            line_numbers.setdefault(trial_id, line)
 
             # Compute calibration error during ingest so malformed, colocated
             # target/station data fail before any report is generated.
@@ -200,7 +209,7 @@ def _read_trials(path: str | Path) -> tuple[dict[str, list[Bearing]], dict[str, 
     for trial_id, bearings in trials.items():
         if len(bearings) > MAX_STATIONS_PER_TRIAL:
             raise FieldReportError(f"trial {trial_id} exceeds {MAX_STATIONS_PER_TRIAL} stations")
-    return dict(trials), targets, line_numbers
+    return dict(trials), targets
 
 
 def build_report(
@@ -328,13 +337,23 @@ def report_csv(
     minimum_trials: int = 30,
     max_time_delta_sec: int = 1800,
 ) -> dict:
-    trials, targets, _ = _read_trials(csv_path)
+    trials, targets = _read_trials(csv_path)
     return build_report(
         trials,
         targets,
         minimum_trials=minimum_trials,
         max_time_delta_sec=max_time_delta_sec,
     )
+
+
+def _write_private_report(path: str | Path, rendered: str) -> None:
+    output_path = Path(path).expanduser()
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    descriptor = os.open(output_path, flags, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
+        handle.write(rendered)
 
 
 def main(argv: Iterable[str] | None = None) -> int:
@@ -358,10 +377,11 @@ def main(argv: Iterable[str] | None = None) -> int:
             sys.stdout.write(rendered)
         else:
             output_path = Path(args.output).expanduser()
-            if output_path.exists():
-                raise FieldReportError("refusing to overwrite an existing report file")
-            output_path.write_text(rendered, encoding="utf-8")
-            print(f"Report written: {output_path}", file=sys.stderr)
+            try:
+                _write_private_report(output_path, rendered)
+            except FileExistsError as exc:
+                raise FieldReportError("refusing to overwrite an existing report file") from exc
+            print(f"Private report written: {output_path}", file=sys.stderr)
         return 0 if report["status"] == "enough_samples_for_expert_review_only" else 2
     except (OSError, csv.Error, FieldReportError, ValueError) as exc:
         print(f"Field report failed: {exc}", file=sys.stderr)
