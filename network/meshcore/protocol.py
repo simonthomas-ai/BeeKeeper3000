@@ -81,7 +81,7 @@ def _public_key(value):
 
 
 def public_key_fingerprint(key) -> str:
-    """Return the 8-byte SHA-256 fingerprint used by the wire protocol."""
+    """Return the 16-byte SHA-256 fingerprint used by the wire protocol."""
     if getattr(key, "has_private", lambda: False)():
         public = _private_key(key).public_key()
     else:
@@ -115,7 +115,7 @@ def encode_event(event: Mapping, signing_key, *, key_id: str | None = None,
         if not isinstance(key_id, str) or not re.fullmatch(r"[0-9a-fA-F]{32}", key_id):
             raise MeshCoreProtocolError("key_id must be a 32-character public-key fingerprint")
         key_fingerprint = bytes.fromhex(key_id)
-        expected = hashlib.sha256(private.public_key().export_key(format="raw")).digest()[:8]
+        expected = hashlib.sha256(private.public_key().export_key(format="raw")).digest()[:16]
         if key_fingerprint != expected:
             raise MeshCoreProtocolError("key_id does not match the signing key")
 
