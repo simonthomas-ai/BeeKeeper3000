@@ -159,7 +159,7 @@ def make_handler(api_key: str, cursor_secret: str | bytes, store: SQLiteSourceEv
                 if not 1 <= limit <= 100:
                     raise ValueError("limit out of range")
                 raw_cursor = query.get("cursor", [None])[0]
-                after = 0 if raw_cursor is None else signer.read(raw_cursor)
+                after = 0 if raw_cursor in (None, 'start') else signer.read(raw_cursor)
                 result = store.page(after, limit)
                 response = {
                     "events": result["events"],
