@@ -1,89 +1,90 @@
-# BeeKeeper3000 – hardware reference designs and wiring diagrams
+# BeeKeeper3000 – Hardware-Referenzentwürfe und Anschlussdiagramme
 
-Status: conceptual reference designs for prototyping. Not certified construction drawings, not radio certification, and not a substitute for device datasheets or electrical review.
+**Status:** Konzeptionelle Entwürfe für Prototypen. Keine zertifizierten Konstruktionszeichnungen, keine Funkzulassung und kein Ersatz für Herstellerdatenblätter oder eine elektrotechnische Prüfung.
 
-## Design A – smartphone-only participant
+## Entwurf A – Teilnahme ausschließlich mit Smartphone
 ~~~mermaid
 flowchart LR
-  P[Android / iPhone] -->|PWA: manual report / consented media| Q[Local offline draft queue]
-  Q -->|HTTPS when online| API[BeeKeeper source API]
-  P -->|optional BLE| R[MeshCore companion radio]
-  R -->|signed metadata only| M[Mesh network]
-  API --> J[Local event journal]
+  P[Android / iPhone] -->|PWA: manuelle Meldung / freigegebene Medien| Q[Lokale Offline-Warteschlange]
+  Q -->|HTTPS bei Internetverbindung| API[BeeKeeper-Quell-API]
+  P -->|BLE optional| R[MeshCore-Begleitfunkgerät]
+  R -->|nur signierte Metadaten| M[Mesh-Netzwerk]
+  API --> J[Lokales Ereignisprotokoll]
 ~~~
-No extra station electronics required. Camera/location are accessed only while the user actively grants permission. Optional certified USB power bank. Offline drafts need visible pending/sent state, expiry, review and deletion.
+Zusätzliche Stationselektronik ist nicht erforderlich. Kamera und Standort werden nur nach aktiver Einwilligung des Nutzers verwendet. Optional ist eine zertifizierte USB-Powerbank möglich. Offline-Entwürfe benötigen einen erkennbaren Versandstatus, ein Ablaufdatum sowie Funktionen zur Prüfung und Löschung.
 
-## Design B – fixed PoE camera + edge computer
+## Entwurf B – feste PoE-Kamera mit Edge-Rechner
 ~~~mermaid
 flowchart TB
-  CAM[RTSP / ONVIF IP camera] -->|Ethernet / PoE| SW[PoE switch or injector]
-  SW -->|LAN| EDGE[Mini-PC / SBC edge host]
-  EDGE -->|local inference| DET[Approved detector runtime]
-  DET -->|metadata only| DB[Local journal + outbox]
-  DB -->|HTTPS / MQTT TLS| GW[Local gateway / source API]
-  GW -->|signed event batches| NET[Optional MeshCore / IP transport]
-  UPS[Certified DC UPS] --> EDGE
+  CAM[RTSP-/ONVIF-IP-Kamera] -->|Ethernet / PoE| SW[PoE-Switch oder Injektor]
+  SW -->|LAN| EDGE[Mini-PC / Einplatinenrechner]
+  EDGE -->|lokale KI-Auswertung| DET[Freigegebene Modelllaufzeit]
+  DET -->|nur Metadaten| DB[Lokales Protokoll und Versandwarteschlange]
+  DB -->|HTTPS / MQTT TLS| GW[Lokales Gateway / Quell-API]
+  GW -->|signierte Ereignispakete| NET[Optionaler MeshCore-/IP-Transport]
+  UPS[Zertifizierte DC-USV] --> EDGE
   UPS --> SW
 ~~~
-Use a restricted LAN/VLAN and a dedicated least-privilege camera account. Do not expose RTSP/ONVIF to the Internet. Match PoE class and power budget to camera/switch datasheets.
+Ein eingeschränktes LAN/VLAN und ein eigenes Kamera-Benutzerkonto mit minimalen Berechtigungen verwenden. RTSP/ONVIF niemals direkt ins Internet stellen. PoE-Klasse und Leistungsbedarf mit den Datenblättern von Kamera und Switch abgleichen.
 
-## Design C – low-voltage solar station (concept only)
+## Entwurf C – solare Niederspannungsstation (nur Konzept)
 ~~~mermaid
 flowchart TD
-  PV[PV module] --> CTRL[Matched solar charge controller]
-  BAT[Protected battery with BMS] <--> CTRL
-  CTRL --> F1[DC fuse near battery]
-  F1 --> DC[Regulated DC distribution / buck converters]
-  DC --> EDGE[Edge computer]
-  DC --> CAM[Camera / sensor]
-  DC --> RADIO[LoRa radio node]
-  EDGE -->|USB / Ethernet / serial| CAM
+  PV[Solarmodul] --> CTRL[Passender Solarladeregler]
+  BAT[Geschützter Akku mit BMS] <--> CTRL
+  CTRL --> F1[DC-Sicherung in Akkunähe]
+  F1 --> DC[Geregelte DC-Verteilung / Abwärtswandler]
+  DC --> EDGE[Edge-Rechner]
+  DC --> CAM[Kamera / Sensor]
+  DC --> RADIO[LoRa-Funkknoten]
+  EDGE -->|USB / Ethernet / seriell| CAM
   EDGE -->|USB / BLE / UART| RADIO
-  EDGE -->|metadata only| NET[IP or LoRa gateway]
+  EDGE -->|nur Metadaten| NET[IP- oder LoRa-Gateway]
 ~~~
-Size panel, battery chemistry, controller, BMS, fuse, wire gauge and converters from measured worst-case load, temperature, autonomy and site-specific solar yield. Never connect a panel directly to a battery or SBC. Provide reverse-polarity, over-current, over-voltage, undervoltage and thermal protection.
+Solarmodul, Akkutechnologie, Laderegler, Batteriemanagementsystem (BMS), Sicherung, Leitungsquerschnitt und Wandler nach gemessener Höchstlast, Temperatur, gewünschter Betriebsdauer ohne Sonne und standortspezifischem Solarertrag auslegen. Ein Solarmodul niemals direkt mit Akku oder Einplatinenrechner verbinden. Schutz gegen Verpolung, Überstrom, Über- und Unterspannung sowie Überhitzung vorsehen.
 
-## Design D – optional sensor bus
+## Entwurf D – optionaler Sensorbus
 ~~~mermaid
 flowchart LR
-  S1[Temp / RH / light] -->|BLE or Modbus RTU| HUB[Sensor gateway]
+  S1[Temperatur / Feuchte / Licht] -->|BLE oder Modbus RTU| HUB[Sensor-Gateway]
   S2[GNSS / NMEA] -->|USB / UART| HUB
-  S3[IMU / compass] -->|BLE / I2C / SPI| HUB
-  S4[Rain / wind] -->|pulse / RS-485| HUB
-  HUB -->|validated readings| EDGE[Station host]
-  EDGE --> DB[Local journal]
+  S3[IMU / Kompass] -->|BLE / I2C / SPI| HUB
+  S4[Regen / Wind] -->|Impuls / RS-485| HUB
+  HUB -->|geprüfte Messwerte| EDGE[Stationsrechner]
+  EDGE --> DB[Lokales Protokoll]
 ~~~
-I2C/SPI are short board-level buses, not long outdoor cabling. For longer runs use properly isolated RS-485/Modbus with termination and surge protection. GNSS/compass readings require quality flags; magnetic heading requires calibration and declination.
+I²C und SPI eignen sich für kurze Verbindungen auf Platinen, nicht für lange Außenkabel. Für längere Strecken sind geeignete, galvanisch getrennte RS-485-/Modbus-Verbindungen mit Abschluss und Überspannungsschutz vorzusehen. GNSS- und Kompasswerte benötigen Qualitätsmerkmale; magnetische Richtungsangaben erfordern Kalibrierung und Deklinationskorrektur.
 
-## Connector-level low-voltage notes
-| Interface | Typical use | Wiring / safety |
+## Hinweise zu Niederspannungsanschlüssen
+
+| Schnittstelle | Typischer Einsatz | Anschluss und Sicherheit |
 |---|---|---|
-| USB 2/3 | UVC camera, GNSS, radio, sensor | Respect host/device current limits; powered hub if specified |
-| Ethernet | IP camera, host, gateway | Outdoor-rated cable, surge protection, proper PoE |
-| PoE | Camera / remote node | Match IEEE class and datasheet; no passive PoE unless explicitly supported |
-| UART TTL | GNSS / MCU | Confirm logic voltage (3.3 V vs 5 V), TX/RX/GND; never assume |
-| RS-485 | Long sensor cable | Differential pair, topology/termination/bias per transceiver; isolation/surge protection |
-| I2C / SPI | On-board sensors | Short traces; verify logic voltage and pinout |
-| BLE | Phone / environmental sensor | Pairing and identity; not deterministic long-range |
-| LoRa | Small signed event metadata | Approved regional band, compliant module/antenna and airtime |
+| USB 2/3 | UVC-Kamera, GNSS, Funk, Sensoren | Stromgrenzen des Hosts und Geräts beachten; gegebenenfalls aktiven Hub einsetzen |
+| Ethernet | IP-Kamera, Rechner, Gateway | Außenkabel und Überspannungsschutz, korrekte PoE-Auslegung |
+| PoE | Kamera oder entfernter Knoten | IEEE-Klasse und Datenblatt beachten; passives PoE nur bei ausdrücklicher Unterstützung |
+| UART TTL | GNSS / Mikrocontroller | Logikspannung (3,3 V oder 5 V), TX/RX/GND prüfen; niemals annehmen |
+| RS-485 | Lange Sensorleitungen | Differenzielles Adernpaar, Topologie, Abschluss und Vorspannung laut Transceiver; Isolation und Überspannungsschutz |
+| I²C / SPI | Sensoren auf Platinen | Kurze Leitungen; Logikspannung und Pinbelegung prüfen |
+| BLE | Smartphone / Umweltsensor | Kopplung und Identitätsprüfung; keine garantierte Langstreckenverbindung |
+| LoRa | Kleine signierte Ereignismetadaten | Zulässiges Frequenzband, geeignetes Funkmodul und Antenne, erlaubte Sendezeit |
 
-## Power-budget worksheet
-For each load record input voltage, peak/average current, duty cycle, startup current, daily Wh, converter efficiency, battery usable capacity at minimum temperature/age, worst-month solar yield, autonomy days, fuse, wire gauge and connector ratings.
+## Vorlage zur Energieberechnung
+Für jeden Verbraucher Eingangsspannung, Spitzen- und Durchschnittsstrom, Einschaltdauer, Anlaufstrom, täglichen Energiebedarf (Wh), Wandlerwirkungsgrad, nutzbare Akkukapazität bei Kälte und Alterung, Solarertrag im ungünstigsten Monat, gewünschte Autonomietage, Sicherung, Leitungsquerschnitt und Steckverbinderbelastbarkeit erfassen.
 
-Daily energy = sum(voltage × average current × operating hours) / 1000 Wh.
-Battery nominal energy = daily energy × autonomy days / usable depth-of-discharge / conversion efficiency.
-PV sizing must use site-specific worst-month irradiation and losses, not a generic panel size.
+Tagesenergie in Wh = Summe aus Spannung (V) × mittlerem Strom (A) × Betriebsstunden (h).
 
-## Electrical and radio safety boundary
-This reference intentionally covers low-voltage DC only. Do not use it as DIY mains wiring guidance. AC mains, building wiring, lightning protection, mast bonding and permanent outdoor electrical installations must be designed/installed/inspected by qualified professionals under applicable rules. Do not modify RF power amplifiers, bypass regulatory limits or use unapproved antenna combinations. Germany/EU operation must comply with current BNetzA frequency, power, duty-cycle/channel-access and RED/CE requirements for the exact equipment/band. Do not attach transmitters to wildlife without separate expert animal-welfare and legal review.
+Benötigte nominelle Akkuenergie = Tagesenergie × Autonomietage / nutzbarer Entladetiefe / Umwandlungswirkungsgrad.
 
-## Drawing release checklist
-A build-to-print drawing needs exact part numbers/revisions, datasheets, pinout, wire gauge/length, fuse, voltage/current limits, connector ratings, enclosure/IP rating, thermal analysis, RF configuration, firmware, assembly steps and independent review. These generic diagrams are not build-to-print drawings.
+Die Solarmodulgröße muss auf den standortspezifischen Ertrag im ungünstigsten Monat und auf Verluste abgestimmt werden, nicht auf eine pauschale Wattangabe.
 
-## Design E – smartphone-only participant client
+## Grenzen der Elektro- und Funksicherheit
+Diese Vorlage behandelt ausschließlich Gleichstrom-Niederspannung. Sie ist **keine Anleitung für Eigenarbeiten an Netzspannung**. Netzanschlüsse, Gebäudeinstallation, Blitzschutz, Mastausgleich und dauerhafte elektrische Außenanlagen müssen von qualifizierten Fachkräften entsprechend den geltenden Regeln geplant, errichtet und geprüft werden. Keine Funkverstärker verändern, gesetzliche Grenzen umgehen oder nicht zugelassene Antennenkombinationen verwenden. In Deutschland und der EU gelten für das konkrete Gerät und Frequenzband die aktuellen Vorgaben der Bundesnetzagentur sowie RED-/CE-Anforderungen. Sender dürfen nicht ohne gesonderte fachliche, tierschutzrechtliche und rechtliche Prüfung an Wildtieren angebracht werden.
 
-The first mobile implementation is a local-first PWA in `mobile-pwa/`. The phone uses its built-in camera/photo picker, one-shot location and optional orientation sensor only after a user action. Reports stay in IndexedDB; a manually initiated export contains only the Source-API-v1 metadata fields. It does not pair to MeshCore radios or continuously track location. See [MOBILE-PWA-ACCEPTANCE.md](MOBILE-PWA-ACCEPTANCE.md).
+## Checkliste zur Freigabe eines nachbaubaren Schaltplans
+Ein fertiger Fertigungs-/Nachbauplan benötigt genaue Bauteilnummern und Revisionen, Herstellerdatenblätter, Pinbelegung, Leitungsquerschnitte und -längen, Sicherungen, Spannungs- und Stromgrenzen, Steckverbinderbelastbarkeit, Gehäuse-Schutzart, thermische Prüfung, Funkkonfiguration, Firmware, Montageschritte und unabhängige Kontrolle. Diese allgemeinen Diagramme sind **noch keine nachbaureifen Fertigungsunterlagen**.
 
-## Detailed low-voltage wiring templates
+## Entwurf E – Smartphone-PWA
+Die erste mobile Implementierung liegt in `mobile-pwa/` und arbeitet zunächst lokal. Kamera/Fotowahl, einmalige Standortfreigabe und optionale Orientierungssensoren werden nur nach Nutzeraktion verwendet. Meldungen bleiben in IndexedDB. Ein manuell gestarteter Export enthält ausschließlich die Metadatenfelder der Source-API v1. Eine Kopplung an MeshCore-Funkgeräte oder dauerhafte Standortverfolgung ist noch nicht implementiert. Siehe [MOBILE-PWA-ACCEPTANCE.md](MOBILE-PWA-ACCEPTANCE.md).
 
-The connector-level examples, UART/I²C signal direction, RS-485 bus topology, DC fuse/power-tree checklist and procurement/BOM template are documented in [LOW-VOLTAGE-WIRING-TEMPLATES.md](LOW-VOLTAGE-WIRING-TEMPLATES.md). They deliberately avoid universal GPIO numbers or unverified part numbers; the exact board revision and datasheets must be selected before a build-to-print schematic can be released.
+## Detaillierte Niederspannungs-Verdrahtung
+Beispiele für Steckverbinder, UART-/I²C-Signalrichtungen, RS-485-Bustopologie, DC-Sicherungen, Energieverteilung und Stücklisten stehen in [LOW-VOLTAGE-WIRING-TEMPLATES.md](LOW-VOLTAGE-WIRING-TEMPLATES.md). Allgemeingültige GPIO-Pinnummern und ungeprüfte Bauteilnummern werden bewusst vermieden. Vor einem nachbaureifen Schaltplan müssen die exakte Platinenrevision und die Herstellerdatenblätter feststehen.
