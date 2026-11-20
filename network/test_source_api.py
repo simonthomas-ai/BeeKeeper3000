@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 from network.source_api import make_server
-from network.source_cursors import CursorError, CursorSigner
+from network.source_cursors import CursorError, CursorExpired, CursorSigner
 from network.source_event_store import SQLiteSourceEventStore
 from network.source_events import SourceEventError, validate_source_event
 
@@ -135,6 +135,19 @@ class SQLiteSourceStoreTests(unittest.TestCase):
         self.assertEqual(getattr(raised.exception, "earliest_sequence", None), 2)
         self.assertEqual(store.page(1, 100)["events"][0]["id"], "source-event-0002")
 
+
+    def test_page_enforces_retention_and_preserves_cursor_boundary(self):
+        store = SQLiteSourceEventStore(self.db_path, retention_days=1, max_rows=100)
+        for index in range(1, 4):
+            store.append(sample_event(index))
+        old = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        with store._db() as db:
+            db.execute("UPDATE source_events SET created_at=? WHERE sequence=1", (old,))
+        with self.assertRaises(CursorExpired) as raised:
+            store.page(0, 100)
+        self.assertEqual(raised.exception.earliest_sequence, 2)
+        self.assertEqual(store.count(), 2)
+
     def test_sequence_survives_empty_retained_journal_and_restart(self):
         store = SQLiteSourceEventStore(self.db_path, retention_days=1, max_rows=100)
         store.append(sample_event(1))
@@ -211,7 +224,7 @@ class SourceApiTests(unittest.TestCase):
     def test_signed_cursor_paginates_250_events_in_order(self):
         for index in range(1, 251):
             self.store.append(sample_event(index))
-        cursor = None
+        cursor = 'start'
         received = []
         page_sizes = []
         for _ in range(4):
@@ -270,6 +283,23 @@ class SourceApiTests(unittest.TestCase):
         status, payload, _ = self.request("GET", "/api/events?limit=100&cursor=" + quote(stale, safe=""))
         self.assertEqual(status, 410)
         self.assertEqual(payload["earliest_sequence"], 2)
+        self.assertEqual(CursorSigner(CURSOR_SECRET).read(payload["earliest_cursor"]), 1)
+
+
+    def test_new_start_cursor_uses_current_retention_boundary(self):
+        store = SQLiteSourceEventStore(self.db_path, retention_days=1, max_rows=1000)
+        for index in range(1, 4):
+            store.append(sample_event(index))
+        old = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        with store._db() as db:
+            db.execute("UPDATE source_events SET created_at=? WHERE sequence=1", (old,))
+        self.assertEqual(store.purge_expired(), 1)
+        self.store = store
+        status, payload, _ = self.request("GET", "/api/events?limit=100&cursor=start")
+        self.assertEqual(status, 200)
+        self.assertEqual([event["id"] for event in payload["events"]],
+                         ["source-event-0002", "source-event-0003"])
+        self.assertFalse(payload["has_more"])
 
     def test_tampered_cursor_and_duplicate_query_keys_are_rejected(self):
         signer = CursorSigner(CURSOR_SECRET)
