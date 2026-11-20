@@ -43,11 +43,11 @@ The listener binds only to `127.0.0.1:8787`. Do not expose its HTTP listener pub
 Every request includes `X-API-Key`.
 
 - `POST /api/events` stores one strict metadata-only observation. An exact replay returns `200` with `duplicate: true`; a new insert returns `201`.
-- `GET /api/events?limit=100` returns the first page.
+- `GET /api/events?limit=100&cursor=start` begins at the oldest event still inside the configured retention window. Omitting `cursor` has the same meaning.
 - `GET /api/events?limit=100&cursor=<opaque-token>` resumes after a signed cursor.
 - An exact duplicate POST returns `200`; reuse of an immutable ID with changed content returns `409`; a full journal returns `503` without dropping retained records.
 - Pages are 1–100 events, oldest first, with `events`, `next_cursor` and `has_more`, matching the bridge contract.
-- Cursors use HMAC-SHA256 and are tied to this event stream. Malformed or forged cursors return 400. A cursor behind retention returns 410 and the earliest retained sequence; the service never resets a stale cursor to the newest event.
+- Cursors use HMAC-SHA256 and are tied to this event stream. Malformed or forged cursors return 400. A previously issued cursor behind retention returns 410 with `earliest_sequence` and a signed `earliest_cursor`; the operator must explicitly accept the retention gap before resuming. The service never silently resets a stale cursor. A new consumer using `start` begins at the oldest record still retained.
 
 The strict event schema accepts only `id`, `observed_at`, `station_id`, `species`, `confidence` and `prey_detected`. It rejects image/audio data, file paths, GPS coordinates, credentials, arbitrary free text and expert-verification claims. The bridge subsequently maps model output to `unverified_candidate`.
 
@@ -56,7 +56,7 @@ The strict event schema accepts only `id`, `observed_at`, `station_id`, `species
 - SQLite write transactions allocate monotonically increasing `AUTOINCREMENT` sequence numbers.
 - Stable source IDs are unique. Exact duplicate payloads are idempotent; the same ID with changed content is rejected.
 - Cursor sequence and retained-event boundary are persisted. Sequence numbers do not reset when retention removes every row.
-- Retention is age-bounded; maximum row count is bounded. At capacity the service fails closed rather than evicting events that a bridge may not yet have consumed.
+- Retention is age-bounded and enforced during writes and page reads; maximum row count is bounded. At capacity the service fails closed rather than evicting events that a bridge may not yet have consumed.
 - Maximum request body is 32 KiB; maximum page response is 2 MiB. Request workers, queue, body deadline and per-IP rate-limit state are bounded.
 - SQLite is not encrypted by this application. POSIX data directories must be owned by the service account and mode 0700; SQLite files/sidecars are mode 0600. Windows deployments must set explicit NTFS ACLs.
 
