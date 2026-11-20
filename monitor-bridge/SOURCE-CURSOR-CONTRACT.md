@@ -4,7 +4,7 @@ This document defines the source-side API required for lossless bridge catch-up.
 
 ## Request
 
-`GET /api/events?limit=100`
+`GET /api/events?limit=100&cursor=start`
 
 `GET /api/events?limit=100&cursor=<opaque-token>`
 
@@ -16,8 +16,8 @@ Headers:
 Rules:
 
 - `limit` is an integer from 1 through 100. The server must reject values outside this range.
-- Omitted cursor means the initial position before the oldest retained sequence.
-- Cursor is opaque to clients, URL-safe, no more than 512 characters, and bound to the same logical event stream and station authorization scope.
+- `cursor=start` means the initial position before the oldest retained event. Omitting the cursor preserves the historical latest-100 PWA/API behaviour and must not be used by the lossless bridge.
+- Subsequent cursors are opaque to clients, URL-safe, no more than 512 characters, and bound to the same logical event stream and station authorization scope. The source uses the stable committed `ingest_seq` internally; clients must not parse or construct cursor tokens.
 - The server must reject malformed, expired, tampered or wrong-scope cursors with a non-success response; it must not silently treat them as an initial request.
 
 ## Response
