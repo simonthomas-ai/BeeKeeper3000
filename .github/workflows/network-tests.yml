@@ -5,11 +5,13 @@ on:
     paths:
       - "network/**"
       - "camera/**"
+      - "camera/**"
       - "monitor-bridge/**"
       - ".github/workflows/network-tests.yml"
   pull_request:
     paths:
       - "network/**"
+      - "camera/**"
       - "monitor-bridge/**"
       - ".github/workflows/network-tests.yml"
 
