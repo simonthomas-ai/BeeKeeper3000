@@ -16,6 +16,7 @@ on:
       - ".github/workflows/supply-chain.yml"
   pull_request:
     paths:
+      - "camera/requirements.txt"
       - "monitor-bridge/package.json"
       - "monitor-bridge/package-lock.json"
       - "network/meshcore/requirements*.txt"
