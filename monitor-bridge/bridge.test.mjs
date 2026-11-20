@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState } from './bridge.mjs';
+import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -19,6 +19,14 @@ const sampleEvent = {
   lon: 6.8,
   prey_detected: true
 };
+
+test('production requires cursor pagination by default and legacy mode must be explicit', () => {
+  assert.equal(parseCursorRequirement(undefined), true);
+  assert.equal(parseCursorRequirement(''), true);
+  assert.equal(parseCursorRequirement('true'), true);
+  assert.equal(parseCursorRequirement('false'), false);
+  assert.throws(() => parseCursorRequirement('yes'), /must be true or false/);
+});
 
 test('maps only metadata and never trusts upstream verification state', () => {
   const mapped = toMonitorEvent(sampleEvent);
