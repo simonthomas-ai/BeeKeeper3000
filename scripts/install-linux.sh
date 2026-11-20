@@ -129,9 +129,12 @@ PY
 fi
 chown root:beekeeper "$ENV_FILE"
 chmod 0640 "$ENV_FILE"
-for key in HORNET3000_API_KEY HORNET3000_CURSOR_SECRET VESPAGUARD_INGEST_TOKEN; do
+for key in HORNET3000_API_KEY HORNET3000_CURSOR_SECRET VESPAGUARD_INGEST_TOKEN BEEKEEPER_MONITOR_INGEST_TOKEN; do
   grep -qE "^$key=[A-Za-z0-9_-]{32,}$" "$ENV_FILE" || die "Missing/invalid secret setting: $key"
 done
+receiver_token=$(sed -n 's/^VESPAGUARD_INGEST_TOKEN=//p' "$ENV_FILE")
+bridge_token=$(sed -n 's/^BEEKEEPER_MONITOR_INGEST_TOKEN=//p' "$ENV_FILE")
+[[ -n "$receiver_token" && "$receiver_token" == "$bridge_token" ]] || die "Monitor and bridge receiver tokens do not match."
 
 render_unit() {
   sed -e "s|@BEEKEEPER_ROOT@|$APP_ROOT/current|g" \
