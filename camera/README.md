@@ -46,16 +46,12 @@ Set environment variables in the same terminal. Do not store real credentials in
 ~~~powershell
 $env:BEEKEEPER_MODEL_MANIFEST = 'C:\secure\beekeeper\model-manifest.json'
 $env:BEEKEEPER_CAMERA_SOURCE = '0' # USB camera index; or local file / rtsp(s):// URL
-$env:HORNET3000_STATION_ID = 'station-01'
-$env:HORNET3000_API_KEY = '<locally provisioned source API key>'
-$env:HORNET3000_URL = 'http://127.0.0.1:8787'
-$env:BEEKEEPER_CAMERA_OUTBOX = "$env:LOCALAPPDATA\BeeKeeper3000\data\camera-outbox.sqlite3"
 $env:BEEKEEPER_CAMERA_MAX_FPS = '5'
 $env:BEEKEEPER_CAMERA_COOLDOWN_SECONDS = '30'
-python -m camera.runtime
+.\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe'
 ~~~
 
-The source URL is restricted to loopback (127.0.0.1, ::1 or localhost) in this first release. The camera source is local configuration; do not paste RTSP credentials into tickets or logs. Start the base station services separately with scripts/Start-BeeKeeperStation.ps1.
+The camera launcher retrieves the source API key from the base station's current-user DPAPI secret file and passes it only through the child process environment; it does not put the key on the command line or in logs. Start the base station services separately first with scripts/Start-BeeKeeperStation.ps1. The source URL is restricted to loopback (127.0.0.1, ::1 or localhost); authenticated HTTP requests are not allowed to follow redirects. The camera source is local configuration; do not paste RTSP credentials into tickets or logs.
 
 ## Offline queue and failure behaviour
 
