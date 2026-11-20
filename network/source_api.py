@@ -102,7 +102,13 @@ def make_handler(api_key: str, cursor_secret: str | bytes, store: SQLiteSourceEv
 
         def _authorized(self):
             values = self.headers.get_all("X-API-Key", [])
-            return len(values) == 1 and hmac.compare_digest(values[0], api_key)
+            if len(values) != 1:
+                return False
+            try:
+                supplied = values[0].encode("ascii", errors="strict")
+            except UnicodeError:
+                return False
+            return hmac.compare_digest(supplied, api_key.encode("ascii"))
 
         def _rate_allowed(self):
             now = time.monotonic()
