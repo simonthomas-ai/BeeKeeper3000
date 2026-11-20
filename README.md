@@ -39,7 +39,7 @@ Diese Tests belegen die lokale HTTP-/SQLite-Softwarestrecke, nicht die reale Kam
 
 Das optionale Paket [camera/](camera/) stellt USB-/RTSP-/Videodatei-Aufnahme, CPU-Inferenz über ONNX Runtime, ein strenges lokales Model-Manifest mit SHA-256-/Lizenzprüfung, eine persistente SQLite-Outbox und einen Loopback-Source-API-Client bereit. Es sendet nur die sechs Felder des Source-API-Vertrags; Bild-/Audio-/GPS-Daten werden nicht weitergegeben. Offline-Ereignisse bleiben in der lokalen Warteschlange, bis der Quellserver sie bestätigt. Bei voller Warteschlange stoppt der Prozess statt Ereignisse still zu verwerfen.
 
-Das Beispielmanifest ist absichtlich ungültig und es sind keine Modellgewichte enthalten. Ein reales Modell wird erst nach unabhängiger Lizenz-/Provenienzprüfung und Anpassung an den expliziten ONNX-Ausgabevertrag akzeptiert. Alle Vorhersagen bleiben unbestätigte Kandidaten. Das Modul wird separat gestartet und ist nicht Bestandteil des Basis-Stationslaunchers. Einrichtung und Grenzen: [camera/README.md](camera/README.md).
+Das Beispielmanifest ist absichtlich ungültig und es sind keine Modellgewichte enthalten. Ein reales Modell wird erst nach unabhängiger Lizenz-/Provenienzprüfung und Anpassung an den expliziten ONNX-Ausgabevertrag akzeptiert. Das verbindliche Hardware- und Qualitätsabnahmeverfahren steht in [docs/CAMERA-ACCEPTANCE.md](docs/CAMERA-ACCEPTANCE.md). Alle Vorhersagen bleiben unbestätigte Kandidaten. Das Modul wird separat gestartet und ist nicht Bestandteil des Basis-Stationslaunchers. Einrichtung und Grenzen: [camera/README.md](camera/README.md).
 
 ## Tests
 
