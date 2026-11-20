@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs } from './bridge.mjs';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -246,4 +249,203 @@ test('pollOnce retries a rate-limited source API', async () => {
   assert.equal(result, 0);
   assert.equal(calls, 2);
   assert.deepEqual(sleeps, [0]);
+});
+
+
+function cursorEvent(index) {
+  return {
+    ...sampleEvent,
+    id: `source-event-${index}`,
+    station_id: 'station_north',
+    observed_at: '2026-11-20T10:00:00Z'
+  };
+}
+
+test('cursor pagination catches up a backlog larger than one hundred events', async () => {
+  const events = Array.from({ length: 205 }, (_, index) => cursorEvent(index + 1));
+  const state = new Set();
+  state.cursor = null;
+  const sourceRequests = [];
+  const receiverPosts = [];
+  const saved = [];
+
+  const count = await pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    saveState: async current => saved.push({ cursor: current.cursor, ids: [...current] }),
+    fetchImpl: async (url, options) => {
+      const parsed = new URL(url);
+      if (parsed.pathname === '/api/events') {
+        const cursor = parsed.searchParams.get('cursor');
+        sourceRequests.push(cursor);
+        const offset = cursor === null ? 0 : Number(cursor);
+        const page = events.slice(offset, offset + 100);
+        return new Response(JSON.stringify({
+          events: page,
+          next_cursor: String(offset + page.length),
+          has_more: offset + page.length < events.length
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (parsed.pathname === '/api/v1/events') {
+        receiverPosts.push(JSON.parse(options.body).payload.origin_event_id);
+        return new Response(JSON.stringify({ accepted: true }), {
+          status: 202, headers: { 'content-type': 'application/json' }
+        });
+      }
+      throw new Error('Unexpected test URL: ' + url);
+    }
+  });
+
+  assert.equal(count, 205);
+  assert.equal(receiverPosts.length, 205);
+  assert.equal(new Set(receiverPosts).size, 205);
+  assert.deepEqual(sourceRequests, [null, '100', '200']);
+  assert.equal(state.cursor, '205');
+  assert.equal(state.size, 205);
+  assert.ok(saved.some(item => item.cursor === '100'));
+  assert.ok(saved.some(item => item.cursor === '200'));
+  assert.ok(saved.some(item => item.cursor === '205'));
+});
+
+test('cursor catch-up resumes from the persisted cursor on the next poll', async () => {
+  const state = new Set(['source-event-1']);
+  state.cursor = '100';
+  const sourceRequests = [];
+  const receiverPosts = [];
+  const count = await pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    saveState: async () => {},
+    fetchImpl: async (url, options) => {
+      const parsed = new URL(url);
+      if (parsed.pathname === '/api/events') {
+        sourceRequests.push(parsed.searchParams.get('cursor'));
+        return new Response(JSON.stringify({
+          events: [cursorEvent(101)],
+          next_cursor: '101',
+          has_more: false
+        }), { status: 200 });
+      }
+      receiverPosts.push(JSON.parse(options.body).payload.origin_event_id);
+      return new Response(JSON.stringify({ accepted: true }), { status: 202 });
+    }
+  });
+  assert.equal(count, 1);
+  assert.deepEqual(sourceRequests, ['100']);
+  assert.deepEqual(receiverPosts, ['source-event-101']);
+  assert.equal(state.cursor, '101');
+});
+
+test('partial cursor page failure retries without advancing the page checkpoint', async () => {
+  const state = new Set();
+  state.cursor = null;
+  let receiverAttempt = 0;
+  const sent = [];
+  const options = {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    maxAttempts: 1,
+    saveState: async () => {},
+    fetchImpl: async (url, init) => {
+      const parsed = new URL(url);
+      if (parsed.pathname === '/api/events') {
+        return new Response(JSON.stringify({
+          events: [cursorEvent(1), cursorEvent(2)],
+          next_cursor: '2',
+          has_more: false
+        }), { status: 200 });
+      }
+      const id = JSON.parse(init.body).payload.origin_event_id;
+      sent.push(id);
+      receiverAttempt++;
+      if (receiverAttempt === 2) return new Response('temporary failure', { status: 503 });
+      return new Response(JSON.stringify({ accepted: true }), { status: 202 });
+    }
+  };
+
+  await assert.rejects(() => pollOnce(state, options), /HTTP 503/);
+  assert.equal(state.cursor, null);
+  assert.equal(state.has('source-event-1'), true);
+  assert.equal(state.has('source-event-2'), false);
+
+  const count = await pollOnce(state, options);
+  assert.equal(count, 1);
+  assert.equal(state.cursor, '2');
+  assert.deepEqual(sent, ['source-event-1', 'source-event-2', 'source-event-2']);
+});
+
+test('cursor page with invalid event does not advance and lose that event', async () => {
+  const state = new Set();
+  state.cursor = null;
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    fetchImpl: async url => new Response(JSON.stringify({
+      events: [{ ...cursorEvent(1), confidence: 8 }],
+      next_cursor: '1',
+      has_more: false
+    }), { status: new URL(url).pathname === '/api/events' ? 200 : 202 }),
+    saveState: async () => {}
+  }), /invalid source event/);
+  assert.equal(state.cursor, null);
+});
+
+test('cursor mode rejects a source API that silently downgrades to latest-100', async () => {
+  const state = new Set();
+  state.cursor = 'opaque-cursor-100';
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({ events: [] }), { status: 200 })
+  }), /pagination disappeared/);
+});
+
+test('cursor mode rejects non-advancing cursors while more events remain', async () => {
+  const state = new Set();
+  state.cursor = 'cursor-100';
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({
+      events: [],
+      next_cursor: 'cursor-100',
+      has_more: true
+    }), { status: 200 })
+  }), /did not advance/);
+});
+
+test('version-one bridge state migrates safely to version two with a null cursor', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'beekeeper-bridge-state-'));
+  const file = join(directory, 'state.json');
+  try {
+    await writeFile(file, JSON.stringify({ version: 1, forwardedIds: ['old-event'] }));
+    const state = await readState(file);
+    assert.equal(state.has('old-event'), true);
+    assert.equal(state.cursor, null);
+    state.cursor = 'cursor-7';
+    await writeState(state, file);
+    const persisted = JSON.parse(await readFile(file, 'utf8'));
+    assert.equal(persisted.version, 2);
+    assert.equal(persisted.cursor, 'cursor-7');
+    assert.deepEqual(persisted.forwardedIds, ['old-event']);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('corrupt bridge state fails closed instead of resetting the source cursor', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'beekeeper-bridge-corrupt-'));
+  const file = join(directory, 'state.json');
+  try {
+    await writeFile(file, '{"version":2,"forwardedIds":["ok"],"cursor":42}');
+    await assert.rejects(() => readState(file), /cursor is invalid/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
