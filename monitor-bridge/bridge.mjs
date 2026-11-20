@@ -43,33 +43,65 @@ export function requiredConfig() {
   return true;
 }
 
-async function readState() {
+export async function readState(file = statePath) {
   try {
-    const stat = await fs.stat(statePath);
-    if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error('Bridge state file is invalid or exceeds 1 MiB');
-    const value = JSON.parse(await fs.readFile(statePath, 'utf8'));
-    if (!value || value.version !== 1 || !Array.isArray(value.forwardedIds) ||
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) {
+      throw new Error('Bridge state file is invalid, a symlink, or exceeds 1 MiB');
+    }
+    const value = JSON.parse(await fs.readFile(file, 'utf8'));
+    if (!value || ![1, 2].includes(value.version) || !Array.isArray(value.forwardedIds) ||
         value.forwardedIds.length > maxSeen ||
         !value.forwardedIds.every(x => typeof x === 'string' && x.length > 0 && x.length <= 128)) {
       throw new Error('Bridge state file has an unsupported structure');
     }
-    return new Set(value.forwardedIds);
+    const cursor = value.version === 2 ? value.cursor : null;
+    if (cursor !== null && (typeof cursor !== 'string' || cursor.length < 1 || cursor.length > 512)) {
+      throw new Error('Bridge state cursor is invalid');
+    }
+    const state = new Set(value.forwardedIds);
+    state.cursor = cursor;
+    return state;
   } catch (error) {
-    if (error.code === 'ENOENT') return new Set();
+    if (error.code === 'ENOENT') {
+      const empty = new Set();
+      empty.cursor = null;
+      return empty;
+    }
     throw error;
   }
 }
 
-async function writeState(ids, file = statePath) {
+export async function writeState(ids, file = statePath) {
+  if (!(ids instanceof Set)) throw new Error('Bridge state must be a Set');
+  const cursor = ids.cursor ?? null;
+  if (cursor !== null && (typeof cursor !== 'string' || cursor.length < 1 || cursor.length > 512)) {
+    throw new Error('Bridge cursor must be a non-empty string of at most 512 characters');
+  }
   const stableIds = [...ids].slice(-maxSeen);
-  const data = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), forwardedIds: stableIds }, null, 2);
+  const data = JSON.stringify({
+    version: 2,
+    updatedAt: new Date().toISOString(),
+    forwardedIds: stableIds,
+    cursor
+  }, null, 2);
   const directory = path.dirname(file);
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  let handle;
   try {
-    await fs.writeFile(temp, data, { mode: 0o600, flag: 'wx' });
+    handle = await fs.open(temp, 'wx', 0o600);
+    await handle.writeFile(data, 'utf8');
+    await handle.sync();
+    await handle.close();
+    handle = null;
     await fs.rename(temp, file);
+    if (process.platform !== 'win32') {
+      const dirHandle = await fs.open(directory, 'r');
+      try { await dirHandle.sync(); } finally { await dirHandle.close(); }
+    }
   } catch (error) {
+    if (handle) await handle.close().catch(() => {});
     await fs.rm(temp, { force: true }).catch(() => {});
     throw error;
   }
@@ -200,9 +232,16 @@ export async function forwardBatch(events, state, options = {}) {
 
   let forwarded = 0;
   for (const event of events) {
-    if (!event || typeof event.id !== 'string' || event.id.length < 1 || event.id.length > 128 || state.has(event.id)) continue;
+    if (!event || typeof event.id !== 'string' || event.id.length < 1 || event.id.length > 128) {
+      if (options.rejectInvalid) throw new Error('Cursor page contains an event without a valid stable ID');
+      continue;
+    }
+    if (state.has(event.id)) continue;
     const mapped = toMonitorEvent(event);
-    if (!mapped) continue;
+    if (!mapped) {
+      if (options.rejectInvalid) throw new Error(`Cursor page contains invalid source event ${event.id}`);
+      continue;
+    }
     const response = await fetchWithRetry(endpoint, () => ({
       method: 'POST',
       redirect: 'error',
@@ -246,25 +285,95 @@ export async function forwardBatch(events, state, options = {}) {
 }
 
 export async function pollOnce(state, options = {}) {
-  if (!state) state = await readState();
+  const currentState = state || await readState();
+  if (!(currentState instanceof Set)) throw new Error('Bridge state must be a Set');
+  if (currentState.cursor === undefined) currentState.cursor = null;
+
   const endpoint = options.sourceUrl || sourceUrl;
   const apiKey = options.sourceKey || sourceKey;
   const fetchImpl = options.fetchImpl || fetch;
-  const response = await fetchWithRetry(`${endpoint}/api/events?limit=100`, () => ({
-    redirect: 'error',
-    headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
-    signal: AbortSignal.timeout(options.timeoutMs || 8000)
-  }), {
-    fetchImpl,
-    sleep: options.sleep,
-    maxAttempts: options.maxAttempts
-  });
-  if (!response.ok) throw new Error(`Hornet3000 API failed: HTTP ${response.status}`);
-  const body = await readJsonLimited(response, maxSourceResponseBytes, 'Hornet3000');
-  if (!body || !Array.isArray(body.events) || body.events.length > 100) {
-    throw new Error('Hornet3000 API response has no valid events array or exceeds the 100-event page');
+  const save = options.saveState || writeState;
+  const maxPages = options.maxPages ?? 100;
+  if (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 1000) {
+    throw new Error('maxPages must be between 1 and 1000');
   }
-  return forwardBatch(body.events, state, options);
+
+  async function fetchPage(cursor) {
+    const url = new URL(`${endpoint}/api/events`);
+    url.searchParams.set('limit', '100');
+    if (cursor !== null) url.searchParams.set('cursor', cursor);
+    const response = await fetchWithRetry(url.toString(), () => ({
+      redirect: 'error',
+      headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
+      signal: AbortSignal.timeout(options.timeoutMs || 8000)
+    }), {
+      fetchImpl,
+      sleep: options.sleep,
+      maxAttempts: options.maxAttempts
+    });
+    if (!response.ok) throw new Error(`Hornet3000 API failed: HTTP ${response.status}`);
+    const body = await readJsonLimited(response, maxSourceResponseBytes, 'Hornet3000');
+    if (!body || !Array.isArray(body.events) || body.events.length > 100) {
+      throw new Error('Hornet3000 API response has no valid events array or exceeds the 100-event page');
+    }
+    return body;
+  }
+
+  let body = await fetchPage(currentState.cursor ?? null);
+  const hasCursorFields = Object.hasOwn(body, 'next_cursor') || Object.hasOwn(body, 'has_more');
+
+  // Backward-compatible mode for the old limit=100 API. It cannot guarantee
+  // lossless delivery. Once a cursor has been checkpointed, never silently
+  // downgrade to the lossy API.
+  if (!hasCursorFields) {
+    if (currentState.cursor !== null) {
+      throw new Error('Hornet3000 cursor pagination disappeared; refusing a lossy downgrade');
+    }
+    currentState.paginationMode = 'legacy-latest-100';
+    return forwardBatch(body.events, currentState, options);
+  }
+
+  const saveCursor = async nextCursor => {
+    const previous = currentState.cursor ?? null;
+    currentState.cursor = nextCursor;
+    try {
+      await save(currentState);
+    } catch (error) {
+      currentState.cursor = previous;
+      throw error;
+    }
+  };
+
+  let forwarded = 0;
+  for (let pageNumber = 1; ; pageNumber++) {
+    if (
+      typeof body.has_more !== 'boolean' ||
+      typeof body.next_cursor !== 'string' ||
+      body.next_cursor.length < 1 ||
+      body.next_cursor.length > 512
+    ) {
+      throw new Error('Hornet3000 cursor response must contain has_more and a non-empty next_cursor');
+    }
+
+    const previousCursor = currentState.cursor ?? null;
+    if (body.has_more && body.next_cursor === previousCursor) {
+      throw new Error('Hornet3000 cursor did not advance while more events remain');
+    }
+
+    // In cursor mode, invalid events must stop the page. Advancing past one
+    // would make it permanently unrecoverable and violate lossless catch-up.
+    forwarded += await forwardBatch(body.events, currentState, {
+      ...options,
+      rejectInvalid: true
+    });
+    await saveCursor(body.next_cursor);
+
+    if (!body.has_more || pageNumber >= maxPages) return forwarded;
+    body = await fetchPage(body.next_cursor);
+    if (!Object.hasOwn(body, 'next_cursor') || !Object.hasOwn(body, 'has_more')) {
+      throw new Error('Hornet3000 stopped returning cursor pagination during catch-up');
+    }
+  }
 }
 
 async function main() {
