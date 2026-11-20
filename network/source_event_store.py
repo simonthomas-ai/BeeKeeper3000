@@ -98,6 +98,10 @@ class SQLiteSourceEventStore:
             earliest = db.execute(
                 "SELECT MIN(sequence) FROM source_events"
             ).fetchone()[0]
+            sqlite_sequence = db.execute(
+                "SELECT seq FROM sqlite_sequence WHERE name='source_events'"
+            ).fetchone()
+            allocated_sequence = int(sqlite_sequence[0]) if sqlite_sequence else 0
             db.execute(
                 "INSERT OR IGNORE INTO source_meta(key, value) VALUES('last_sequence', ?)",
                 (str(max_sequence),),
@@ -106,14 +110,18 @@ class SQLiteSourceEventStore:
                 "INSERT OR IGNORE INTO source_meta(key, value) VALUES('earliest_sequence', ?)",
                 (str(earliest if earliest is not None else max_sequence + 1),),
             )
-            # Reconcile metadata from the actual retained rows. AUTOINCREMENT
-            # keeps sequence numbers monotonic even after retention has emptied
-            # the table; an empty journal resumes at last_sequence + 1.
+            # Reconcile metadata without resetting AUTOINCREMENT after all
+            # retained rows have expired. Cursors from an older process must
+            # never become valid again because a retention purge emptied the table.
+            prior_last = int(db.execute(
+                "SELECT CAST(value AS INTEGER) FROM source_meta WHERE key='last_sequence'"
+            ).fetchone()[0])
+            last_sequence = max(max_sequence, allocated_sequence, prior_last)
             db.execute(
                 "UPDATE source_meta SET value=? WHERE key='last_sequence'",
-                (str(max_sequence),),
+                (str(last_sequence),),
             )
-            retained_earliest = earliest if earliest is not None else max_sequence + 1
+            retained_earliest = earliest if earliest is not None else last_sequence + 1
             db.execute(
                 "UPDATE source_meta SET value=? WHERE key='earliest_sequence'",
                 (str(retained_earliest),),
