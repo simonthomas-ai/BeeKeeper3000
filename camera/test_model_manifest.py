@@ -39,6 +39,21 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaises(ModelManifestError):
                 load_manifest(path)
 
+    def test_accepts_ultralytics_post_nms_matrix_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["input"]["resize_mode"] = "letterbox"
+            data["outputs"] = {
+                "detections": "output0",
+                "box_format": "xyxy_pixels_nms_matrix6"
+            }
+            path.write_text(json.dumps(data), encoding="utf-8")
+            manifest = load_manifest(path)
+            self.assertEqual(manifest.box_format, "xyxy_pixels_nms_matrix6")
+            self.assertEqual(manifest.detections_output, "output0")
+            self.assertEqual(manifest.resize_mode, "letterbox")
+
     def test_rejects_path_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
             parent = Path(tmp)
