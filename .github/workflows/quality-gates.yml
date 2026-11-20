@@ -59,6 +59,38 @@ jobs:
       - name: Run camera and durable-outbox tests
         run: python -m unittest discover -s camera -p 'test_*.py' -v
 
+  camera-runtime-windows:
+    name: Windows camera runtime compatibility tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install optional CPU camera runtime
+        run: python -m pip install --disable-pip-version-check --requirement camera/requirements.txt
+      - name: Check Windows Python environment
+        run: python -m pip check
+      - name: Parse the Windows camera launcher without executing it
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD "scripts/Start-BeeKeeperCamera.ps1"),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List | Out-String | Write-Error
+            exit 1
+          }
+      - name: Run camera and durable-outbox tests on Windows
+        run: python -m unittest discover -s camera -p 'test_*.py' -v
+
   monitor-bridge:
     name: Monitor bridge tests
     runs-on: ubuntu-latest
