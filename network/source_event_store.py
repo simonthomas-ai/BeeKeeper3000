@@ -106,10 +106,17 @@ class SQLiteSourceEventStore:
                 "INSERT OR IGNORE INTO source_meta(key, value) VALUES('earliest_sequence', ?)",
                 (str(earliest if earliest is not None else max_sequence + 1),),
             )
-            # Reconcile metadata after an unclean shutdown/older compatible schema.
+            # Reconcile metadata from the actual retained rows. AUTOINCREMENT
+            # keeps sequence numbers monotonic even after retention has emptied
+            # the table; an empty journal resumes at last_sequence + 1.
             db.execute(
-                "UPDATE source_meta SET value=? WHERE key='last_sequence' AND CAST(value AS INTEGER) < ?",
-                (str(max_sequence), max_sequence),
+                "UPDATE source_meta SET value=? WHERE key='last_sequence'",
+                (str(max_sequence),),
+            )
+            retained_earliest = earliest if earliest is not None else max_sequence + 1
+            db.execute(
+                "UPDATE source_meta SET value=? WHERE key='earliest_sequence'",
+                (str(retained_earliest),),
             )
 
     def append(self, value: Mapping) -> tuple[dict, bool]:
@@ -137,6 +144,16 @@ class SQLiteSourceEventStore:
             db.execute(
                 "DELETE FROM source_events WHERE created_at < ?",
                 ((datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat(),),
+            )
+            earliest_retained = db.execute(
+                "SELECT MIN(sequence) FROM source_events"
+            ).fetchone()[0]
+            previous_last = int(db.execute(
+                "SELECT CAST(value AS INTEGER) FROM source_meta WHERE key='last_sequence'"
+            ).fetchone()[0])
+            db.execute(
+                "UPDATE source_meta SET value=? WHERE key='earliest_sequence'",
+                (str(earliest_retained if earliest_retained is not None else previous_last + 1),),
             )
             count = int(db.execute("SELECT COUNT(*) FROM source_events").fetchone()[0])
             if count >= self.max_rows:
