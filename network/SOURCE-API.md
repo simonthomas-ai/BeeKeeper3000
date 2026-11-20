@@ -45,6 +45,7 @@ Every request includes `X-API-Key`.
 - `POST /api/events` stores one strict metadata-only observation. An exact replay returns `200` with `duplicate: true`; a new insert returns `201`.
 - `GET /api/events?limit=100` returns the first page.
 - `GET /api/events?limit=100&cursor=<opaque-token>` resumes after a signed cursor.
+- An exact duplicate POST returns `200`; reuse of an immutable ID with changed content returns `409`; a full journal returns `503` without dropping retained records.
 - Pages are 1–100 events, oldest first, with `events`, `next_cursor` and `has_more`, matching the bridge contract.
 - Cursors use HMAC-SHA256 and are tied to this event stream. Malformed or forged cursors return 400. A cursor behind retention returns 410 and the earliest retained sequence; the service never resets a stale cursor to the newest event.
 
