@@ -255,8 +255,8 @@ def triangulate(
         raise ValueError("max_rms_error_m and max_area_m must be positive")
     if not 2.0 <= outlier_sigma <= 20.0:
         raise ValueError("outlier_sigma must be between 2 and 20")
-    if type(max_outliers) is not int or not 0 <= max_outliers <= len(items) - 3:
-        raise ValueError("max_outliers must leave at least three inlier bearings")
+    if type(max_outliers) is not int or not 0 <= max_outliers < len(items):
+        raise ValueError("max_outliers must be a non-negative integer smaller than the observation count")
 
     lat0 = sum(float(b.latitude) for b in items) / len(items)
     lon0 = sum(float(b.longitude) for b in items) / len(items)
