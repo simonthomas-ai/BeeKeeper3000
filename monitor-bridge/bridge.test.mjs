@@ -413,7 +413,7 @@ test('cursor mode rejects non-advancing cursors while more events remain', async
     sourceKey: 'test-source-api-key-long-enough',
     token: 'test-only-monitor-token-long-enough-123',
     fetchImpl: async () => new Response(JSON.stringify({
-      events: [],
+      events: [cursorEvent(101)],
       next_cursor: 'cursor-100',
       has_more: true
     }), { status: 200 })
