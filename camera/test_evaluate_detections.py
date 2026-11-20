@@ -15,9 +15,16 @@ class DetectionEvaluationTests(unittest.TestCase):
             "predictions": pred or [],
         }
 
+    def run_eval(self, rows, **kwargs):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "annotations.jsonl"
+            path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+            records, _ = load_records(path)
+            return evaluate(records, **kwargs)
+
     def test_perfect_prediction_scores_one(self):
         box = [10, 10, 30, 30]
-        report = evaluate([self.record(gt=[{"class_id": 0, "bbox_xyxy": box}],
+        report = self.run_eval([self.record(gt=[{"class_id": 0, "bbox_xyxy": box}],
                                        pred=[{"class_id": 0, "confidence": 0.95, "bbox_xyxy": box}])])
         row = report["classes"]["0"]
         self.assertEqual((row["tp"], row["fp"], row["fn"]), (1, 0, 0))
