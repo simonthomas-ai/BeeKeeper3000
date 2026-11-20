@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Run triangulation tests
-        run: python -m unittest network.test_triangulation -v
+        run: python -m unittest network.test_triangulation network.test_source_api -v
 
 
   monitor-bridge:
