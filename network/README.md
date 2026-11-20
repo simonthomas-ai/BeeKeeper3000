@@ -6,13 +6,15 @@ Dieses Verzeichnis enthält zwei getrennte Teile:
 
 - `triangulation.py`: winkelgewichtete iterative Peilschnittberechnung mit Huber-Robustifizierung, konfigurierbarer Ausreißererkennung und lokaler linearer 95-%-Unsicherheitsellipse.
 - `test_triangulation.py`: synthetische Tests für Zielpunkt, Unsicherheitsellipse, ungültige/nicht-endliche Messwerte, Zeitfenster, Ausreißer und ungünstige Geometrie.
+- `triangulation_field_report.py`: wertet lokale CSV-Messungen gegen bekannte, vermessene Zielpunkte aus; die JSON-Ausgabe enthält keine Koordinaten.
+- `TRIANGULATION-FIELD-REPORT.md` und `field-test-template.csv`: geschützter Messablauf und leere CSV-Vorlage.
 - `TRIANGULATION-VALIDATION.md`: Annahmen, Kalibrierverfahren, Interpretation der Ellipse und zwingende Feldabnahme.
 - `protocol-v1.schema.json`: JSON-Ereignisvertrag als transportneutrale Datenstruktur.
 
 Test:
 
 ```sh
-python -m unittest network.test_triangulation -v
+python -m unittest network.test_triangulation network.test_triangulation_field_report -v
 ```
 
 ## 2. Optionaler MeshCore-Adapter

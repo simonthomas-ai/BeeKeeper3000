@@ -38,6 +38,10 @@ It does not automatically account for systematic compass/optical calibration bia
 
 The ellipse must therefore be treated as a statistical approximation, not a certified containment boundary. Operators should compare it with known surveyed targets and use wider operational search buffers until field validation establishes an empirical error model.
 
+## Field evidence report
+
+Use `network/triangulation_field_report.py` and follow [TRIANGULATION-FIELD-REPORT.md](TRIANGULATION-FIELD-REPORT.md) to compare recorded azimuths with independently surveyed known targets. The report includes per-station circular calibration statistics, horizontal position error, solver failures and empirical coverage of the 95% ellipse. It omits coordinates from the JSON output, but the source CSV must remain confidential. The tool never auto-approves operational use.
+
 ## Validation gates
 
 Before operational field use:

@@ -30,7 +30,7 @@ jobs:
       - name: Run network and local camera pipeline tests
         run: >-
           python -m unittest
-          network.test_triangulation network.test_source_api network.test_source_backup
+          network.test_triangulation network.test_triangulation_field_report network.test_source_api network.test_source_backup
           camera.test_contracts camera.test_model_manifest camera.test_outbox
           camera.test_outbox_backup camera.test_source_client camera.test_runtime -v
 
