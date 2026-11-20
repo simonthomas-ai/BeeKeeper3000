@@ -11,7 +11,7 @@
 ## Lokal starten
 
 1. Ollama installieren und starten: https://ollama.com/
-2. Ein lokal ausführbares Modell laden, z. B. `ollama pull qwen2.5:7b`. Modellgröße an RAM/VRAM anpassen; die Lizenz des konkreten Modells vor Nutzung/Weitergabe prüfen.
+2. Das freigegebene lokale Modell laden: `ollama pull qwen2.5:7b`. Die Modell-ID ist bereits in `config.json` allowlisted. Modellgröße an RAM/VRAM anpassen; die Lizenz des konkreten Modells vor Nutzung/Weitergabe prüfen.
 3. Das gewünschte lokale Modell explizit in `llm-council/config.json` freigeben, z. B. `"models": ["qwen2.5:7b"]`. Der Runner führt niemals automatisch alle installierten Modelle aus und lehnt Cloud-Modellkennungen ab.
 
 4. Tests aus dem Repository-Hauptverzeichnis ausführen:
@@ -42,11 +42,11 @@ Die Konfigurationsfelder `free_access_verified`, `provider_enforced_hard_cap_eur
 
 ## GitHub-Actions-Zeitplan
 
-Der Workflow läuft ausschließlich auf einem eigenen Linux-x64-Runner mit den Labels:
+Der Workflow läuft ausschließlich auf einem eigenen Windows-x64-Runner mit den Labels:
 
-`self-hosted`, `linux`, `x64`, `llm-council`
+`self-hosted`, `windows`, `x64`, `llm-council`
 
-Das Gerät muss eingeschaltet sein, Ollama muss laufen und das Modell lokal vorhanden sein. Es wird kein GitHub-gehosteter Runner verwendet. Um einen Runner einzurichten, folge den offiziellen GitHub-Schritten unter https://docs.github.com/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners und registriere ihn nur für dieses Repository. Runner nicht öffentlich oder ungeschützt betreiben.
+Das Gerät muss eingeschaltet sein, Ollama muss laufen und das Modell lokal vorhanden sein. Python 3 muss im PATH liegen. Es wird kein GitHub-gehosteter Runner verwendet. Um einen Runner einzurichten, folge den offiziellen GitHub-Schritten unter https://docs.github.com/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners und registriere ihn nur für dieses Repository. Runner nicht öffentlich oder ungeschützt betreiben.
 
 Der Workflow ist wöchentlich (Montag 05:17 UTC) und manuell startbar. Er erzeugt nur ein Artefakt. Keine automatischen Issues, PRs, Commits oder Merges.
 
