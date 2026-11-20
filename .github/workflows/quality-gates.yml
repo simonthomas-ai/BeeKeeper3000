@@ -110,3 +110,8 @@ jobs:
         run: npm --prefix monitor-bridge ci --ignore-scripts --no-audit --no-fund
       - name: Run bridge tests
         run: npm --prefix monitor-bridge test
+      - name: Check mobile PWA syntax and contracts
+        run: |
+          node --check mobile-pwa/app.mjs
+          node --check mobile-pwa/sw.js
+          node --test mobile-pwa/*.test.mjs
