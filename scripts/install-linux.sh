@@ -154,6 +154,11 @@ old_monitor=""
 [[ -L "$APP_ROOT/current" ]] && old_app=$(readlink "$APP_ROOT/current")
 [[ -L "$MONITOR_ROOT/current" ]] && old_monitor=$(readlink "$MONITOR_ROOT/current")
 systemctl stop beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service >/dev/null 2>&1 || true
+for unit in beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service; do
+  if systemctl is-active --quiet "$unit"; then
+    die "Could not stop existing service $unit; no code links were switched."
+  fi
+done
 atomic_link "$new_app" "$APP_ROOT/current"
 atomic_link "$new_monitor" "$MONITOR_ROOT/current"
 
@@ -172,10 +177,12 @@ if ! systemctl enable --now beekeeper-monitor.service beekeeper-source-api.servi
   rollback
   die "Services failed to start; previous links were restored where available."
 fi
-if ! systemctl is-active --quiet beekeeper-bridge.service; then
-  rollback
-  die "The Monitor bridge did not remain active after startup."
-fi
+for unit in beekeeper-monitor.service beekeeper-source-api.service beekeeper-bridge.service; do
+  if ! systemctl is-active --quiet "$unit"; then
+    rollback
+    die "Service $unit did not remain active after startup."
+  fi
+done
 
 if ! "$PYTHON" - "$ENV_FILE" <<'PY'
 import json, sys, time, urllib.request
