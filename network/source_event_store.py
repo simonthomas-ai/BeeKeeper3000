@@ -16,7 +16,15 @@ from .source_events import SourceEventError, validate_source_event
 
 
 class SourceStoreError(RuntimeError):
-    """Persistence failure or conflicting immutable source event."""
+    """Persistence failure in the source event journal."""
+
+
+class SourceConflictError(SourceStoreError):
+    """A stable source event ID was reused with different content."""
+
+
+class SourceCapacityError(SourceStoreError):
+    """The bounded source journal is full; no unforwarded event was evicted."""
 
 
 class SQLiteSourceEventStore:
@@ -145,7 +153,7 @@ class SQLiteSourceEventStore:
             ).fetchone()
             if existing is not None:
                 if existing[0] != digest or existing[2] != canonical:
-                    raise SourceStoreError("source event ID was reused with different content")
+                    raise SourceConflictError("source event ID was reused with different content")
                 return {"sequence": existing[1], "event": event}, False
 
             db.execute(
@@ -164,7 +172,7 @@ class SQLiteSourceEventStore:
             )
             count = int(db.execute("SELECT COUNT(*) FROM source_events").fetchone()[0])
             if count >= self.max_rows:
-                raise SourceStoreError(
+                raise SourceCapacityError(
                     "source journal is at capacity; unforwarded records are never evicted"
                 )
             cursor = db.execute(
