@@ -69,12 +69,12 @@ export async function readState(file = statePath) {
       bytesRead += result.bytesRead;
     }
     if (bytesRead > MAX_STATE_BYTES) {
-      throw new Error('Bridge state file exceeds 1 MiB');
+      throw new Error('Bridge state file exceeds 2 MiB');
     }
     const value = JSON.parse(buffer.subarray(0, bytesRead).toString('utf8'));
     if (!value || ![1, 2].includes(value.version) || !Array.isArray(value.forwardedIds) ||
         value.forwardedIds.length > maxSeen ||
-        !value.forwardedIds.every(x => typeof x === 'string' && x.length > 0 && x.length <= 128)) {
+        !value.forwardedIds.every(x => typeof x === 'string' && /^[\x21-\x7E]{1,128}$/.test(x))) {
       throw new Error('Bridge state file has an unsupported structure');
     }
     const cursor = value.version === 2 ? value.cursor : null;
@@ -103,7 +103,7 @@ export async function writeState(ids, file = statePath) {
     throw new Error('Bridge cursor must be a non-empty string of at most 512 characters');
   }
   const stableIds = [...ids].slice(-maxSeen);
-  if (!stableIds.every(id => typeof id === 'string' && /^[\\x21-\\x7E]{1,128}$/.test(id))) {
+  if (!stableIds.every(id => typeof id === 'string' && /^[\x21-\x7E]{1,128}$/.test(id))) {
     throw new Error('Bridge event IDs must be printable ASCII strings of 1..128 characters');
   }
   const data = JSON.stringify({
