@@ -138,7 +138,7 @@ export function retryDelayMs(response, attempt, nowMs = Date.now()) {
   if (value) {
     const trimmed = value.trim();
     let requested = Number.NaN;
-    if (/^\\d+(?:\\.\\d+)?$/.test(trimmed)) {
+    if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
       requested = Number(trimmed) * 1000;
     } else {
       const at = Date.parse(trimmed);
