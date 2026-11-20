@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce } from './bridge.mjs';
+import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -157,4 +157,93 @@ test('direct CLI startup reaches configuration validation on this operating syst
   assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 1, result.stdout + '\\n' + result.stderr);
   assert.match(result.stderr, /HORNET3000_API_KEY/);
+});
+
+test('bounded retry policy honours Retry-After for transient server responses', async () => {
+  const statuses = [
+    new Response('busy', { status: 503, headers: { 'retry-after': '2.5' } }),
+    new Response('rate limited', { status: 429, headers: { 'retry-after': '0' } }),
+    new Response('ok', { status: 200 })
+  ];
+  const sleeps = [];
+  let calls = 0;
+  const response = await fetchWithRetry('https://example.invalid', {}, {
+    maxAttempts: 3,
+    fetchImpl: async () => { calls++; return statuses.shift(); },
+    sleep: async ms => sleeps.push(ms)
+  });
+  assert.equal(response.status, 200);
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [2500, 0]);
+});
+
+test('permanent 4xx responses are not retried', async () => {
+  let calls = 0;
+  let waits = 0;
+  const response = await fetchWithRetry('https://example.invalid', {}, {
+    fetchImpl: async () => { calls++; return new Response('unauthorized', { status: 401 }); },
+    sleep: async () => { waits++; }
+  });
+  assert.equal(response.status, 401);
+  assert.equal(calls, 1);
+  assert.equal(waits, 0);
+});
+
+test('network errors receive bounded exponential retry delays', async () => {
+  const sleeps = [];
+  let calls = 0;
+  await assert.rejects(() => fetchWithRetry('https://example.invalid', {}, {
+    maxAttempts: 3,
+    fetchImpl: async () => { calls++; throw new Error('socket timeout'); },
+    sleep: async ms => sleeps.push(ms)
+  }), /socket timeout/);
+  assert.equal(calls, 3);
+  assert.deepEqual(sleeps, [500, 1000]);
+  assert.equal(retryDelayMs(new Response(null, { status: 503, headers: { 'retry-after': '120' } }), 1), 60000);
+});
+
+test('forwardBatch retries a temporary receiver failure before checkpointing', async () => {
+  const state = new Set();
+  const sleeps = [];
+  let calls = 0;
+  const count = await forwardBatch([sampleEvent], state, {
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-only-token-long-enough-123',
+    maxAttempts: 3,
+    sleep: async ms => sleeps.push(ms),
+    fetchImpl: async () => {
+      calls++;
+      if (calls === 1) return new Response('temporary error', { status: 503 });
+      return new Response(JSON.stringify({ accepted: true }), {
+        status: 202, headers: { 'content-type': 'application/json' }
+      });
+    },
+    saveState: async () => {}
+  });
+  assert.equal(count, 1);
+  assert.equal(calls, 2);
+  assert.equal(sleeps.length, 1);
+  assert.equal(state.has('event-1'), true);
+});
+
+test('pollOnce retries a rate-limited source API', async () => {
+  const sleeps = [];
+  let calls = 0;
+  const result = await pollOnce(new Set(), {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    maxAttempts: 3,
+    sleep: async ms => sleeps.push(ms),
+    fetchImpl: async () => {
+      calls++;
+      if (calls === 1) return new Response('rate limited', { status: 429, headers: { 'retry-after': '0' } });
+      return new Response(JSON.stringify({ events: [] }), {
+        status: 200, headers: { 'content-type': 'application/json' }
+      });
+    }
+  });
+  assert.equal(result, 0);
+  assert.equal(calls, 2);
+  assert.deepEqual(sleeps, [0]);
 });
