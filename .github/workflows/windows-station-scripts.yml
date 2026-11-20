@@ -54,7 +54,7 @@ jobs:
           if (-not $cameraScript.Contains('camera\requirements.txt')) {
             throw "Camera dependency instruction is malformed."
           }
-          if ($cameraScript.Contains([char]13)) {
+          if (($cameraScript -replace "`r`n", "").Contains([char]13)) {
             throw "Camera launcher contains an unexpected carriage return."
           }
 
