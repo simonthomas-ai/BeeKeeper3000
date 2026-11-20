@@ -300,7 +300,7 @@ test('cursor pagination catches up a backlog larger than one hundred events', as
   assert.equal(count, 205);
   assert.equal(receiverPosts.length, 205);
   assert.equal(new Set(receiverPosts).size, 205);
-  assert.deepEqual(sourceRequests, [null, '100', '200']);
+  assert.deepEqual(sourceRequests, ['start', '100', '200']);
   assert.equal(state.cursor, '205');
   assert.equal(state.size, 205);
   assert.ok(saved.some(item => item.cursor === '100'));
