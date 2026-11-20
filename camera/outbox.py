@@ -6,6 +6,7 @@ import math
 import os
 import sqlite3
 import time
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -50,8 +51,22 @@ class SQLiteOutbox:
         db.execute("PRAGMA secure_delete=ON")
         return db
 
+    @contextmanager
+    def _connection(self):
+        """Commit/rollback the SQLite transaction and always close the handle.
+
+        sqlite3.Connection as a context manager does not close the connection;
+        explicit close is required for deterministic cleanup on Windows.
+        """
+        db = self._connect()
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
+
     def _initialize(self):
-        with self._connect() as db:
+        with self._connection() as db:
             db.execute("PRAGMA journal_mode=WAL")
             db.execute("""CREATE TABLE IF NOT EXISTS outbox (
                 event_id TEXT PRIMARY KEY,
@@ -89,7 +104,7 @@ class SQLiteOutbox:
     def enqueue(self, event: dict) -> bool:
         """Insert an event without applying a detection cooldown."""
         event_id, canonical = self._canonical_event(event)
-        with self._connect() as db:
+        with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
             existing = db.execute(
                 "SELECT payload_json FROM outbox WHERE event_id=?", (event_id,)
@@ -135,7 +150,7 @@ class SQLiteOutbox:
 
         species = event["species"].strip()
         prey = int(event["prey_detected"])
-        with self._connect() as db:
+        with self._connection() as db:
             db.execute("BEGIN IMMEDIATE")
             last = db.execute(
                 "SELECT last_emitted_epoch FROM detection_cooldowns "
@@ -175,7 +190,7 @@ class SQLiteOutbox:
     def pending(self, limit: int = 100) -> list[dict]:
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise ValueError("pending limit must be between 1 and 1000")
-        with self._connect() as db:
+        with self._connection() as db:
             rows = db.execute(
                 "SELECT payload_json FROM outbox ORDER BY created_at,event_id LIMIT ?",
                 (limit,),
@@ -189,13 +204,13 @@ class SQLiteOutbox:
     def acknowledge(self, event_id: str) -> bool:
         if not isinstance(event_id, str) or not event_id:
             raise ValueError("event_id is required")
-        with self._connect() as db:
+        with self._connection() as db:
             cursor = db.execute("DELETE FROM outbox WHERE event_id=?", (event_id,))
         self._secure()
         return cursor.rowcount == 1
 
     def count(self) -> int:
-        with self._connect() as db:
+        with self._connection() as db:
             result = int(db.execute("SELECT COUNT(*) FROM outbox").fetchone()[0])
         self._secure()
         return result
