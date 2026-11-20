@@ -30,6 +30,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install optional MeshCore binding
-        run: python -m pip install -r network/meshcore/requirements.txt
+        run: python -m pip install -r network/meshcore/requirements.lock
       - name: Test signed MeshCore protocol and receiver
         run: python -m unittest network.meshcore.test_protocol network.meshcore.test_receiver network.meshcore.test_transport -v
