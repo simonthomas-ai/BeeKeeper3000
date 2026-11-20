@@ -14,7 +14,16 @@ class CouncilSafetyTests(unittest.TestCase):
         }
         self.assertIn("hard spending cap", validate_external_provider(p, dt.date.today()))
 
-    def test_boolean_is_not_accepted_as_zero_budget(self):\n        from tools.llm_council import run\n        with self.assertRaises(CouncilError):\n            run({"budget_eur": False}, "safe prompt", __import__("pathlib").Path("unused-test-output"))\n\n    def test_boolean_is_not_accepted_as_provider_cap(self):\n        p = {"enabled": True, "free_access_verified": True, "provider_enforced_hard_cap_eur": False, "terms_reviewed_on": dt.date.today().isoformat(), "base_url": "https://example.org/v1", "provider_type": "openai_compatible", "model": "model"}\n        self.assertIn("hard spending cap", validate_external_provider(p, dt.date.today()))\n\n    def test_external_provider_requires_recent_terms_review(self):
+    def test_boolean_is_not_accepted_as_zero_budget(self):
+        from tools.llm_council import run
+        with self.assertRaises(CouncilError):
+            run({"budget_eur": False}, "safe prompt", __import__("pathlib").Path("unused-test-output"))
+
+    def test_boolean_is_not_accepted_as_provider_cap(self):
+        p = {"enabled": True, "free_access_verified": True, "provider_enforced_hard_cap_eur": False, "terms_reviewed_on": dt.date.today().isoformat(), "base_url": "https://example.org/v1", "provider_type": "openai_compatible", "model": "model"}
+        self.assertIn("hard spending cap", validate_external_provider(p, dt.date.today()))
+
+    def test_external_provider_requires_recent_terms_review(self):
         p = {
             "enabled": True, "free_access_verified": True,
             "provider_enforced_hard_cap_eur": 0,
