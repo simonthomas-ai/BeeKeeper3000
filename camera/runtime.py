@@ -64,7 +64,7 @@ def _capture_source(value: str):
                 source, backend,
                 [open_timeout, 5000, read_timeout, 5000],
             )
-        except (TypeError, Exception) as exc:
+        except Exception as exc:
             raise CameraRuntimeError("OpenCV could not apply bounded capture timeouts") from exc
     if hasattr(cv2, "CAP_PROP_BUFFERSIZE"):
         capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
