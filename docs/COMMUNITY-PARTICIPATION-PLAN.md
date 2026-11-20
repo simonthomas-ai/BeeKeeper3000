@@ -82,6 +82,8 @@ No one must buy hardware or provide exact hive / home coordinates to join a disc
 
 ## 5. Repeatable outreach loop
 
+This loop is currently **research-only**. Its external communication steps are future-stage procedures and are not authorised now. The pilot-interest issue form is retained only at `community/dormant-templates/pilot-interest.yml`; it is deliberately not enabled as a public GitHub issue template. Do not publish or activate it before the readiness gate and a separate owner decision.
+
 Run a weekly discovery and review cycle:
 
 1. Find new public associations, clubs, beekeeper events, research projects, funding calls and citizen-science initiatives.
