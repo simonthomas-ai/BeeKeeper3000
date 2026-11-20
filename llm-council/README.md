@@ -12,18 +12,18 @@
 
 1. Ollama installieren und starten: https://ollama.com/
 2. Das freigegebene lokale Modell laden: `ollama pull qwen2.5:7b`. Die Modell-ID ist bereits in `config.json` allowlisted. Modellgröße an RAM/VRAM anpassen; die Lizenz des konkreten Modells vor Nutzung/Weitergabe prüfen.
-3. Das gewünschte lokale Modell explizit in `llm-council/config.json` freigeben, z. B. `"models": ["qwen2.5:7b"]`. Der Runner führt niemals automatisch alle installierten Modelle aus und lehnt Cloud-Modellkennungen ab.
+3. `qwen2.5:7b` ist in `llm-council/config.json` ausdrücklich allowlisted. Weitere Modelle müssen dort einzeln eingetragen werden; der Runner führt niemals automatisch alle installierten Modelle aus und lehnt Cloud-Modellkennungen ab.
 
 4. Tests aus dem Repository-Hauptverzeichnis ausführen:
 
    ```sh
-   python3 -m unittest tests.test_llm_council -v
+   python -m unittest tests.test_llm_council -v
    ```
 
 5. Council starten:
 
    ```sh
-   python3 tools/llm_council.py
+   python tools/llm_council.py
    ```
 
 6. Berichte erscheinen unter `llm-council/runs/`. Im geplanten Windows-Runner speichert der Workflow sie dauerhaft lokal unter `%USERPROFILE%\\BEEKEEPER3000\\llm-council\\runs`. Es werden keine Actions-Artefakte hochgeladen. Antworten werden nicht automatisch als wahr oder als Honig-Score bewertet.
