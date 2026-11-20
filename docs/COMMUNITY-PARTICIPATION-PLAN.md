@@ -1,8 +1,12 @@
 # Community and partner participation plan (Germany / EU)
 
-**Status:** outreach plan and prospect register, not evidence of endorsements or signed partnerships.  
+**Status:** internal preparation only. Do not contact, invite, publish, recruit or distribute until the readiness gate is passed and the project owner explicitly authorizes outreach. The prospect register is not evidence of endorsements or signed partnerships.  
 **Project:** BeeKeeper3000 / Beekeeper-Monitor  
 **Purpose:** recruit independent beekeepers, volunteer observers, regional associations, biodiversity groups and research partners for a privacy-preserving, open and locally operable monitoring network for *Vespa velutina*.
+
+## Operating mode: preparation only
+
+The current phase is **internal preparation**. This document is a research and planning aid, not permission to start external communication. Maintain public-source partner research, deduplicate organisations, verify published organisational contact routes and track project readiness. Do not send or submit emails, forms, messages, posts, newsletters, invitations or event registrations. Do not ask partner organisations to circulate material. Dormant communication examples in `community/OUTREACH-KIT.md` are not approved for use. Moving to external outreach requires a separate explicit instruction from the project owner after the readiness gate in [OUTREACH-READINESS-GATE.md](OUTREACH-READINESS-GATE.md) is reviewed.
 
 ## 1. What the project offers
 
@@ -77,6 +81,8 @@ The following organisations and public project contacts are plausible first conv
 No one must buy hardware or provide exact hive / home coordinates to join a discussion.
 
 ## 5. Repeatable outreach loop
+
+This loop is currently **research-only**. Its external communication steps are future-stage procedures and are not authorised now. The pilot-interest issue form is retained only at `community/dormant-templates/pilot-interest.yml`; it is deliberately not enabled as a public GitHub issue template. Do not publish or activate it before the readiness gate and a separate owner decision.
 
 Run a weekly discovery and review cycle:
 

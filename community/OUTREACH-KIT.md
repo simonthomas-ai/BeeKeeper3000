@@ -1,5 +1,7 @@
 # BeeKeeper3000 community outreach kit
 
+> **DORMANT – INTERNAL REFERENCE ONLY.** These examples are not approved for sending, posting, copying into mailing systems, submitting to organisations or distributing through associations. No outreach is permitted during the current project-build phase. Use them only after the readiness gate is passed and the project owner gives separate explicit approval. The weekly Partner-Radar must not generate new message drafts or contact anyone.
+
 ## One-sentence introduction
 
 BeeKeeper3000 is an open, local-first toolkit that helps beekeepers and regional groups test privacy-preserving insect observations, optional station telemetry and carefully validated search hypotheses for the Asian hornet (*Vespa velutina*).
