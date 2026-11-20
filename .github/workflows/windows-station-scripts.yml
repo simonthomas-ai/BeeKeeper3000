@@ -47,6 +47,16 @@ jobs:
             }
           }
           ./scripts/Start-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -ValidateOnly
+          $cameraScript = Get-Content -Raw -LiteralPath "./scripts/Start-BeeKeeperCamera.ps1"
+          if (-not $cameraScript.Contains('(Join-Path (Join-Path $StateRoot "data") "camera-outbox.sqlite3")')) {
+            throw "Camera launcher must store its outbox under the protected station data directory."
+          }
+          if (-not $cameraScript.Contains('camera\requirements.txt')) {
+            throw "Camera dependency instruction is malformed."
+          }
+          if (($cameraScript -replace "`r`n", "").Contains([char]13)) {
+            throw "Camera launcher contains an unexpected carriage return."
+          }
 
       - name: Exercise protected station backup and restore including camera outbox
         shell: pwsh
