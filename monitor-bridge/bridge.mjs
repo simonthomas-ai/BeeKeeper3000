@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -45,12 +46,24 @@ export function requiredConfig() {
 }
 
 export async function readState(file = statePath) {
+  let handle;
   try {
-    const stat = await fs.lstat(file);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) {
-      throw new Error('Bridge state file is invalid, a symlink, or exceeds 1 MiB');
+    // Open once and validate/read through the same descriptor. O_NOFOLLOW is
+    // applied where the operating system supports it (POSIX), preventing a
+    // symlink swap between a path check and the subsequent read.
+    const flags = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW || 0);
+    handle = await fs.open(file, flags);
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size > 1024 * 1024) {
+      throw new Error('Bridge state file is invalid or exceeds 1 MiB');
     }
-    const value = JSON.parse(await fs.readFile(file, 'utf8'));
+    // Bound the read even if another process grows the opened file after fstat.
+    const buffer = Buffer.allocUnsafe((1024 * 1024) + 1);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > 1024 * 1024) {
+      throw new Error('Bridge state file exceeds 1 MiB');
+    }
+    const value = JSON.parse(buffer.subarray(0, bytesRead).toString('utf8'));
     if (!value || ![1, 2].includes(value.version) || !Array.isArray(value.forwardedIds) ||
         value.forwardedIds.length > maxSeen ||
         !value.forwardedIds.every(x => typeof x === 'string' && x.length > 0 && x.length <= 128)) {
@@ -70,6 +83,8 @@ export async function readState(file = statePath) {
       return empty;
     }
     throw error;
+  } finally {
+    if (handle) await handle.close();
   }
 }
 
