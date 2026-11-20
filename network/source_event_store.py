@@ -148,7 +148,6 @@ class SQLiteSourceEventStore:
                     raise SourceStoreError("source event ID was reused with different content")
                 return {"sequence": existing[1], "event": event}, False
 
-            count = int(db.execute("SELECT COUNT(*) FROM source_events").fetchone()[0])
             db.execute(
                 "DELETE FROM source_events WHERE created_at < ?",
                 ((datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat(),),
