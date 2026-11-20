@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - "monitor-bridge/**"
+      - "network/meshcore/**"
       - ".github/workflows/bridge-tests.yml"
   pull_request:
     paths:
