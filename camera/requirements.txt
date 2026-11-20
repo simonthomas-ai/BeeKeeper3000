@@ -1,0 +1,4 @@
+# Optional local CPU inference runtime; versions reviewed 2026-11-20.
+# ONNX Runtime: MIT. OpenCV: Apache-2.0. Transitive dependencies require SBOM review.
+onnxruntime==1.32.0
+opencv-python-headless==4.14.0.94
