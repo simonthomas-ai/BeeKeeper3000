@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const sourceUrl = (process.env.HORNET3000_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
 const sourceKey = process.env.HORNET3000_API_KEY || '';
@@ -59,9 +60,14 @@ async function writeState(ids, file = statePath) {
   const data = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), forwardedIds: stableIds }, null, 2);
   const directory = path.dirname(file);
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
-  const temp = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(temp, data, { mode: 0o600, flag: 'wx' });
-  await fs.rename(temp, file);
+  const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(temp, data, { mode: 0o600, flag: 'wx' });
+    await fs.rename(temp, file);
+  } catch (error) {
+    await fs.rm(temp, { force: true }).catch(() => {});
+    throw error;
+  }
 }
 
 export async function readJsonLimited(response, maxBytes = maxSourceResponseBytes) {
@@ -139,7 +145,11 @@ export async function forwardBatch(events, state, options = {}) {
       body: JSON.stringify(mapped),
       signal: AbortSignal.timeout(8000)
     });
-    if (response.status !== 202) throw new Error(`Monitor ingestion failed: HTTP ${response.status}`);
+    if (response.status !== 202) {
+      await response.body?.cancel().catch(() => {});
+      throw new Error(`Monitor ingestion failed: HTTP ${response.status}`);
+    }
+    await response.body?.cancel().catch(() => {});
     state.add(event.id);
     if (state.size > maxSeen) {
       const recent = [...state].slice(-maxSeen);
