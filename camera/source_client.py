@@ -5,7 +5,7 @@ import ipaddress
 import json
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit, urlunsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 
 class SourceClientError(RuntimeError):
@@ -25,7 +25,7 @@ def _loopback_endpoint(base_url: str) -> str:
     try:
         local = ipaddress.ip_address(host).is_loopback
     except ValueError:
-        local = host == "localhost"
+        local = False
     if not local or parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
         raise ValueError("source API URL must be a loopback origin (no path, query or fragment)")
     return urlunsplit(("http", parsed.netloc, "/api/events", "", ""))
@@ -48,7 +48,7 @@ class SourceApiClient:
             "X-API-Key": self.api_key,
         })
         try:
-            opener = build_opener(_NoRedirectHandler())
+            opener = build_opener(ProxyHandler({}), _NoRedirectHandler())
             with opener.open(request, timeout=self.timeout) as response:
                 if response.status not in (200, 201):
                     raise SourceClientError(f"source API returned HTTP {response.status}")
