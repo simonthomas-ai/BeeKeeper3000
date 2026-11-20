@@ -14,7 +14,7 @@ class ManifestTests(unittest.TestCase):
             "manifest_version": 1, "model_file": "detector.onnx",
             "model_sha256": hashlib.sha256(model.read_bytes()).hexdigest(),
             "model_version": "0.0-test", "model_source_url": "https://example.org/model",
-            "model_license": "MIT", "license_review_status": "approved", "inference_status": "experimental",
+            "model_license": "MIT", "license_review_status": "approved", "license_evidence_url": "https://example.org/LICENSE", "license_reviewed_by": "test reviewer", "license_reviewed_at": "2026-11-20T12:00:00Z", "inference_use_allowed": True, "redistribution_allowed": False, "inference_status": "experimental",
             "input": {"name": "images", "width": 640, "height": 640, "color": "RGB", "layout": "NCHW", "scale": "0..1"},
             "outputs": {"boxes": "boxes", "scores": "scores", "class_ids": "classes", "box_format": "xyxy_normalized_post_nms"},
             "classes": [{"id": 0, "label": "vespa_velutina_candidate", "threshold": 0.8, "prey_detected": False}],
@@ -36,6 +36,20 @@ class ManifestTests(unittest.TestCase):
                 load_manifest(path)
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp, model_sha256="0" * 64)
+            with self.assertRaises(ModelManifestError):
+                load_manifest(path)
+
+    def test_rejects_missing_license_evidence_and_permissions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, license_evidence_url="")
+            with self.assertRaises(ModelManifestError):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, inference_use_allowed=False)
+            with self.assertRaises(ModelManifestError):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, license_reviewed_at="2026-11-20")
             with self.assertRaises(ModelManifestError):
                 load_manifest(path)
 
