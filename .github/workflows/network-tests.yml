@@ -7,6 +7,8 @@ on:
       - "camera/**"
       - "camera/**"
       - "monitor-bridge/**"
+      - "scripts/station_doctor.py"
+      - "scripts/test_station_doctor.py"
       - ".github/workflows/network-tests.yml"
   pull_request:
     paths:
@@ -33,6 +35,8 @@ jobs:
           network.test_triangulation network.test_triangulation_field_report network.test_source_api network.test_source_backup
           camera.test_contracts camera.test_model_manifest camera.test_outbox
           camera.test_outbox_backup camera.test_source_client camera.test_runtime -v
+      - name: Run read-only station preflight tests
+        run: python -m unittest discover -s scripts -p "test_station_doctor.py" -v
 
   monitor-bridge:
     runs-on: ubuntu-latest
