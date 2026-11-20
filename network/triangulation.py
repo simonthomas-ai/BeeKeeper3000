@@ -8,6 +8,7 @@ keep the operational area local (recommended <= 30 km across).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from math import cos, radians, sin, sqrt
 from typing import Iterable
 
@@ -34,11 +35,12 @@ class Estimate:
     status: str = "search_hypothesis"
 
 
-def _validate(items: list[Bearing]) -> None:
+def _validate(items: list[Bearing], max_time_delta_sec: int) -> None:
     if len(items) < 3:
         raise ValueError("at least three independent bearings are required")
     if len({b.station_id for b in items}) != len(items):
         raise ValueError("station_id values must be unique")
+    timestamps = []
     for b in items:
         if not b.station_id or not (-90 <= b.latitude <= 90):
             raise ValueError("invalid station identity or latitude")
@@ -48,6 +50,17 @@ def _validate(items: list[Bearing]) -> None:
             raise ValueError("azimuth must be in [0, 360)")
         if not (0.5 <= b.sigma_deg <= 45):
             raise ValueError("sigma_deg must be in [0.5, 45]")
+        if not b.observed_at:
+            raise ValueError("each bearing requires a timezone-aware timestamp")
+        try:
+            stamp = datetime.fromisoformat(b.observed_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("invalid observation timestamp") from exc
+        if stamp.tzinfo is None or stamp.utcoffset() is None:
+            raise ValueError("observation timestamp must include timezone")
+        timestamps.append(stamp.timestamp())
+    if max(timestamps) - min(timestamps) > max_time_delta_sec:
+        raise ValueError("bearings fall outside the allowed time window")
 
 
 def triangulate(
@@ -55,10 +68,11 @@ def triangulate(
     *,
     max_rms_error_m: float = 250.0,
     max_area_m: float = 30_000.0,
+    max_time_delta_sec: int = 1800,
 ) -> Estimate:
     """Return weighted intersection; reject poor geometry and invalid rays."""
     items = list(bearings)
-    _validate(items)
+    _validate(items, max_time_delta_sec)
 
     lat0 = sum(b.latitude for b in items) / len(items)
     lon0 = sum(b.longitude for b in items) / len(items)
@@ -89,7 +103,9 @@ def triangulate(
         normals.append((px, py, dx, dy, nx, ny))
 
     determinant = aa * bb - ab * ab
-    if determinant <= 1e-8:
+    # Scale-invariant geometry check: reject bearings crossing at less than 10°.
+    geometry_ratio = determinant / (aa * bb) if aa * bb else 0.0
+    if geometry_ratio < sin(radians(10.0)) ** 2:
         raise ValueError("bearings are nearly parallel; intersection is unstable")
     x = (ax * bb - by * ab) / determinant
     y = (aa * by - ab * ax) / determinant
@@ -103,7 +119,6 @@ def triangulate(
         ranges.append(along)
         residuals.append(nx * (x - px) + ny * (y - py))
 
-    # Weighted residual scale, in metres.
     weighted_sum = 0.0
     total_weight = 0.0
     for b, residual in zip(items, residuals):
