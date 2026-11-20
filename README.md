@@ -41,6 +41,16 @@ Das optionale Paket [camera/](camera/) stellt USB-/RTSP-/Videodatei-Aufnahme, CP
 
 Das Beispielmanifest ist absichtlich ungültig und es sind keine Modellgewichte enthalten. Ein reales Modell wird erst nach unabhängiger Lizenz-/Provenienzprüfung und Anpassung an den expliziten ONNX-Ausgabevertrag akzeptiert. Das verbindliche Hardware- und Qualitätsabnahmeverfahren steht in [docs/CAMERA-ACCEPTANCE.md](docs/CAMERA-ACCEPTANCE.md). Alle Vorhersagen bleiben unbestätigte Kandidaten. Das Modul wird separat gestartet und ist nicht Bestandteil des Basis-Stationslaunchers. Einrichtung und Grenzen: [camera/README.md](camera/README.md).
 
+## Multi-Quellen- und Hardwareplattform
+
+Die Integrationsarchitektur ist herstellerneutral ausgelegt. Die aktuelle Kompatibilitätsmatrix unterscheidet Smartphone-/Tablet-Meldungen, USB-/UVC- und IP-Kameras, CSI/MIPI, Depth-/Thermal-Sensoren, Windows/Linux/ARM64/Jetson-Edge-Systeme, GNSS/IMU, BLE/Modbus-Sensoren sowie HTTPS/MQTT, MeshCore, Meshtastic, LoRaWAN und optionale P2P-IP-Synchronisierung. **Die Auflistung ist eine Ziel-/Adaptermatrix und keine Behauptung, dass alle Adapter bereits implementiert oder auf Hardware getestet sind.** Jede Kombination erhält einen Status von geplant bis feldvalidiert.
+
+- [Multi-Quellen- und Hardware-Kompatibilitätsmatrix](docs/MULTI-SOURCE-HARDWARE-MATRIX.md)
+- [Hardware-Referenzdesigns und konzeptionelle Schaltbilder](docs/HARDWARE-REFERENCE-DESIGNS.md)
+- [Maschinenlesbares Adapter-Registry-Schema](docs/ADAPTER-REGISTRY.schema.json)
+
+Die Referenzschaltbilder zeigen Smartphone-only, PoE-Kamera/Edge-Host, Solar-Niedervoltstation und Sensorbus. Sie sind keine Build-to-print-Unterlagen. Mains wiring, Blitzschutz, Mast-/Gebäudeinstallation und endgültige Funk-/Antennenauslegung benötigen qualifizierte Planung und Prüfung.
+
 ## Tests
 
 Aus dem Repository-Hauptverzeichnis:
