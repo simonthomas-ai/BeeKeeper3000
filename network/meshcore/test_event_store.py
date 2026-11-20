@@ -11,6 +11,7 @@ from Crypto.PublicKey import ECC
 from network.meshcore.event_store import MeshCoreStoreError, SQLiteMeshCoreEventStore
 from network.meshcore.protocol import decode_event, encode_event, public_key_fingerprint
 from network.meshcore.receiver import MeshCoreEventReceiver, StationRegistry
+from network.triangulation import Bearing
 
 
 def bearing_to(lat1, lon1, lat2, lon2):
@@ -88,6 +89,102 @@ class MeshCorePersistentStoreTests(unittest.TestCase):
         with self.assertRaises(MeshCoreStoreError):
             self.store(changed, None)
         self.assertEqual(self.store.count(), 1)
+
+    def test_rejects_boolean_schema_and_non_finite_confidence(self):
+        _, _, decoded = self.make_decoded(
+            station_id="station-west", event_id="persistent-event-types"
+        )
+        with self.assertRaises(MeshCoreStoreError):
+            self.store(dict(decoded, schema_version=True), None)
+        with self.assertRaises(MeshCoreStoreError):
+            self.store(dict(decoded, confidence=float("nan")), None)
+
+    def test_bearing_requires_signed_bearing_fields(self):
+        _, _, decoded = self.make_decoded(
+            station_id="station-west", event_id="persistent-bearing-contract",
+            event_type="bearing", bearing_deg=90, sigma_deg=2,
+        )
+        decoded.pop("bearing_deg")
+        with self.assertRaises(MeshCoreStoreError):
+            self.store(decoded, None)
+
+    def test_local_resolved_bearing_must_match_signed_packet(self):
+        station_hash = hashlib.sha256(b"station-east").digest()[:16].hex()
+        registry = StationRegistry({
+            station_hash: {
+                "station_id": "site-east",
+                "latitude": 51.234,
+                "longitude": 6.789,
+            }
+        })
+        _, _, decoded = self.make_decoded(
+            station_id="station-east", event_id="persistent-bearing-mismatch",
+            event_type="bearing", bearing_deg=81.25, sigma_deg=2.5,
+        )
+        valid = registry.bearing(decoded)
+        modified = Bearing(
+            station_id=valid.station_id,
+            latitude=valid.latitude,
+            longitude=valid.longitude,
+            azimuth_deg=valid.azimuth_deg + 1,
+            sigma_deg=valid.sigma_deg,
+            observed_at=valid.observed_at,
+        )
+        with self.assertRaises(MeshCoreStoreError):
+            self.store(decoded, modified)
+
+    def test_expired_bearing_is_excluded_from_recent_triangulation(self):
+        station_hash = hashlib.sha256(b"station-expiry").digest()[:16].hex()
+        registry = StationRegistry({
+            station_hash: {
+                "station_id": "site-expiry",
+                "latitude": 51.234,
+                "longitude": 6.789,
+            }
+        })
+        _, _, decoded = self.make_decoded(
+            station_id="station-expiry", event_id="persistent-bearing-expiry",
+            event_type="bearing", bearing_deg=81.25, sigma_deg=2.5,
+        )
+        self.store(decoded, registry.bearing(decoded))
+        expired_at = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+        with self.store._db() as db:
+            db.execute(
+                "UPDATE radio_events SET expires_at = ? WHERE event_id = ?",
+                (expired_at, decoded["event_id"]),
+            )
+        self.assertEqual(self.store.recent_bearings(window_seconds=1800), [])
+
+    def test_live_replay_records_are_not_evicted_when_store_is_full(self):
+        full_store = SQLiteMeshCoreEventStore(
+            os.path.join(self.tmp.name, "capacity", "events.sqlite3"),
+            retention_days=30,
+            max_rows=100,
+        )
+        first_id = None
+        for index in range(100):
+            _, _, decoded = self.make_decoded(
+                station_id="capacity-station",
+                event_id=f"capacity-event-{index:03d}",
+            )
+            full_store(decoded, None)
+            if index == 0:
+                first_id = decoded["event_id"]
+        _, _, overflow = self.make_decoded(
+            station_id="capacity-station", event_id="capacity-event-overflow"
+        )
+        with self.assertRaises(MeshCoreStoreError):
+            full_store(overflow, None)
+        self.assertEqual(full_store.count(), 100)
+        self.assertIn(first_id, {row["event_id"] for row in full_store.list_events(500)})
+
+    def test_retention_shorter_than_maximum_packet_ttl_is_rejected(self):
+        with self.assertRaises(ValueError):
+            SQLiteMeshCoreEventStore(
+                os.path.join(self.tmp.name, "too-short", "events.sqlite3"),
+                retention_days=6,
+                max_rows=100,
+            )
 
     def test_rejects_unapproved_extra_fields(self):
         _, _, decoded = self.make_decoded(
