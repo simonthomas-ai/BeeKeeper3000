@@ -41,6 +41,24 @@ jobs:
           network.meshcore.test_transport
           -v
 
+  camera-runtime:
+    name: Camera runtime safety tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install optional CPU camera runtime
+        run: python -m pip install --disable-pip-version-check --requirement camera/requirements.txt
+      - name: Check camera runtime environment
+        run: python -m pip check
+      - name: Run camera and durable-outbox tests
+        run: python -m unittest discover -s camera -p 'test_*.py' -v
+
   monitor-bridge:
     name: Monitor bridge tests
     runs-on: ubuntu-latest
