@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "budget_eur": 0,
+  "timeout_seconds": 90,
+  "max_tokens": 1200,
+  "max_models_per_run": 8,
+  "local_ollama": {
+    "enabled": true,
+    "base_url": "http://127.0.0.1:11434/v1",
+    "models": []
+  },
+  "external_providers": [
+    {
+      "name": "Hugging Face Inference Providers",
+      "provider_type": "openai_compatible",
+      "enabled": false,
+      "free_access_verified": false,
+      "provider_enforced_hard_cap_eur": null,
+      "terms_reviewed_on": "",
+      "base_url": "https://router.huggingface.co/v1",
+      "model": "",
+      "token_env": "HF_TOKEN",
+      "token_required": true
+    }
+  ]
+}
