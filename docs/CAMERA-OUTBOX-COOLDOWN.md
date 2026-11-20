@@ -24,9 +24,11 @@ geometry and capture rate. It does not merge or delete previously accepted event
 ## Migration and backup
 
 The detection_cooldowns table is created automatically for existing outbox
-databases. No queued events are rewritten or removed. Include the camera outbox
-SQLite database in a station backup and restore drill before deployment; the
-base station backup currently documents other stores separately.
+databases. No queued events are rewritten or removed. The Windows
+scripts/Backup-BeeKeeperStation.ps1 runner includes camera-outbox.sqlite3 when
+present and snapshots the complete database, including this table, using the
+SQLite online-backup API. Its manifest hashes the resulting file. A physical
+restore drill on the intended station image is still mandatory before a pilot.
 
 ## Validation boundary
 
