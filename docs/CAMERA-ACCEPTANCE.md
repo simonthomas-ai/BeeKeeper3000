@@ -14,6 +14,8 @@ Before camera startup:
 
 ## 2. Camera acquisition test
 
+The network/file capture adapter requests 5-second open and read timeouts through OpenCV's FFmpeg backend. Record the actual OpenCV version/backend and confirm observed timeout behaviour with the target camera firmware; library timeout settings are not a substitute for a physical disconnect/reconnect test.
+
 Use a dedicated test station and a non-production camera account. Capture both representative day/night conditions and difficult cases (motion blur, rain, glare, background clutter, multiple insects, partial occlusion).
 
 Record for at least a continuous 2-hour run:
