@@ -38,7 +38,15 @@ $MonitorRepo = (Resolve-Path $MonitorRepo).Path
 $startScript = Join-Path $PSScriptRoot "Start-BeeKeeperStation.ps1"
 if (-not (Test-Path $startScript -PathType Leaf)) { throw "Station launcher is missing: $startScript" }
 
-$powerShellPath = Join-Path $PSHOME "powershell.exe"
+$powerShellPath = Join-Path $PSHOME "pwsh.exe"
+if (-not (Test-Path $powerShellPath -PathType Leaf)) {
+    $powerShellPath = Join-Path $PSHOME "powershell.exe"
+}
+if (-not (Test-Path $powerShellPath -PathType Leaf)) {
+    $command = Get-Command -Name "powershell.exe","pwsh.exe" -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $command) { throw "Neither PowerShell 5.1 nor PowerShell 7 executable could be located." }
+    $powerShellPath = $command.Path
+}
 $validationArguments = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -MonitorRepo "{1}" -PythonExe "{2}" -NodeExe "{3}" -ValidateOnly' -f $startScript, $MonitorRepo, $PythonExe, $NodeExe
 $validation = Start-Process -FilePath $powerShellPath -ArgumentList $validationArguments -Wait -PassThru -NoNewWindow
 if ($validation.ExitCode -ne 0) { throw "Station prerequisites did not pass validation (exit $($validation.ExitCode))." }
