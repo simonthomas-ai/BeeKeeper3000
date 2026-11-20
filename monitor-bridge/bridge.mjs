@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const sourceUrl = (process.env.HORNET3000_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
 const sourceKey = process.env.HORNET3000_API_KEY || '';
@@ -8,68 +9,147 @@ const monitorToken = process.env.BEEKEEPER_MONITOR_INGEST_TOKEN || '';
 const intervalMs = Math.max(2000, Number(process.env.POLL_INTERVAL_MS || 10000));
 const statePath = path.resolve(process.env.BRIDGE_STATE_FILE || './monitor-bridge-state.json');
 const maxSeen = 10000;
+const maxSourceResponseBytes = 2 * 1024 * 1024;
 let busy = false;
 
-function requiredConfig() {
-  if (!sourceKey) throw new Error('HORNET3000_API_KEY is required');
-  if (monitorToken.length < 24) throw new Error('BEEKEEPER_MONITOR_INGEST_TOKEN must contain at least 24 characters');
-  for (const [name, value] of [['HORNET3000_URL', sourceUrl], ['BEEKEEPER_MONITOR_INGEST_URL', monitorUrl]]) {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' && !['127.0.0.1', 'localhost', '::1'].includes(url.hostname)) {
-      throw new Error(`${name} must use HTTPS outside loopback`);
-    }
+function checkedEndpoint(name, value) {
+  const url = new URL(value);
+  const loopbackHosts = new Set(['127.0.0.1', 'localhost', '[::1]']);
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopbackHosts.has(url.hostname))) {
+    throw new Error(`${name} must use HTTPS outside loopback`);
   }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new Error(`${name} must not contain credentials, query parameters or fragments`);
+  }
+  return url;
+}
+
+export function requiredConfig() {
+  if (!sourceKey || sourceKey.length < 16) throw new Error('HORNET3000_API_KEY must contain at least 16 characters');
+  if (monitorToken.length < 24) throw new Error('BEEKEEPER_MONITOR_INGEST_TOKEN must contain at least 24 characters');
+  checkedEndpoint('HORNET3000_URL', sourceUrl);
+  checkedEndpoint('BEEKEEPER_MONITOR_INGEST_URL', monitorUrl);
+  if (!monitorUrl.endsWith('/api/v1/events')) {
+    throw new Error('BEEKEEPER_MONITOR_INGEST_URL must end with /api/v1/events');
+  }
+  if (!Number.isFinite(intervalMs) || intervalMs < 2000 || intervalMs > 3600000) {
+    throw new Error('POLL_INTERVAL_MS must be between 2000 and 3600000');
+  }
+  return true;
 }
 
 async function readState() {
   try {
+    const stat = await fs.stat(statePath);
+    if (!stat.isFile() || stat.size > 1024 * 1024) throw new Error('Bridge state file is invalid or exceeds 1 MiB');
     const value = JSON.parse(await fs.readFile(statePath, 'utf8'));
-    return new Set(Array.isArray(value.forwardedIds) ? value.forwardedIds.filter(x => typeof x === 'string') : []);
+    if (!value || value.version !== 1 || !Array.isArray(value.forwardedIds) ||
+        value.forwardedIds.length > maxSeen ||
+        !value.forwardedIds.every(x => typeof x === 'string' && x.length > 0 && x.length <= 128)) {
+      throw new Error('Bridge state file has an unsupported structure');
+    }
+    return new Set(value.forwardedIds);
   } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    return new Set();
+    if (error.code === 'ENOENT') return new Set();
+    throw error;
   }
 }
 
-async function writeState(ids) {
-  const data = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), forwardedIds: [...ids].slice(-maxSeen) }, null, 2);
-  const temp = `${statePath}.tmp`;
-  await fs.writeFile(temp, data, { mode: 0o600 });
-  await fs.rename(temp, statePath);
+async function writeState(ids, file = statePath) {
+  const stableIds = [...ids].slice(-maxSeen);
+  const data = JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), forwardedIds: stableIds }, null, 2);
+  const directory = path.dirname(file);
+  await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+  const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(temp, data, { mode: 0o600, flag: 'wx' });
+    await fs.rename(temp, file);
+  } catch (error) {
+    await fs.rm(temp, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+export async function readJsonLimited(response, maxBytes = maxSourceResponseBytes) {
+  const declaredLength = Number(response.headers?.get?.('content-length') || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw new Error('Hornet3000 response exceeds the configured size limit');
+  }
+  if (!response.body) throw new Error('Hornet3000 API response body is empty');
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of response.body) {
+    const part = Buffer.from(chunk);
+    total += part.byteLength;
+    if (total > maxBytes) {
+      try { await response.body.cancel(); } catch { /* response already closed */ }
+      throw new Error('Hornet3000 response exceeds the configured size limit');
+    }
+    chunks.push(part);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw new Error('Hornet3000 API returned invalid JSON');
+  }
 }
 
 export function toMonitorEvent(event) {
-  if (!event || typeof event !== 'object' || typeof event.id !== 'string' || typeof event.species !== 'string') return null;
-  const confidence = Number(event.confidence);
-  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
+  if (!event || typeof event !== 'object' ||
+      typeof event.id !== 'string' || !/^[\x21-\x7E]{1,128}$/.test(event.id) ||
+      typeof event.species !== 'string' || event.species.trim().length === 0 ||
+      event.species.length > 160) return null;
+  const confidence = event.confidence;
+  if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
   const timestamp = typeof event.observed_at === 'string' ? event.observed_at : '';
-  if (!Number.isFinite(Date.parse(timestamp)) || !/(Z|[+-]\d\d:\d\d)$/.test(timestamp)) return null;
-  const station = typeof event.station_id === 'string' && event.station_id ? event.station_id : 'hornet3000-local';
+  if (timestamp.length > 40 || !Number.isFinite(Date.parse(timestamp)) || !/(Z|[+-]\d\d:\d\d)$/.test(timestamp)) return null;
+  const rawStation = typeof event.station_id === 'string' ? event.station_id : '';
+  const station = rawStation.toLowerCase().replace(/[^a-z0-9._-]/g, '_').slice(0, 80) || 'hornet3000-local';
   const species = event.species.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 80);
+  if (!species) return null;
   return {
-    kind: 'camera_detection', device_id: station.slice(0, 128), timestamp,
-    source: 'hornet3000', schema_version: 1,
+    kind: 'camera_detection',
+    device_id: station,
+    timestamp,
+    source: 'hornet3000',
+    schema_version: 1,
     payload: {
-      label: `unverified_candidate:${species}`, confidence,
+      label: `unverified_candidate:${species}`,
+      confidence,
       origin_event_id: event.id,
-      verification_status: typeof event.status === 'string' ? event.status : 'unverified',
+      // Source/model fields are never allowed to claim expert confirmation.
+      verification_status: 'unverified',
       prey_detected: event.prey_detected === true
     }
   };
 }
 
-export async function forwardBatch(events, state) {
+export async function forwardBatch(events, state, options = {}) {
+  if (!Array.isArray(events) || events.length > 1000) throw new Error('Invalid or oversized event batch');
+  if (!state || typeof state.has !== 'function' || typeof state.add !== 'function') {
+    throw new Error('A valid bridge state Set is required');
+  }
+  const endpoint = options.endpoint || monitorUrl;
+  const token = options.token || monitorToken;
+  const fetchImpl = options.fetchImpl || fetch;
+  const save = options.saveState || writeState;
   let forwarded = 0;
   for (const event of events) {
     if (!event || typeof event.id !== 'string' || state.has(event.id)) continue;
     const mapped = toMonitorEvent(event);
     if (!mapped) continue;
-    const response = await fetch(monitorUrl, {
+    const response = await fetchImpl(endpoint, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${monitorToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(mapped), signal: AbortSignal.timeout(8000)
+      redirect: 'error',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(mapped),
+      signal: AbortSignal.timeout(8000)
     });
-    if (response.status !== 202) throw new Error(`Monitor ingestion failed: HTTP ${response.status}`);
+    if (response.status !== 202) {
+      await response.body?.cancel().catch(() => {});
+      throw new Error(`Monitor ingestion failed: HTTP ${response.status}`);
+    }
+    await response.body?.cancel().catch(() => {});
     state.add(event.id);
     if (state.size > maxSeen) {
       const recent = [...state].slice(-maxSeen);
@@ -77,20 +157,27 @@ export async function forwardBatch(events, state) {
       for (const id of recent) state.add(id);
     }
     forwarded++;
-    await writeState(state);
+    await save(state);
   }
   return forwarded;
 }
 
-export async function pollOnce(state) {
+export async function pollOnce(state, options = {}) {
   if (!state) state = await readState();
-  const response = await fetch(`${sourceUrl}/api/events?limit=100`, {
-    headers: { 'X-API-Key': sourceKey, Accept: 'application/json' }, signal: AbortSignal.timeout(8000)
+  const endpoint = options.sourceUrl || sourceUrl;
+  const apiKey = options.sourceKey || sourceKey;
+  const fetchImpl = options.fetchImpl || fetch;
+  const response = await fetchImpl(`${endpoint}/api/events?limit=100`, {
+    redirect: 'error',
+    headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
+    signal: AbortSignal.timeout(8000)
   });
   if (!response.ok) throw new Error(`Hornet3000 API failed: HTTP ${response.status}`);
-  const body = await response.json();
-  if (!body || !Array.isArray(body.events)) throw new Error('Hornet3000 API response has no events array');
-  return forwardBatch(body.events, state);
+  const body = await readJsonLimited(response);
+  if (!body || !Array.isArray(body.events) || body.events.length > 100) {
+    throw new Error('Hornet3000 API response has no valid events array or exceeds the 100-event page');
+  }
+  return forwardBatch(body.events, state, options);
 }
 
 async function main() {

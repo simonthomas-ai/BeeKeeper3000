@@ -1,0 +1,11 @@
+# Linux CI lock for the optional MeshCore Python binding.
+# Versions captured from the successful GitHub Actions install on 2026-11-20.
+# This is not a universal cross-platform lock; re-resolve and validate on each target OS.
+meshcore==2.3.19
+bleak==3.1.0
+dbus-fast==5.2.0
+pycayennelpp==2.4.0
+pycryptodome==4.5.0
+pyserial==3.5
+pyserial-asyncio-fast==0.16
+typing-extensions==4.16.0

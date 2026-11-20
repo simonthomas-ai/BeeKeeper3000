@@ -1,7 +1,7 @@
 import math
 import unittest
 
-from triangulation import Bearing, triangulate
+from network.triangulation import Bearing, triangulate
 
 
 def bearing_to(lat1, lon1, lat2, lon2):

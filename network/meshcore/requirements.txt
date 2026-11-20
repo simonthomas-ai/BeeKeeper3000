@@ -1,0 +1,2 @@
+# Optional MeshCore companion-radio transport.
+meshcore==2.3.19
