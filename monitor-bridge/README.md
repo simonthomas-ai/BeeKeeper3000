@@ -5,7 +5,7 @@ The local Node.js adapter transfers selected **metadata only** from Hornet3000 t
 ## Requirements
 
 - Node.js 22 LTS (Node.js 20+ may work, but CI currently tests Node.js 22).
-- Hornet3000's authenticated local API at `GET /api/events?limit=100`.
+- Hornet3000's authenticated local API at `GET /api/events?limit=100`; lossless delivery requires the cursor contract in [SOURCE-CURSOR-CONTRACT.md](./SOURCE-CURSOR-CONTRACT.md).
 - Beekeeper-Monitor's local receiver and PWA.
 - Separate source API key and random receiver token (at least 24 characters). Never reuse credentials.
 
@@ -36,6 +36,8 @@ $env:BEEKEEPER_MONITOR_INGEST_URL = "http://127.0.0.1:8765/api/v1/events"
 $env:BEEKEEPER_MONITOR_INGEST_TOKEN = "PASTE_THE_RECEIVER_TOKEN"
 $env:BRIDGE_STATE_FILE = "$env:LOCALAPPDATA\BeeKeeper-Monitor\bridge-state.json"
 $env:POLL_INTERVAL_MS = "10000"
+# Set true only after Hornet3000 implements the cursor contract; otherwise the bridge stops rather than using a lossy latest-100 feed.
+$env:BRIDGE_REQUIRE_CURSOR = "true"
 cd monitor-bridge
 npm test
 npm start
@@ -52,9 +54,11 @@ Run the local receiver and bridge under separate service identities or terminal 
 - Source and receiver JSON responses are size-bounded; redirects are rejected; requests time out.
 - All source detections remain unverified candidates until human/expert review.
 
-## Important source API limitation
+## Cursor catch-up and current source limitation
 
-Hornet3000 currently exposes only the latest 100 events through `GET /api/events?limit=100`; there is no documented cursor/sequence catch-up contract in this repository. The bridge therefore cannot guarantee lossless historical delivery if more than 100 events arrive between polls or before a station reconnects. No client-side retry can recover events that the source API no longer returns. Lossless backfill requires a source-side monotonic sequence or opaque cursor with paginated catch-up and retention. See [BeeKeeper3000 issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7).
+The bridge now supports source-side opaque cursor pagination. It persists a version-2 checkpoint containing a cursor and bounded forwarded-ID set, accepts existing version-1 state files, processes multiple 100-event pages per poll, and advances a cursor only after every event in that page has been acknowledged by the Monitor. If a partial page fails, the cursor remains at the previous page boundary; previously accepted events are skipped on replay and the receiver's idempotent hash prevents duplicate rows. Cursor-mode pages reject invalid events rather than advancing past them.
+
+The existing Hornet3000 API in this repository still exposes only `GET /api/events?limit=100`; the source-side cursor implementation is not present here. Until that API returns `events`, `next_cursor` and `has_more` according to [SOURCE-CURSOR-CONTRACT.md](./SOURCE-CURSOR-CONTRACT.md), the default backward-compatible bridge mode still uses the latest-100 feed and is **not lossless**. Set `BRIDGE_REQUIRE_CURSOR=true` to make production operation fail closed unless the cursor contract is available. Do not mark issue #7 complete until the source API, retention and backlog acceptance tests exist. No client-side retry can recover records already omitted by the source API. See [BeeKeeper3000 issue #7](https://github.com/simonthomas-ai/BeeKeeper3000/issues/7).
 
 ## Verification boundary
 
