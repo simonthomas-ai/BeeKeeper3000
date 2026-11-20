@@ -4,6 +4,10 @@
 
 Dieses Repository enthält eine veröffentlichte Teilmenge der BeeKeeper3000-/Hornet3000-Entwicklung: Architektur- und Lizenzdokumentation, Python-Referenz-Triangulation, Node.js-Monitor-Bridge, optionalen MeshCore-Transport und nun eine optionale lokale Kamera-/ONNX-Produzentenpipeline. Der vollständige ursprüngliche Hornet3000-Wächter-Quellbaum und ein nach unabhängigen Felddaten validiertes KI-Modell sind nicht vollständig in diesem Repository enthalten.
 
+## Gemeinsames VespaGuard-System
+
+BeeKeeper3000 bildet zusammen mit [Beekeeper-Monitor](https://github.com/simonthomas-ai/Beekeeper-Monitor) **ein integriertes System**. Die verbindliche [Integrationslandkarte mit Datenfluss, Sicherheitsgrenzen und gemeinsamen Freigabekriterien](https://github.com/simonthomas-ai/Beekeeper-Monitor/blob/main/docs/VESPAGUARD-INTEGRATION.md) liegt im Monitor-Repository. Die getrennten Repositories bleiben wegen modularer Tests, Provenienz und Lizenzprüfung erhalten; ein gemeinsames Produkt bedeutet keine bereits validierte KI oder Funkhardware.
+
 ## Grundsätze
 
 - Local-first und ohne verpflichtende Cloud betreibbar.
