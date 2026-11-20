@@ -449,3 +449,48 @@ test('corrupt bridge state fails closed instead of resetting the source cursor',
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+
+test('strict production mode refuses latest-100 source responses', async () => {
+  const state = new Set();
+  state.cursor = null;
+  await assert.rejects(() => pollOnce(state, {
+    requireCursor: true,
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({ events: [] }), { status: 200 })
+  }), /refusing a lossy downgrade/);
+});
+
+test('cursor response cannot claim more events with an empty page', async () => {
+  const state = new Set();
+  state.cursor = 'cursor-10';
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({
+      events: [],
+      next_cursor: 'cursor-11',
+      has_more: true
+    }), { status: 200 })
+  }), /empty page/);
+});
+
+test('cursor response must advance when a final page contains an event', async () => {
+  const state = new Set();
+  state.cursor = 'cursor-10';
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    token: 'test-only-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({
+      events: [cursorEvent(11)],
+      next_cursor: 'cursor-10',
+      has_more: false
+    }), { status: 200 })
+  }), /did not advance/);
+  assert.equal(state.cursor, 'cursor-10');
+});
+
