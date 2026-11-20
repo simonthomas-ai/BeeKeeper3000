@@ -43,6 +43,29 @@ The station doctor also checks the base station, bridge and optional model confi
 
 For Reolink or another network camera, enable its RTSP service in the camera's own settings, use a dedicated least-privilege camera account, and enter the correct stream path for the exact model/firmware. Do not paste a credential-bearing RTSP URL into issues, chat, screenshots or logs. A successful one-frame read is only a connection smoke test; complete the two-hour acquisition, disconnect/reconnect, privacy and field-quality checks above before any pilot.
 
+### Reolink RLC-510WA RTSP/ONVIF check
+
+Reolink currently lists the RLC-510WA among its plug-in Wi-Fi/RLC cameras with standalone RTSP and ONVIF support. In Reolink Client, check **Device Settings → Network → Advanced → Server Settings**; enable RTSP and save. The default RTSP port is 554. Reolink's documented stream path format for a standalone camera is `/Preview_01_main` (main stream) or `/Preview_01_sub` (sub stream).
+
+On Windows, first check local TCP reachability without entering credentials:
+
+```powershell
+Test-NetConnection -ComputerName CAMERA_IP -Port 554
+```
+
+Then run the hidden-input one-frame test:
+
+```powershell
+.\scripts\Test-BeeKeeperCamera.ps1 -PythonExe ".\.venv-camera\Scripts\python.exe"
+```
+
+Enter the full RTSP URL only at the hidden prompt, using the actual camera username/password and IP, for example the documented structure `rtsp://USER:PASSWORD@CAMERA_IP:554/Preview_01_main`. Do not put the credential-bearing URL into PowerShell commands, shell history, issues or logs. Do not port-forward RTSP to the Internet. If the TCP test fails, resolve the camera's port setting, local network path or firewall before debugging ONNX inference.
+
+Official references:
+- [Reolink: supported RTSP/ONVIF products](https://support.reolink.com/articles/900000617826-Which-Reolink-Products-Support-CGI-RTSP-ONVIF/)
+- [Reolink: RTSP URL format](https://support.reolink.com/articles/900000630706-Introduction-to-RTSP/)
+- [Reolink: port settings](https://support.reolink.com/articles/900000621783-How-to-Configure-Reolink-Ports-Settings/)
+
 ## 3. Detection-quality evaluation
 
 Do not use random frame-level splits. Group images by observation, photographer, hive/site, camera and capture period so near-duplicates do not leak across training and test sets. Maintain a separately held-out field test set.
