@@ -25,7 +25,7 @@ class HardwareProbeTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         self.path=Path(self.tmp.name)/"probe-key.pem"
-        self.path.write_bytes(ECC.generate(curve="Ed25519").export_key(format="PEM"))
+        self.path.write_text(ECC.generate(curve="Ed25519").export_key(format="PEM"), encoding="ascii")
         if os.name=="posix": self.path.chmod(0o600)
         self.args=Args(); self.args.signing_key=str(self.path)
         FakeTransport.instances.clear()
