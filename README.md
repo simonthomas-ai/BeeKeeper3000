@@ -15,6 +15,12 @@ Dieses Repository verbindet die Quellbasis Hornet3000 Wächter 1.6.0 mit einem d
 
 Details: [SOVEREIGNTY.md](SOVEREIGNTY.md), [SECURITY.md](SECURITY.md), [PROVENANCE.md](PROVENANCE.md), [LICENSES.md](LICENSES.md).
 
+## Entwicklungsorganisation und Open Source
+
+- [AGENTS.md](AGENTS.md): verbindliche Arbeitsaufträge und Qualitätsregeln für Coding-Agenten und menschliche Mitwirkende.
+- [OPEN_SOURCE_COMPONENTS.md](OPEN_SOURCE_COMPONENTS.md): geprüfte Open-Source-Kandidaten, Lizenzhinweise und Integrationsentscheidungen.
+- [GitHub Issues](https://github.com/simonthomas-ai/BeeKeeper3000/issues): sechs abgegrenzte Entwicklungspakete für Funk, Station, KI, Geodaten, Synchronisierung und Monitor.
+
 ## Bundesweites Velutina-Messnetz
 
 Die technische Zielarchitektur, die Grenzen von LoRa/Freenet und die Betriebs-/Datenschutzanforderungen stehen in [NETWORK-ARCHITECTURE.md](NETWORK-ARCHITECTURE.md). Ein erster, dependency-freier Peilungs-Triangulationsbaustein mit Tests liegt unter [network/](network/). Er berechnet einen Suchhinweis aus mindestens drei zeitlich synchronisierten Peilungen; er bestätigt kein Nest und ersetzt keine fachliche Prüfung.
