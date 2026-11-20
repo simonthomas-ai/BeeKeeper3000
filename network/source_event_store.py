@@ -101,6 +101,7 @@ class SQLiteSourceEventStore:
             db.execute("""
                 CREATE TABLE IF NOT EXISTS source_tombstones (
                     event_id TEXT PRIMARY KEY,
+                    sequence INTEGER NOT NULL,
                     deleted_at TEXT NOT NULL
                 )
             """)
@@ -115,7 +116,9 @@ class SQLiteSourceEventStore:
                 "SELECT COALESCE(MAX(sequence), 0) FROM source_events"
             ).fetchone()[0])
             earliest = db.execute(
-                "SELECT MIN(sequence) FROM source_events"
+                "SELECT MIN(sequence) FROM ("
+                "SELECT sequence FROM source_events UNION ALL "
+                "SELECT sequence FROM source_tombstones)"
             ).fetchone()[0]
             sqlite_sequence = db.execute(
                 "SELECT seq FROM sqlite_sequence WHERE name='source_events'"
@@ -273,7 +276,9 @@ class SQLiteSourceEventStore:
             # They share the configured retention horizon to keep the ledger bounded.
             db.execute("DELETE FROM source_tombstones WHERE deleted_at < ?", (cutoff,))
             earliest = db.execute(
-                "SELECT MIN(sequence) FROM source_events"
+                "SELECT MIN(sequence) FROM ("
+                "SELECT sequence FROM source_events UNION ALL "
+                "SELECT sequence FROM source_tombstones)"
             ).fetchone()[0]
             last = int(db.execute(
                 "SELECT CAST(value AS INTEGER) FROM source_meta WHERE key='last_sequence'"
@@ -304,7 +309,7 @@ class SQLiteSourceEventStore:
             db.execute("BEGIN IMMEDIATE")
             db.execute("DELETE FROM source_tombstones WHERE deleted_at < ?", (cutoff,))
             existing = db.execute(
-                "SELECT 1 FROM source_events WHERE event_id=?", (event_id,)
+                "SELECT sequence FROM source_events WHERE event_id=?", (event_id,)
             ).fetchone()
             if existing is None:
                 return False
@@ -314,8 +319,8 @@ class SQLiteSourceEventStore:
                     "source deletion ledger is at capacity; event was not deleted"
                 )
             db.execute(
-                "INSERT INTO source_tombstones(event_id, deleted_at) VALUES(?, ?)",
-                (event_id, now),
+                "INSERT INTO source_tombstones(event_id, sequence, deleted_at) VALUES(?, ?, ?)",
+                (event_id, int(existing[0]), now),
             )
             deleted = db.execute(
                 "DELETE FROM source_events WHERE event_id=?", (event_id,)
