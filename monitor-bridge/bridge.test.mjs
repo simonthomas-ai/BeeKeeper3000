@@ -279,7 +279,7 @@ test('cursor pagination catches up a backlog larger than one hundred events', as
       if (parsed.pathname === '/api/events') {
         const cursor = parsed.searchParams.get('cursor');
         sourceRequests.push(cursor);
-        const offset = cursor === null ? 0 : Number(cursor);
+        const offset = cursor === null || cursor === 'start' ? 0 : Number(cursor);
         const page = events.slice(offset, offset + 100);
         return new Response(JSON.stringify({
           events: page,
