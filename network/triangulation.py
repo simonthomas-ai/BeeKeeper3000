@@ -94,7 +94,10 @@ def _validate(items: list[Bearing], max_time_delta_sec: int) -> None:
             raise ValueError("invalid observation timestamp") from exc
         if stamp.tzinfo is None or stamp.utcoffset() is None:
             raise ValueError("observation timestamp must include timezone")
-        timestamps.append(stamp.timestamp())
+        try:
+            timestamps.append(stamp.timestamp())
+        except (OverflowError, OSError, ValueError) as exc:
+            raise ValueError("observation timestamp is outside the supported range") from exc
     if len(set(station_ids)) != len(items):
         raise ValueError("station_id values must be unique")
     if max(timestamps) - min(timestamps) > max_time_delta_sec:
@@ -136,12 +139,13 @@ def _angular_residual(bearing: Bearing, point: tuple[float, float], x: float, y:
     if distance_sq <= 1e-6:
         raise ValueError("estimated target is too close to a bearing station")
     theta = radians(float(bearing.azimuth_deg))
+    distance = sqrt(distance_sq)
     along = dx * sin(theta) + dy * cos(theta)
     predicted = atan2(dx, dy)
     residual = _wrap_angle(predicted - theta)
     jx = dy / distance_sq
     jy = -dx / distance_sq
-    return residual, jx, jy, along
+    return residual, jx, jy, along, distance
 
 
 def _fit_angular(items: list[Bearing], points: list[tuple[float, float]]) -> tuple[float, float]:
@@ -149,7 +153,7 @@ def _fit_angular(items: list[Bearing], points: list[tuple[float, float]]) -> tup
     for _ in range(40):
         hxx = hxy = hyy = gx = gy = 0.0
         for bearing, point in zip(items, points):
-            residual, jx, jy, _ = _angular_residual(bearing, point, x, y)
+            residual, jx, jy, _, _ = _angular_residual(bearing, point, x, y)
             sigma = radians(float(bearing.sigma_deg))
             normalized = abs(residual) / sigma
             robust_weight = 1.0 if normalized <= HUBER_K else HUBER_K / normalized
@@ -181,7 +185,7 @@ def _fit_angular(items: list[Bearing], points: list[tuple[float, float]]) -> tup
 def _residual_statistics(items: list[Bearing], points: list[tuple[float, float]], x: float, y: float):
     records = []
     for bearing, point in zip(items, points):
-        residual, jx, jy, along = _angular_residual(bearing, point, x, y)
+        residual, jx, jy, along, distance = _angular_residual(bearing, point, x, y)
         sigma = radians(float(bearing.sigma_deg))
         records.append({
             "bearing": bearing,
@@ -190,7 +194,8 @@ def _residual_statistics(items: list[Bearing], points: list[tuple[float, float]]
             "jx": jx,
             "jy": jy,
             "along": along,
-            "cross_track": along * sin(residual),
+            "distance": distance,
+            "cross_track": distance * sin(residual),
             "sigma": sigma,
         })
     return records
@@ -301,9 +306,12 @@ def triangulate(
             )
 
     weighted_cross = sum(
-        row["cross_track"] ** 2 / (row["sigma"] ** 2) for row in records
+        row["cross_track"] ** 2 / ((row["distance"] * row["sigma"]) ** 2)
+        for row in records
     )
-    total_weight = sum(1.0 / (row["sigma"] ** 2) for row in records)
+    total_weight = sum(
+        1.0 / ((row["distance"] * row["sigma"]) ** 2) for row in records
+    )
     rms = sqrt(weighted_cross / total_weight)
     if not isfinite(rms) or rms > max_rms_error_m:
         raise ValueError("bearing residual too large ({:.1f} m)".format(rms))
