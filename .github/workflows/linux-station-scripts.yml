@@ -31,7 +31,7 @@ jobs:
         with:
           repository: simonthomas-ai/Beekeeper-Monitor
           path: Beekeeper-Monitor
-      - name: Validate script syntax and prerequisites without installation
+      - name: Validate installer syntax and non-destructive base preflight
         shell: bash
         run: |
           bash -n scripts/install-linux.sh
@@ -40,7 +40,7 @@ jobs:
             --beekeeper-repo "$GITHUB_WORKSPACE" \
             --monitor-repo "$GITHUB_WORKSPACE/Beekeeper-Monitor" \
             --validate-only
-      - name: Verify service hardening and no public listener configuration
+      - name: Verify systemd hardening and camera fail-closed gates
         shell: bash
         run: |
           for unit in deploy/systemd/*.service; do
@@ -51,24 +51,11 @@ jobs:
             grep -q '^ReadWritePaths=/var/lib/beekeeper3000$' "$unit"
           done
           grep -q '"BEEKEEPER_MONITOR_INGEST_TOKEN": monitor_token' scripts/install-linux.sh
+          grep -q 'Monitor and bridge receiver tokens do not match' scripts/install-linux.sh
           grep -q 'ExecStart=/opt/beekeeper3000/venv-camera/bin/python -m camera.runtime' deploy/systemd/beekeeper-camera.service
           grep -q 'ConditionPathExists=/var/lib/beekeeper3000/models/manifest.json' deploy/systemd/beekeeper-camera.service
-          grep -q '^ProtectSystem=strict
-          grep -q 'Monitor and bridge receiver tokens do not match' scripts/install-linux.sh
-          if grep -Eq '0\.0\.0\.0|:::' deploy/systemd/*.service; then
-            echo "Systemd service definitions must not declare public listener addresses." >&2
-            exit 1
-          fi
- deploy/systemd/beekeeper-camera.service
-          grep -q '^ReadWritePaths=/var/lib/beekeeper3000
-          grep -q 'Monitor and bridge receiver tokens do not match' scripts/install-linux.sh
-          if grep -Eq '0\.0\.0\.0|:::' deploy/systemd/*.service; then
-            echo "Systemd service definitions must not declare public listener addresses." >&2
-            exit 1
-          fi
- deploy/systemd/beekeeper-camera.service
           grep -q 'load_manifest(sys.argv\[1\], verify_model=True)' scripts/install-camera-linux.sh
-          grep -q 'Monitor and bridge receiver tokens do not match' scripts/install-linux.sh
+          grep -q 'No images or model weights were downloaded' scripts/install-camera-linux.sh
           if grep -Eq '0\.0\.0\.0|:::' deploy/systemd/*.service; then
             echo "Systemd service definitions must not declare public listener addresses." >&2
             exit 1
