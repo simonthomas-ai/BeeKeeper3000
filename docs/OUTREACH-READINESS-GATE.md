@@ -86,3 +86,39 @@ Based on the publicly documented repository boundary, the project still has open
 - privacy and governance review for the actual deployment.
 
 Update this list only when new evidence is checked. This file is an engineering readiness checklist, not a legal opinion or certification.
+
+
+## Evidence snapshot — 20 November 2026
+
+This snapshot distinguishes **software tests** from **field acceptance**. A green synthetic test proves only the tested software path; it does not prove camera classification, radio range, biological accuracy, privacy compliance or operational readiness. These statuses do not change Phase 0 and do not authorise outreach.
+
+| Area | Current evidence status | Verified in software | Still required before field use |
+|---|---|---|---|
+| Station installation and operations | **IN PROGRESS** | Windows/Linux launch and backup tooling is present; the read-only `scripts/station_doctor.py` checks repository layout, runtime versions, local authenticated APIs, cursor safety and optional model/hardware preflight. CI validates scripts and launchers. | Clean install/upgrade/rollback/uninstall runs on real supported Windows and Linux machines; resource, log, restart and failure measurements. |
+| Camera and detector pipeline | **PARTIAL — transport path tested** | `LocalCameraRuntime`, persistent SQLite outbox, Source API client and ONNX adapter are present. The end-to-end Monitor test drives 205 synthetic frames through the real camera runtime and outbox. | Physical camera tests on target hardware and a cleared, real ONNX model with production camera configuration. The end-to-end detector in that test is deliberately synthetic. |
+| Detection quality | **BLOCKED** | Seven-class training schema, per-image provenance gate, annotation validator and candidate-source metadata queues exist. | A lawful, expert-reviewed, independently split image corpus; trained and hashed model; per-class precision/recall, confusion matrix, false positives per station-day, false negatives, calibration, confidence intervals and independent field set. No model accuracy has been established. |
+| Monitor connection | **SOFTWARE E2E VERIFIED; FIELD USE NOT VERIFIED** | 205 synthetic camera events passed through runtime → durable outbox → authenticated source API → cursor-aware bridge → authenticated Monitor receiver → SQLite. Restart and replay deduplication are asserted; image, audio and exact coordinates are absent from the transmitted metadata. | A deployed station using a real detector and camera, outage/backlog recovery on target hardware, real monitoring and operator acceptance. |
+| MeshCore radio | **SOFTWARE PROTOCOL TESTED; HARDWARE BLOCKED** | Signed protocol, receiver and optional hardware probe are covered by software tests. The probe defaults to dry run; connect-only mode transmits nothing. | Compatible physical radios/firmware, a second receiver, signed remote receipt, packet loss/latency/retries/power and legal regional radio review. Local send success is not remote reception. |
+| Bearing triangulation | **NUMERICAL TOOLING PRESENT; FIELD VALIDATION BLOCKED** | Solver, uncertainty ellipse, synthetic geometry tests and confidential known-target field-report tooling exist. | At least 30 surveyed known-target trials across the deployment range, device/mount calibration, clock validation, independent uncertainty-coverage review and geography-specific validation. |
+| Licences, security and privacy | **PARTIAL** | Source/asset registers, CC0 and exact CC BY 4.0 per-file image gate, dependency/SBOM workflows, CodeQL, metadata-only discovery and sanitized image intake are present. The importer removes EXIF, stores source and sanitized hashes, and leaves all candidates unreviewed. | Complete inherited-source/copyright baseline and third-party asset clearance; deployment-specific data-flow/threat/privacy review; controller/processor roles, lawful basis, retention/deletion, access, incident process and cross-border review. CodeQL success is not a legal or GDPR certification. |
+| Backup, restore and pilot | **SOFTWARE BACKUP TOOLING PRESENT; OPERATIONAL PILOT BLOCKED** | Source-journal and Monitor database backup modules, Windows backup runner, integrity checks, SHA-256 manifest and automated restore tests exist. | Real restore drill on the intended station and databases, key recovery, deletion/retention verification, outage recovery and at least three independent apiary/station pilot installations with signed operator evidence. |
+
+### Evidence links for this snapshot
+
+- [Read-only station preflight](STATION-DOCTOR.md), added in [BeeKeeper3000 PR #63](https://github.com/simonthomas-ai/BeeKeeper3000/pull/63), then security-hardened in [PR #64](https://github.com/simonthomas-ai/BeeKeeper3000/pull/64).
+- [MeshCore connect-only / single-packet probe](../network/meshcore/HARDWARE-PROBE.md), [PR #61](https://github.com/simonthomas-ai/BeeKeeper3000/pull/61).
+- [Triangulation measurement limits](../network/TRIANGULATION-VALIDATION.md) and [known-target field report protocol](../network/TRIANGULATION-FIELD-REPORT.md).
+- [Camera runtime → Monitor end-to-end test](https://github.com/simonthomas-ai/Beekeeper-Monitor/pull/52): 205 synthetic events; the detector fixture is not an accuracy benchmark.
+- [Sanitized authorized-image import](https://github.com/simonthomas-ai/Beekeeper-Monitor/pull/53): EXIF removal and hash/provenance controls; candidate images remain unapproved for training.
+- [Source journal backup/restore](https://github.com/simonthomas-ai/BeeKeeper3000/pull/43) and [Windows station backup runner](https://github.com/simonthomas-ai/BeeKeeper3000/pull/45).
+
+### Priority order for the next build cycle
+
+1. Run the station doctor and clean-install/rollback protocol on the actual target PC, without exposing credentials or private camera URLs.
+2. Connect a real camera to the local runtime and acquire a lawful, expert-reviewed Vespa velutina dataset; do not train until every image clears the per-file provenance and annotation gates.
+3. Measure model quality on an independent test set before connecting its predictions to operational alerts.
+4. Run MeshCore with two physical nodes, then controlled known-target triangulation trials; collect remote receipts and field evidence.
+5. Perform a restore drill from the generated station backup and verify actual deletion/retention behavior.
+6. Complete the deployment-specific privacy, license and support review before inviting any pilot participant.
+
+All external activity remains blocked. Passing this evidence checklist can only trigger an internal readiness review request; it cannot change the phase or send communications.
