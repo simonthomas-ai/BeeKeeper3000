@@ -205,7 +205,7 @@ class SourceApiTests(unittest.TestCase):
         event["latitude"] = 51.2
         status, payload, _ = self.request("POST", "/api/events", body=json.dumps(event))
         self.assertEqual(status, 400)
-        self.assertEqual(payload["error"], "invalid_or_conflicting_event")
+        self.assertEqual(payload["error"], "invalid_event")
         self.assertEqual(self.store.count(), 0)
 
     def test_signed_cursor_paginates_250_events_in_order(self):
