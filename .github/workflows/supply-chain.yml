@@ -12,6 +12,8 @@ on:
       - "PROVENANCE.md"
       - "OPEN_SOURCE_COMPONENTS.md"
       - "docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md"
+      - "OPEN_SOURCE_COMPONENTS.md"
+      - "docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md"
       - ".github/workflows/supply-chain.yml"
   pull_request:
     paths:
@@ -22,6 +24,8 @@ on:
       - "LICENSES.md"
       - "THIRD_PARTY_NOTICES.md"
       - "PROVENANCE.md"
+      - "OPEN_SOURCE_COMPONENTS.md"
+      - "docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md"
       - ".github/workflows/supply-chain.yml"
   workflow_dispatch:
 
