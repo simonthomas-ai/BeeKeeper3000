@@ -26,12 +26,6 @@ jobs:
         run: python -m unittest tests.test_llm_council -v
       - name: Run council
         shell: pwsh
-        run: python tools/llm_council.py
-      - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: llm-council-report
-          path: llm-council/runs/*.json
-          if-no-files-found: ignore
-          retention-days: 30
+        run: |
+          $reportDir = Join-Path $env:USERPROFILE 'BEEKEEPER3000\llm-council\runs'
+          python tools/llm_council.py --output $reportDir
