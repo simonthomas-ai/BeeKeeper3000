@@ -2,7 +2,7 @@ import json
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from camera.source_client import SourceApiClient
+from camera.source_client import SourceApiClient, SourceClientError
 
 
 class SourceClientTests(unittest.TestCase):
@@ -55,7 +55,7 @@ class SourceClientTests(unittest.TestCase):
         try:
             client = SourceApiClient("http://127.0.0.1:%d" % server.server_port, "a" * 32)
             event = {"id":"camera-redirect","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False}
-            with self.assertRaises(Exception):
+            with self.assertRaises(SourceClientError):
                 client.send_event(event)
             self.assertFalse(followed["value"])
         finally:
