@@ -324,7 +324,7 @@ export async function pollOnce(state, options = {}) {
   async function fetchPage(cursor) {
     const url = new URL(`${endpoint}/api/events`);
     url.searchParams.set('limit', '100');
-    if (cursor !== null) url.searchParams.set('cursor', cursor);
+    url.searchParams.set('cursor', cursor ?? 'start');
     const response = await fetchWithRetry(url.toString(), () => ({
       redirect: 'error',
       headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
