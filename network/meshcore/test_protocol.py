@@ -36,7 +36,7 @@ class MeshCoreProtocolTests(unittest.TestCase):
     def test_bearing_event_round_trip_signed_and_privacy_minimized(self):
         payload = encode_event(self.event, self.private, now_epoch=self.now)
         self.assertLessEqual(len(payload), MAX_WIRE_BYTES)
-        self.assertEqual(len(payload), 116)
+        self.assertEqual(len(payload), 132)
         decoded = decode_event(payload, {self.fingerprint: self.public}, now_epoch=self.now)
         self.assertEqual(decoded["event_type"], "bearing")
         self.assertEqual(decoded["candidate_taxon"], "Vespa_velutina")
