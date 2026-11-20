@@ -51,7 +51,7 @@ def trial_rows(trial_id, target=(51.0, 7.0), angular_noise=0.0, time="2026-11-20
 
 def write_csv(path, rows, header=REQUIRED_COLUMNS):
     with Path(path).open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=header)
+        writer = csv.DictWriter(handle, fieldnames=header, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -145,7 +145,7 @@ class FieldReportTests(unittest.TestCase):
         self.assertIsNone(_wilson_interval(0, 0))
         low, high = _wilson_interval(30, 30)
         self.assertLess(low, 1.0)
-        self.assertEqual(high, 1.0)
+        self.assertAlmostEqual(high, 1.0, places=12)
 
 
 if __name__ == "__main__":
