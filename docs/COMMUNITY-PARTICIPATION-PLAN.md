@@ -1,8 +1,12 @@
 # Community and partner participation plan (Germany / EU)
 
-**Status:** outreach plan and prospect register, not evidence of endorsements or signed partnerships.  
+**Status:** internal preparation only. Do not contact, invite, publish, recruit or distribute until the readiness gate is passed and the project owner explicitly authorizes outreach. The prospect register is not evidence of endorsements or signed partnerships.  
 **Project:** BeeKeeper3000 / Beekeeper-Monitor  
 **Purpose:** recruit independent beekeepers, volunteer observers, regional associations, biodiversity groups and research partners for a privacy-preserving, open and locally operable monitoring network for *Vespa velutina*.
+
+## Operating mode: preparation only
+
+The current phase is **internal preparation**. This document is a research and planning aid, not permission to start external communication. Maintain public-source partner research, deduplicate organisations, verify published organisational contact routes and track project readiness. Do not send or submit emails, forms, messages, posts, newsletters, invitations or event registrations. Do not ask partner organisations to circulate material. Dormant communication examples in `community/OUTREACH-KIT.md` are not approved for use. Moving to external outreach requires a separate explicit instruction from the project owner after the readiness gate in [OUTREACH-READINESS-GATE.md](OUTREACH-READINESS-GATE.md) is reviewed.
 
 ## 1. What the project offers
 
