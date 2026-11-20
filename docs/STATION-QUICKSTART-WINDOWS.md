@@ -6,7 +6,7 @@ This starts the three software services already implemented:
 2. BeeKeeper3000 authenticated SQLite source journal.
 3. BeeKeeper3000 Node.js bridge with cursor pagination required.
 
-It does not install drivers or start an original Hornet3000 C++ daemon, camera driver, AI detector, MeshCore radio or Freenet node. Those components are not yet connected in the published source tree.
+It does not install camera drivers or start an original Hornet3000 C++ daemon or MeshCore radio. The optional ONNX camera producer is a separately started process that requires a locally rights-reviewed model; see [camera/README.md](../camera/README.md). A Freenet node is not started.
 
 ## Requirements
 
@@ -69,10 +69,22 @@ The stop script checks the recorded executable and command line before terminati
 
 The launcher is a per-user process supervisor, not a Windows Service and not an automatic startup task. Re-run it after login to start the station again. Logs are retained locally; apply a rotation/retention policy before long-term unattended use.
 
+## Optional camera producer
+
+After the base station has been started, install the optional runtime from camera/requirements.txt in a dedicated Python environment. Set only the local manifest and camera source in the current PowerShell session, then use the launcher:
+
+~~~powershell
+$env:BEEKEEPER_MODEL_MANIFEST = 'C:\secure\beekeeper\model-manifest.json'
+$env:BEEKEEPER_CAMERA_SOURCE = '0' # or a local file / RTSP URL
+.\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe'
+~~~
+
+The launcher retrieves the source API key from the current-user DPAPI station secret file; it does not ask the operator to copy the key into a command or file. Camera processing stays separate from the three base services. The example model manifest cannot run until a real model, hash, source, license and review status are supplied. Every predicted species remains unverified. Stop the camera process with Ctrl+C.
+
 ## Create a verified local backup
 
 With both services running, create a consistent snapshot of the BeeKeeper source
-journal and Monitor event database, plus the bridge checkpoint:
+journal, Monitor event database, optional camera outbox and bridge checkpoint:
 
 ```powershell
 .\scripts\Backup-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
@@ -80,7 +92,7 @@ journal and Monitor event database, plus the bridge checkpoint:
 
 The script writes a timestamped backup set under
 `%LOCALAPPDATA%\BeeKeeper3000\backups\`, verifies both SQLite snapshots,
-validates and copies the bridge checkpoint when present, and writes a SHA-256
+validates and copies the bridge checkpoint and the camera outbox when present, and writes a SHA-256
 manifest. It stages the set privately and publishes it only after all required
 steps succeed. It refuses backup paths outside the protected station directory.
 The DPAPI secret file is intentionally excluded; it is user/machine-bound and

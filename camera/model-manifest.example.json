@@ -1,0 +1,29 @@
+{
+  "manifest_version": 1,
+  "model_file": "models/your-model.onnx",
+  "model_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_SHA256",
+  "model_version": "unreviewed-placeholder",
+  "model_source_url": "https://example.org/replace-with-original-model-source",
+  "model_license": "CC-BY-4.0",
+  "license_review_status": "not-reviewed",
+  "inference_status": "experimental",
+  "input": {
+    "name": "images",
+    "width": 640,
+    "height": 640,
+    "color": "RGB",
+    "layout": "NCHW",
+    "scale": "0..1"
+  },
+  "outputs": {
+    "boxes": "boxes",
+    "scores": "scores",
+    "class_ids": "class_ids",
+    "box_format": "xyxy_normalized_post_nms"
+  },
+  "classes": [
+    { "id": 0, "label": "vespa_velutina_candidate", "threshold": 0.80, "prey_detected": false },
+    { "id": 1, "label": "vespa_crabro_candidate", "threshold": 0.80, "prey_detected": false },
+    { "id": 2, "label": "other_insect_candidate", "threshold": 0.80, "prey_detected": false }
+  ]
+}

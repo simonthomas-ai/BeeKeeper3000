@@ -47,3 +47,60 @@ jobs:
             }
           }
           ./scripts/Start-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -ValidateOnly
+
+      - name: Exercise protected station backup and restore including camera outbox
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $stateRoot = Join-Path $env:RUNNER_TEMP "BeeKeeperStationBackupTest"
+          $dataRoot = Join-Path $stateRoot "data"
+          New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
+          $env:BK_TEST_STATE_ROOT = $stateRoot
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE;$env:GITHUB_WORKSPACE/Beekeeper-Monitor"
+          @'
+          import os
+          from pathlib import Path
+          from network.source_event_store import SQLiteSourceEventStore
+          from camera.outbox import SQLiteOutbox
+          from integrations.event_store import SQLiteEventStore
+          from integrations.event_contracts import HiveEvent
+          data = Path(os.environ["BK_TEST_STATE_ROOT"]) / "data"
+          source = SQLiteSourceEventStore(str(data / "source-events.sqlite3"))
+          source.append({"id":"backup-check-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"candidate","confidence":0.8,"prey_detected":False})
+          monitor = SQLiteEventStore(str(data / "monitor-events.sqlite3"))
+          monitor(HiveEvent(kind="camera_detection", device_id="ci-station", timestamp="2026-11-20T08:00:00Z", payload={"label":"candidate","confidence":0.8,"verification_status":"unverified"}))
+          outbox = SQLiteOutbox(str(data / "camera-outbox.sqlite3"))
+          outbox.enqueue({"id":"camera-backup-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"candidate","confidence":0.8,"prey_detected":False})
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw "Could not seed synthetic databases." }
+
+          $backupRoot = Join-Path $stateRoot "backups"
+          ./scripts/Backup-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -StateRoot $stateRoot -BackupRoot $backupRoot
+          if ($LASTEXITCODE -ne 0) { throw "Station backup runner failed." }
+
+          $sets = @(Get-ChildItem -LiteralPath $backupRoot -Directory)
+          if ($sets.Count -ne 1) { throw "Expected exactly one completed backup set." }
+          $backupSet = $sets[0]
+          $manifest = Get-Content -Raw -LiteralPath (Join-Path $backupSet.FullName "manifest.json") | ConvertFrom-Json
+          foreach ($entry in $manifest.contents) {
+            $file = Join-Path $backupSet.FullName $entry.file
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Backup file missing: $($entry.file)" }
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant()
+            if ($hash -ne $entry.sha256) { throw "Backup hash mismatch: $($entry.file)" }
+          }
+          foreach ($required in @("source-events.sqlite3","monitor-events.sqlite3","camera-outbox.sqlite3")) {
+            if (-not ($manifest.contents.file -contains $required)) { throw "Backup manifest omitted $required" }
+          }
+
+          $restoreRoot = Join-Path $stateRoot "restore-test"
+          New-Item -ItemType Directory -Path $restoreRoot -Force | Out-Null
+          $sourceBackup = Join-Path $backupSet.FullName "source-events.sqlite3"
+          $monitorBackup = Join-Path $backupSet.FullName "monitor-events.sqlite3"
+          $cameraBackup = Join-Path $backupSet.FullName "camera-outbox.sqlite3"
+          python -m network.source_backup restore --backup $sourceBackup --destination (Join-Path $restoreRoot "source.sqlite3")
+          if ($LASTEXITCODE -ne 0) { throw "Source restore test failed." }
+          python -m integrations.store_backup restore --backup $monitorBackup --destination (Join-Path $restoreRoot "monitor.sqlite3")
+          if ($LASTEXITCODE -ne 0) { throw "Monitor restore test failed." }
+          python -m camera.outbox_backup restore --backup $cameraBackup --destination (Join-Path $restoreRoot "camera.sqlite3")
+          if ($LASTEXITCODE -ne 0) { throw "Camera outbox restore test failed." }
+

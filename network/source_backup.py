@@ -76,7 +76,8 @@ def _snapshot(source_path: str | os.PathLike, destination_path: str | os.PathLik
             destination_db.close()
             source_db.close()
         verify_database(temporary)
-        with temporary.open("rb") as handle:
+        with temporary.open("rb+") as handle:
+            handle.flush()
             os.fsync(handle.fileno())
         final_fd = os.open(destination, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         os.close(final_fd)
