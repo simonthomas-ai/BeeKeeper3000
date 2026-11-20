@@ -1,6 +1,6 @@
 # CI-, Lieferketten- und Herkunftsprüfbericht — 20.11.2026
 
-**Aktueller geprüfter Main-Stand:** `4c60ccf2b17d605e6dc5d2f1f19807bfabc91ac0`
+**Aktueller geprüfter Main-Stand:** `82d1d1e1e73478c267e097b909e5e4237adc3804`
 
 Die Ergebnisse wurden direkt aus GitHub Actions, Job-Protokollen und den erzeugten Audit-/SBOM-Artefakten geprüft. Sie gelten nur für die jeweiligen Commits und ausdrücklich erfassten Komponenten.
 
@@ -8,8 +8,8 @@ Die Ergebnisse wurden direkt aus GitHub Actions, Job-Protokollen und den erzeugt
 
 | Workflow | Commit | Ergebnis | Lauf |
 |---|---|---|---|
-| Quality gates (Linux + Windows) | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | alle 4 Jobs erfolgreich | [44760920162](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760920162) |
-| CodeQL Python + JavaScript/TypeScript | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | beide Analysejobs erfolgreich abgeschlossen | [44760920165](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760920165) |
+| Quality gates (Linux + Windows) | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | alle 4 Jobs erfolgreich | [44761512592](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761512592) |
+| CodeQL Python + JavaScript/TypeScript | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | beide Analysejobs erfolgreich abgeschlossen | [44761512543](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761512543) |
 | Windows station launcher validation | `4c60ccf2b17d605e6dc5d2f1f19807bfabc91ac0` | PowerShell-Prüfung und Backup-/Restore-Test erfolgreich | [44760920135](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760920135) |
 | Supply-chain audit and SBOM | `e59c0989dc452674cba7666a8725e82de2a42135` | alle 5 Jobs erfolgreich | [44760358858](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760358858) |
 | Network reference tests | `66c9e030401ec3939fd9f5c7c8e011e59bc89626` | alle 3 Jobs erfolgreich | [44759998784](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44759998784) |
