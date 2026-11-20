@@ -1,0 +1,89 @@
+name: Supply-chain audit and SBOM
+
+on:
+  push:
+    paths:
+      - "monitor-bridge/package.json"
+      - "monitor-bridge/package-lock.json"
+      - "network/meshcore/requirements*.txt"
+      - "network/meshcore/requirements.lock"
+      - "LICENSES.md"
+      - "THIRD_PARTY_NOTICES.md"
+      - "PROVENANCE.md"
+      - ".github/workflows/supply-chain.yml"
+  pull_request:
+    paths:
+      - "monitor-bridge/package.json"
+      - "monitor-bridge/package-lock.json"
+      - "network/meshcore/requirements*.txt"
+      - "network/meshcore/requirements.lock"
+      - "LICENSES.md"
+      - "THIRD_PARTY_NOTICES.md"
+      - "PROVENANCE.md"
+      - ".github/workflows/supply-chain.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-vulnerability-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned audit tool
+        run: python -m pip install --disable-pip-version-check "pip-audit==2.10.1"
+      - name: Audit all pinned optional MeshCore packages
+        run: |
+          mkdir -p reports
+          pip-audit --requirement network/meshcore/requirements.lock --no-deps --strict --format json --output reports/pip-audit.json
+
+      - name: Upload vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-vulnerability-audit
+          path: reports/pip-audit.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  python-sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned CycloneDX generator
+        run: python -m pip install --disable-pip-version-check "cyclonedx-bom==9.0.0"
+      - name: Generate validated CycloneDX SBOM for optional MeshCore lock
+        run: |
+          mkdir -p reports
+          cyclonedx-py requirements network/meshcore/requirements.lock --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/meshcore-runtime.cdx.json
+          python -m json.tool reports/meshcore-runtime.cdx.json >/dev/null
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: meshcore-runtime-cyclonedx-sbom
+          path: reports/meshcore-runtime.cdx.json
+          retention-days: 90
+
+  npm-vulnerability-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: monitor-bridge/package-lock.json
+      - name: Install exactly the locked Node.js dependency tree
+        run: npm --prefix monitor-bridge ci --ignore-scripts --no-audit --no-fund
+      - name: Audit Node.js dependencies
+        run: npm --prefix monitor-bridge audit --audit-level=low
