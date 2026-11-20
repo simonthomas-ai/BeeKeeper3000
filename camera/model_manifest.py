@@ -45,10 +45,13 @@ class ModelManifest:
     input_name: str
     width: int
     height: int
-    boxes_output: str
-    scores_output: str
-    class_ids_output: str
-    classes: dict[int, ModelClass]
+    resize_mode: str
+    box_format: str
+    boxes_output: str | None
+    scores_output: str | None
+    class_ids_output: str | None
+    detections_output: str | None
+    classes: dict[int, ModelClass>
 
 
 def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManifest:
@@ -114,11 +117,22 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     input_name = input_spec.get("name")
     if not isinstance(input_name, str) or not input_name.strip():
         raise ModelManifestError("ONNX input name is required")
-    if outputs.get("box_format") != "xyxy_normalized_post_nms":
-        raise ModelManifestError("output boxes must be normalized xyxy after model-side NMS")
-    output_names = [outputs.get("boxes"), outputs.get("scores"), outputs.get("class_ids")]
-    if any(not isinstance(item, str) or not item.strip() for item in output_names) or len(set(output_names)) != 3:
-        raise ModelManifestError("distinct boxes, scores and class_ids output names are required")
+    resize_mode = input_spec.get("resize_mode", "stretch")
+    if resize_mode not in {"stretch", "letterbox"}:
+        raise ModelManifestError("resize_mode must be stretch or letterbox")
+    box_format = outputs.get("box_format")
+    boxes_output = scores_output = class_ids_output = detections_output = None
+    if box_format == "xyxy_normalized_post_nms":
+        output_names = [outputs.get("boxes"), outputs.get("scores"), outputs.get("class_ids")]
+        if any(not isinstance(item, str) or not item.strip() for item in output_names) or len(set(output_names)) != 3:
+            raise ModelManifestError("distinct boxes, scores and class_ids output names are required")
+        boxes_output, scores_output, class_ids_output = output_names
+    elif box_format == "xyxy_pixels_nms_matrix6":
+        detections_output = outputs.get("detections")
+        if not isinstance(detections_output, str) or not detections_output.strip():
+            raise ModelManifestError("detections output name is required for matrix6 format")
+    else:
+        raise ModelManifestError("unsupported output box format")
 
     class_rows = raw.get("classes")
     if not isinstance(class_rows, list) or not class_rows:
@@ -140,6 +154,21 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         classes[cid] = ModelClass(label.strip(), float(threshold), prey)
 
     return ModelManifest(
-        manifest_path, model_path, digest, version.strip(), source, license_id, license_review,
-        input_name.strip(), width, height, output_names[0], output_names[1], output_names[2], classes
+        path=manifest_path,
+        model_path=model_path,
+        model_sha256=digest,
+        model_version=version.strip(),
+        model_source_url=source,
+        model_license=license_id,
+        license_review_status=license_review,
+        input_name=input_name.strip(),
+        width=width,
+        height=height,
+        resize_mode=resize_mode,
+        box_format=box_format,
+        boxes_output=boxes_output,
+        scores_output=scores_output,
+        class_ids_output=class_ids_output,
+        detections_output=detections_output,
+        classes=classes,
     )
