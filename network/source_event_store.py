@@ -27,6 +27,10 @@ class SourceCapacityError(SourceStoreError):
     """The bounded source journal is full; no unforwarded event was evicted."""
 
 
+class SourceDeletedError(SourceStoreError):
+    """A source event ID was previously erased and cannot be replayed."""
+
+
 class SQLiteSourceEventStore:
     """Append-only source journal. Never evicts unforwarded events to make space."""
 
@@ -95,6 +99,13 @@ class SQLiteSourceEventStore:
             """)
             db.execute("CREATE INDEX IF NOT EXISTS idx_source_created ON source_events(created_at)")
             db.execute("""
+                CREATE TABLE IF NOT EXISTS source_tombstones (
+                    event_id TEXT PRIMARY KEY,
+                    deleted_at TEXT NOT NULL
+                )
+            """)
+            db.execute("CREATE INDEX IF NOT EXISTS idx_source_tombstones_deleted ON source_tombstones(deleted_at)")
+            db.execute("""
                 CREATE TABLE IF NOT EXISTS source_meta (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
@@ -147,6 +158,12 @@ class SQLiteSourceEventStore:
         created = datetime.now(timezone.utc).isoformat()
         with self._db() as db:
             db.execute("BEGIN IMMEDIATE")
+            tombstone = db.execute(
+                "SELECT 1 FROM source_tombstones WHERE event_id=?",
+                (event["id"],),
+            ).fetchone()
+            if tombstone is not None:
+                raise SourceDeletedError("source event ID was previously deleted and cannot be replayed")
             existing = db.execute(
                 "SELECT payload_hash, sequence, payload_json FROM source_events WHERE event_id=?",
                 (event["id"],),
@@ -252,6 +269,9 @@ class SQLiteSourceEventStore:
             deleted = db.execute(
                 "DELETE FROM source_events WHERE created_at < ?", (cutoff,)
             ).rowcount
+            # Tombstones prevent delayed retries from resurrecting erased event IDs.
+            # They share the configured retention horizon to keep the ledger bounded.
+            db.execute("DELETE FROM source_tombstones WHERE deleted_at < ?", (cutoff,))
             earliest = db.execute(
                 "SELECT MIN(sequence) FROM source_events"
             ).fetchone()[0]
@@ -263,6 +283,44 @@ class SQLiteSourceEventStore:
                 (str(earliest if earliest is not None else last + 1),),
             )
             return deleted
+
+    def delete(self, event_id: str) -> bool:
+        """Erase one event and retain a bounded tombstone against delayed replay.
+
+        The sequence watermark is deliberately not moved for explicit deletion:
+        cursor consumers can continue past the intentional hole. Retention expiry
+        still advances the earliest-sequence watermark and raises 410 for stale
+        cursors. A downstream Monitor copy or backup is not erased by this method.
+        """
+        if (
+            not isinstance(event_id, str)
+            or not 1 <= len(event_id) <= 128
+            or any(ord(char) < 33 or ord(char) > 126 for char in event_id)
+        ):
+            raise ValueError("event_id must be 1..128 printable ASCII characters")
+        now = datetime.now(timezone.utc).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=self.retention_days)).isoformat()
+        with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("DELETE FROM source_tombstones WHERE deleted_at < ?", (cutoff,))
+            existing = db.execute(
+                "SELECT 1 FROM source_events WHERE event_id=?", (event_id,)
+            ).fetchone()
+            if existing is None:
+                return False
+            tombstones = int(db.execute("SELECT COUNT(*) FROM source_tombstones").fetchone()[0])
+            if tombstones >= self.max_rows * 2:
+                raise SourceCapacityError(
+                    "source deletion ledger is at capacity; event was not deleted"
+                )
+            db.execute(
+                "INSERT INTO source_tombstones(event_id, deleted_at) VALUES(?, ?)",
+                (event_id, now),
+            )
+            deleted = db.execute(
+                "DELETE FROM source_events WHERE event_id=?", (event_id,)
+            ).rowcount
+            return deleted == 1
 
     def count(self) -> int:
         with self._db() as db:
