@@ -59,7 +59,14 @@ export async function readState(file = statePath) {
     }
     // Bound the read even if another process grows the opened file after fstat.
     const buffer = Buffer.allocUnsafe((1024 * 1024) + 1);
-    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    let bytesRead = 0;
+    while (bytesRead < buffer.length) {
+      const result = await handle.read(
+        buffer, bytesRead, buffer.length - bytesRead, bytesRead
+      );
+      if (result.bytesRead === 0) break;
+      bytesRead += result.bytesRead;
+    }
     if (bytesRead > 1024 * 1024) {
       throw new Error('Bridge state file exceeds 1 MiB');
     }
