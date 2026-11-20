@@ -11,7 +11,7 @@ BEEKEEPER3000 verwendet keine lokalen LLMs und führt keine lokale Modellinferen
 
 ## Erster Online-Pfad: OpenRouter Free
 
-Die Konfiguration verwendet `openrouter/free`, das laut Anbieter passende kostenlose Modelle auswählt. Das Free-Konto bietet API-Zugang und 50 Requests pro Tag; kostenlose Modellvarianten müssen ausdrücklich gewählt werden. Vor dem ersten Lauf muss ein Free-Konto eingerichtet und `OPENROUTER_API_KEY` als geschützte Umgebungsvariable gesetzt werden. Keine Zahlungsmethode oder Guthabenaufladung aktivieren. Bei Limit, 402 oder fehlender Gratisverfügbarkeit wird nicht auf Paid-Modelle ausgewichen.
+OpenRouter Free ist lediglich als möglicher Adapter vorbereitet und bleibt deaktiviert. Vor einer Aktivierung müssen die aktuelle Kontoberechtigung, Modellverfügbarkeit, Nutzungsbedingungen und ein vom Anbieter tatsächlich erzwungener Ausgabenstopp von exakt 0 EUR nachgewiesen werden. Ein fehlender oder nicht verifizierbarer Hard Cap bedeutet: keine Anfrage. Ein API-Schlüssel allein beweist weder Gratiszugang noch Kostenfreiheit. Keine Zahlungsmethode, Guthabenaufladung oder kostenpflichtigen Fallbacks aktivieren.
 
 ## LMArena / Arena
 
