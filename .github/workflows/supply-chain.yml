@@ -7,6 +7,7 @@ on:
       - "monitor-bridge/package-lock.json"
       - "network/meshcore/requirements*.txt"
       - "network/meshcore/requirements.lock"
+      - "camera/requirements.txt"
       - "LICENSES.md"
       - "THIRD_PARTY_NOTICES.md"
       - "PROVENANCE.md"
@@ -75,6 +76,56 @@ jobs:
         with:
           name: meshcore-runtime-cyclonedx-sbom
           path: reports/meshcore-runtime.cdx.json
+          retention-days: 90
+
+  camera-runtime-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install pinned audit tool
+        run: python -m pip install --disable-pip-version-check "pip-audit==2.10.1"
+      - name: Audit camera runtime dependency graph
+        run: |
+          mkdir -p reports
+          pip-audit --requirement camera/requirements.txt --strict --format json --output reports/camera-runtime-audit.json
+      - name: Upload camera vulnerability report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: camera-runtime-vulnerability-audit
+          path: reports/camera-runtime-audit.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  camera-runtime-sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install the pinned optional camera runtime in an isolated environment
+        run: |
+          python -m venv /tmp/beekeeper-camera-runtime
+          /tmp/beekeeper-camera-runtime/bin/python -m pip install --disable-pip-version-check --requirement camera/requirements.txt
+          /tmp/beekeeper-camera-runtime/bin/python -m pip check
+      - name: Install pinned CycloneDX generator
+        run: python -m pip install --disable-pip-version-check "cyclonedx-bom==9.0.0"
+      - name: Generate reproducible CycloneDX SBOM from installed camera runtime
+        run: |
+          mkdir -p reports
+          cyclonedx-py environment /tmp/beekeeper-camera-runtime --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/camera-runtime.cdx.json
+          python -m json.tool reports/camera-runtime.cdx.json >/dev/null
+      - name: Upload camera runtime SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: camera-runtime-cyclonedx-sbom
+          path: reports/camera-runtime.cdx.json
           retention-days: 90
 
   npm-vulnerability-audit:

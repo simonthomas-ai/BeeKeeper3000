@@ -7,7 +7,9 @@ This register documents what automated checks actually cover. It is not a statem
 | Surface | Control | CI behaviour |
 |---|---|---|
 | Python optional MeshCore dependency set | `network/meshcore/requirements.lock` | Exact top-level and captured transitive versions are audited with pinned `pip-audit==2.10.1`; unresolved package collection is treated as failure |
+| Optional camera runtime | `camera/requirements.txt` | `pip-audit` checks direct and resolved dependency vulnerabilities; camera runtime SBOM is generated from an isolated environment after installing the pinned requirements |
 | Python optional MeshCore dependency set | CycloneDX | A reproducible CycloneDX JSON SBOM is generated from the pinned requirements set and uploaded as a CI artifact (90-day retention) |
+| Optional camera runtime | CycloneDX | A reproducible CycloneDX 1.6 SBOM is generated from the actual isolated Python 3.12 environment and uploaded as a CI artifact (90-day retention) |
 | Node.js bridge | `monitor-bridge/package-lock.json` | `npm ci` plus `npm audit --audit-level=low`; bridge currently has no third-party runtime dependencies |
 | Source code | CodeQL | Python and JavaScript/TypeScript static analysis |
 | Dependency update process | Dependabot | Weekly checks for npm, Python and GitHub Actions manifests |
@@ -31,6 +33,7 @@ From the repository root:
 ```sh
 python -m pip install "pip-audit==2.10.1"
 pip-audit --requirement network/meshcore/requirements.lock --no-deps --strict
+pip-audit --requirement camera/requirements.txt --strict
 
 python -m pip install "cyclonedx-bom==9.0.0"
 cyclonedx-py requirements network/meshcore/requirements.lock \
