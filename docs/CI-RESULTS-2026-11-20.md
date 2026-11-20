@@ -1,6 +1,6 @@
 # CI-, Lieferketten- und Herkunftsprüfbericht — 20.11.2026
 
-**Aktueller geprüfter Main-Stand:** `82d1d1e1e73478c267e097b909e5e4237adc3804`
+**Aktueller geprüfter Main-Stand:** `f1707bf58517ca4e9fb246a69a2e54aa76aa00f7`
 
 Die Ergebnisse wurden direkt aus GitHub Actions, Job-Protokollen und den erzeugten Audit-/SBOM-Artefakten geprüft. Sie gelten nur für die jeweiligen Commits und ausdrücklich erfassten Komponenten.
 
@@ -8,10 +8,10 @@ Die Ergebnisse wurden direkt aus GitHub Actions, Job-Protokollen und den erzeugt
 
 | Workflow | Commit | Ergebnis | Lauf |
 |---|---|---|---|
-| Quality gates (Linux + Windows) | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | alle 4 Jobs erfolgreich | [44761512592](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761512592) |
-| CodeQL Python + JavaScript/TypeScript | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | beide Analysejobs erfolgreich abgeschlossen | [44761512543](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761512543) |
+| Quality gates (Linux + Windows) | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | alle 4 Jobs erfolgreich | [44761997788](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761997788) |
+| CodeQL Python + JavaScript/TypeScript | `55c4f601e9d55ddbec2aaafe9e1b8263b2341b69` | beide Analysejobs erfolgreich abgeschlossen | [44761997857](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761997857) |
 | Windows station launcher validation | `4c60ccf2b17d605e6dc5d2f1f19807bfabc91ac0` | PowerShell-Prüfung und Backup-/Restore-Test erfolgreich | [44760920135](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760920135) |
-| Supply-chain audit and SBOM | `e59c0989dc452674cba7666a8725e82de2a42135` | alle 5 Jobs erfolgreich | [44760358858](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760358858) |
+| Supply-chain audit and SBOM | `f1707bf58517ca4e9fb246a69a2e54aa76aa00f7` | alle 5 Jobs erfolgreich | [44761997824](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44761997824) |
 | Network reference tests | `66c9e030401ec3939fd9f5c7c8e011e59bc89626` | alle 3 Jobs erfolgreich | [44759998784](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44759998784) |
 
 CodeQL-Analysejobs erfolgreich bedeutet nicht automatisch, dass null offene Code-Scanning-Alerts existieren. Die Alert-Liste muss im GitHub-Sicherheitsbereich separat geprüft werden.
@@ -54,14 +54,14 @@ Der aktuelle Supply-Chain-Lauf erzeugte vier Artefakte:
 
 Ergebnisse der tatsächlich heruntergeladenen Audit-Berichte:
 
-- Kamera-Runtime: 5 geprüfte Python-Pakete, keine bekannten Advisory-Treffer.
-- MeshCore-Runtime: 8 geprüfte Python-Pakete, keine bekannten Advisory-Treffer.
+- Kamera-Runtime: 5 geprüfte Python-Pakete, keine bekannten Advisory-Treffer (Audit-JSON heruntergeladen und geprüft).
+- MeshCore-Runtime: 8 geprüfte Python-Pakete, keine bekannten Advisory-Treffer (Audit-JSON heruntergeladen und geprüft).
 - Node.js: `npm audit` erfolgreich, 0 gemeldete Schwachstellen.
 - Beide CycloneDX-JSON-Dateien wurden erzeugt und syntaktisch validiert.
 
 Die Artefakte sind im [Supply-Chain-Lauf](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44760358858) abrufbar. GitHub-Artefakte sind zeitlich befristet.
 
-**Wichtige Einschränkung:** Die SBOMs sind keine vollständige Lizenzfreigabe. In den erzeugten CycloneDX-Daten fehlen Lizenzmetadaten bei mehreren Komponenten (unter anderem Teilen des MeshCore-Graphen und `protobuf`). Die Audits erfassen nur die deklarierten Dependency-Graphen; sie erfassen nicht das geerbte C++-Projekt, Betriebssystempakete, Kamera-/Funkfirmware, Modellgewichte, Trainingsdaten, Medien oder Hardware.
+**Wichtige Einschränkung:** Die SBOMs sind keine vollständige Lizenzfreigabe. In den erzeugten CycloneDX-Daten fehlen Lizenzmetadaten bei mehreren Komponenten (unter anderem Teilen des MeshCore-Graphen und `protobuf`). Die Audits erfassen nur die deklarierten Dependency-Graphen; sie erfassen nicht das geerbte C++-Projekt, Betriebssystempakete, Kamera-/Funkfirmware, Modellgewichte, Trainingsdaten, Medien oder Hardware. Der Supply-Chain-Workflow wurde erweitert und läuft nun auch bei Änderungen an Kamera-, MeshCore-, Monitor-Bridge- und Stationsskript-Quellcode.
 
 ## 4. Umgesetzte technische Härtungen
 
