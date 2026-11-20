@@ -46,6 +46,6 @@ Es wurden keine physischen Radios, Antennen, Repeater oder realen Stationen für
 
 Freenet ist ein optionales IP-P2P-Konzept und kein LoRa-Modem. Freenet, Meshtastic, Mosquitto und MapLibre sind in diesem Repository noch keine aktiv integrierten Laufzeitadapter.
 
-## Durable Hornet3000 source API
+## Dauerhaftes Hornet3000-Quelljournal
 
-The optional authenticated, cursor-paginated SQLite source journal is documented in [SOURCE-API.md](./SOURCE-API.md). It is an independently runnable adapter, not a retrofit of the absent original C++ HTTP server. It accepts strict metadata only and binds to loopback.
+Das optionale, authentifizierte SQLite-Quelljournal mit Cursor-Paginierung ist in [SOURCE-API.md](./SOURCE-API.md) dokumentiert. Es ist ein eigenständig ausführbarer Adapter und keine nachträgliche Einbindung in den nicht vorhandenen ursprünglichen C++-HTTP-Server. Es akzeptiert ausschließlich streng geprüfte Metadaten und bindet nur an die lokale Loopback-Schnittstelle.
