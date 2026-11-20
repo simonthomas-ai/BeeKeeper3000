@@ -129,6 +129,63 @@ export function toMonitorEvent(event) {
   };
 }
 
+const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const DEFAULT_MAX_ATTEMPTS = 4;
+const MAX_RETRY_AFTER_MS = 60_000;
+
+export function retryDelayMs(response, attempt, nowMs = Date.now()) {
+  const value = response?.headers?.get?.('retry-after');
+  if (value) {
+    const trimmed = value.trim();
+    let requested = Number.NaN;
+    if (/^\\d+(?:\\.\\d+)?$/.test(trimmed)) {
+      requested = Number(trimmed) * 1000;
+    } else {
+      const at = Date.parse(trimmed);
+      if (Number.isFinite(at)) requested = Math.max(0, at - nowMs);
+    }
+    if (Number.isFinite(requested) && requested >= 0) {
+      return Math.min(MAX_RETRY_AFTER_MS, requested);
+    }
+  }
+  const safeAttempt = Math.max(1, Math.min(8, Math.trunc(attempt) || 1));
+  return Math.min(8000, 500 * (2 ** (safeAttempt - 1)));
+}
+
+export async function fetchWithRetry(url, initOrFactory, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const sleep = options.sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
+  const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 6) {
+    throw new Error('maxAttempts must be between 1 and 6');
+  }
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let response;
+    try {
+      const init = typeof initOrFactory === 'function' ? initOrFactory(attempt) : initOrFactory;
+      response = await fetchImpl(url, init);
+    } catch (error) {
+      if (attempt === maxAttempts) throw error;
+      await sleep(retryDelayMs(null, attempt));
+      continue;
+    }
+
+    if (!RETRYABLE_HTTP_STATUSES.has(response.status) || attempt === maxAttempts) {
+      return response;
+    }
+
+    const delay = retryDelayMs(response, attempt);
+    try {
+      await response.body?.cancel();
+    } catch {
+      // Response may already have been consumed or closed.
+    }
+    await sleep(delay);
+  }
+  throw new Error('HTTP retry loop exited unexpectedly');
+}
+
 export async function forwardBatch(events, state, options = {}) {
   if (!Array.isArray(events) || events.length > 1000) throw new Error('Invalid or oversized event batch');
   if (!state || typeof state.has !== 'function' || typeof state.add !== 'function' ||
@@ -146,12 +203,16 @@ export async function forwardBatch(events, state, options = {}) {
     if (!event || typeof event.id !== 'string' || event.id.length < 1 || event.id.length > 128 || state.has(event.id)) continue;
     const mapped = toMonitorEvent(event);
     if (!mapped) continue;
-    const response = await fetchImpl(endpoint, {
+    const response = await fetchWithRetry(endpoint, () => ({
       method: 'POST',
       redirect: 'error',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(mapped),
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(options.timeoutMs || 8000)
+    }), {
+      fetchImpl,
+      sleep: options.sleep,
+      maxAttempts: options.maxAttempts
     });
     if (response.status !== 202) {
       await response.body?.cancel().catch(() => {});
@@ -189,10 +250,14 @@ export async function pollOnce(state, options = {}) {
   const endpoint = options.sourceUrl || sourceUrl;
   const apiKey = options.sourceKey || sourceKey;
   const fetchImpl = options.fetchImpl || fetch;
-  const response = await fetchImpl(`${endpoint}/api/events?limit=100`, {
+  const response = await fetchWithRetry(`${endpoint}/api/events?limit=100`, () => ({
     redirect: 'error',
     headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
-    signal: AbortSignal.timeout(8000)
+    signal: AbortSignal.timeout(options.timeoutMs || 8000)
+  }), {
+    fetchImpl,
+    sleep: options.sleep,
+    maxAttempts: options.maxAttempts
   });
   if (!response.ok) throw new Error(`Hornet3000 API failed: HTTP ${response.status}`);
   const body = await readJsonLimited(response, maxSourceResponseBytes, 'Hornet3000');
