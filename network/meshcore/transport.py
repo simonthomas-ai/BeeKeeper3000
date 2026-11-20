@@ -1,6 +1,8 @@
 """Optional MeshCore companion-radio adapter. Imports upstream code lazily."""
 from __future__ import annotations
 
+import inspect
+
 from .protocol import encode_event, MeshCoreProtocolError, MAX_WIRE_BYTES
 
 
@@ -76,12 +78,15 @@ class MeshCoreSerialTransport:
             raise MeshCoreTransportError("Connect to the MeshCore radio first")
         from meshcore import EventType
 
-        def filtered(event):
+        async def filtered(event):
             data = event.payload if isinstance(event.payload, dict) else {}
             if data.get("channel_idx") != self.channel or data.get("data_type") != self.data_type:
                 return
             try:
-                callback(bytes.fromhex(data.get("payload", "")))
+                raw = bytes.fromhex(data.get("payload", ""))
+                result = callback(raw)
+                if inspect.isawaitable(result):
+                    await result
             except (ValueError, TypeError):
                 return
 
