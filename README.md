@@ -17,7 +17,7 @@ Dieses Repository enthält aktuell eine veröffentlichte Teilmenge der BeeKeeper
 
 ### Netzwerk und Triangulation
 
-- `network/triangulation.py`: gewichtete Least-Squares-Schnittpunktberechnung aus mindestens drei unabhängigen, zeitlich passenden Peilungen.
+- `network/triangulation.py`: robuste gewichtete Least-Squares-Triangulation aus mindestens drei unabhängigen, zeitlich passenden Vorwärtspeilungen; paarweise Konsensbildung weist grobe Ausreißer zurück, Reichweiten skalieren die Winkelunsicherheit und ein 95-%-Unsicherheitsellipsen-Polygon kann als GeoJSON exportiert werden.
 - `network/protocol-v1.schema.json`: JSON-Vertrag für künftige und lokale IP-/Netzwerkereignisse.
 - `network/meshcore/`: optionaler MeshCore-Serialadapter mit binärem Ereignisformat v1, Ed25519-Signaturen, 128-Bit-Fingerprints, Ablaufzeit, Duplikatfilter und lokalem Stationskoordinatenregister.
 - `network/meshcore/event_store.py`: lokaler SQLite-Speicher mit dauerhafter Ereignis-ID-Deduplizierung, Aufbewahrungs-/Datensatzlimit und lokaler Speicherung der zur Peilung aufgelösten Stationskoordinaten. Doppelte signierte Ereignisse werden auch nach einem Empfänger-Neustart nicht erneut gespeichert.
