@@ -94,6 +94,7 @@ Die eingebrachte Ausgangsbasis stammt aus Hornet3000 Wächter 1.6.0. Dieses Repo
 Die Root-Lizenz und die vollständige Rechtekette des veröffentlichten Teilbaums sind noch nicht abschließend freigegeben. Die Ausgangsbasis ist laut Provenienzunterlagen Hornet3000 Wächter 1.6.0 mit GPL-3.0-or-later-Herkunft; daraus folgt keine pauschale Neulizenzierung aller neu hinzugefügten oder externen Bestandteile. Bis zur Prüfung keine Gesamtprojektlizenz unterstellen und keine unklar lizenzierten Artefakte weiterverteilen.
 
 Der öffentliche Pilot- und Release-Status bleibt **BLOCKIERT**, bis die anwendbare Checkliste für Träger-/Betreiberrollen, Lizenzkette, Datenschutz, Produktsicherheit, Funkrecht und fachliche Erkennungsqualität dokumentiert freigegeben wurde. Siehe:
+- [Sicher nutzbarer Umfang und Betriebsgrenzen](docs/SAFE-USE-STATUS.md)
 - [Recht und Gemeinnützigkeit](docs/LEGAL-COMPLIANCE.md)
 - [Verbindliches Release-/Pilot-Gate](docs/RELEASE-LEGAL-GATE.md)
 - [Mitwirkungsregeln](CONTRIBUTING.md)
