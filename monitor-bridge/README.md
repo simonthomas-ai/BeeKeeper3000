@@ -1,30 +1,54 @@
 # Hornet3000 → Beekeeper-Monitor bridge
 
-This adapter polls Hornet3000 `GET /api/events?limit=100` and forwards new detection metadata to the monitor's existing authenticated ingestion contract `POST /api/v1/events`. It does not transfer images, audio, GPS coordinates, API keys, or other location data. Species labels are prefixed `unverified_candidate:`; model confidence is not proof of species identity.
+This local Node.js adapter polls Hornet3000 `GET /api/events?limit=100` and forwards **validated metadata only** to the Monitor receiver `POST /api/v1/events`. Images, audio, GPS coordinates, camera credentials and source API keys are never copied into the event payload. Species labels are prefixed `unverified_candidate:`; model confidence is not proof of species identity.
 
-## Requirements and setup
+## Requirements
 
-- Node.js 20+; no third-party npm packages.
-- Hornet3000 running locally with an API key configured.
-- The `integrations/local_ingest.py` service from [Beekeeper-Monitor](https://github.com/simonthomas-ai/Beekeeper-Monitor) running on loopback port 8765.
-- A separate random ingestion token of at least 24 characters. Never reuse the Hornet3000 API key.
+- Node.js 20+; no third-party npm runtime dependencies.
+- Hornet3000's authenticated local API running and returning `{ "events": [...] }`.
+- Beekeeper-Monitor checkout with Python 3.12+ and its SQLite receiver.
+- A unique random receiver token (at least 24 characters). Do not reuse the Hornet3000 API key.
 
-Copy `.env.example` to `.env`, fill the values locally, then run the bridge with those environment variables loaded:
+## Local setup
 
-```bash
-# In the Beekeeper-Monitor checkout, start its receiver:
-VESPAGUARD_INGEST_TOKEN='your-long-random-token' python -m integrations.local_ingest
+PowerShell, in the Beekeeper-Monitor checkout:
 
-# In this repository, after loading monitor-bridge/.env:
-cd monitor-bridge
+```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$rng.Dispose()
+$env:VESPAGUARD_INGEST_TOKEN = [Convert]::ToBase64String($bytes)
+$env:VESPAGUARD_INGEST_DB = "$env:LOCALAPPDATA\BeeKeeper-Monitor\events.sqlite3"
+python -m integrations.local_ingest
+```
+
+Open `http://127.0.0.1:8765/` to access the local PWA and its authenticated station-event panel. Keep this listener on loopback; never expose plain HTTP to the internet.
+
+In a second PowerShell window, from `BeeKeeper3000\monitor-bridge`:
+
+```powershell
+$env:HORNET3000_URL = "http://127.0.0.1:8787"
+$env:HORNET3000_API_KEY = "YOUR_HORNET3000_API_KEY"
+$env:BEEKEEPER_MONITOR_INGEST_URL = "http://127.0.0.1:8765/api/v1/events"
+$env:BEEKEEPER_MONITOR_INGEST_TOKEN = "PASTE_THE_RECEIVER_TOKEN"
+$env:BRIDGE_STATE_FILE = "$env:LOCALAPPDATA\BeeKeeper-Monitor\bridge-state.json"
+$env:POLL_INTERVAL_MS = "10000"
 npm test
 npm start
 ```
 
-The receiver binds to `127.0.0.1:8765`. The bridge saves forwarded event IDs to a private local state file. It polls the most recent 100 source events; first start therefore imports at most that recent window.
+Node.js stores the forwarded-ID state file with owner-only permissions where supported. The bridge handles Windows entry-point paths correctly and only marks an event as forwarded after the receiver returns HTTP 202 with `{"accepted":true}`. A crash between receiver commit and local checkpoint can replay an event; the SQLite receiver's canonical-event hash prevents duplicate rows.
 
-## Integration boundary
+## Data-loss boundary
 
-The monitor receiver currently validates and logs metadata; it does **not** yet persist received events into the PWA's IndexedDB observation list or render them in the dashboard. This is a transport adapter, not a complete visible dashboard integration. A follow-up change in the Beekeeper-Monitor repository is still required for persistence/UI, followed by an end-to-end deployment test.
+The current Hornet3000 API contract exposes only the most recent 100 events. This bridge cannot guarantee complete backfill if more than 100 events arrive between polls or before first startup. No client-only change can recover events that the source API no longer returns. Lossless operation requires a source-side stable cursor/sequence contract (for example, `after=<opaque cursor>` plus a returned `next_cursor`) and retention long enough for offline stations. Until that API exists, treat the bridge as a best-effort recent-window adapter, not a lossless event bus.
 
-For non-loopback deployment, use HTTPS and a private VPN/reverse proxy. Never expose either plain-HTTP service directly to the public internet.
+## Security boundary
+
+- Use HTTPS for non-loopback endpoints; loopback HTTP is permitted for local-only deployments.
+- Use separate source and receiver credentials.
+- Limit network access to trusted stations/VPN peers.
+- Preserve the bridge state file and receiver database in protected local storage.
+- The receiver commits metadata to SQLite and exposes authenticated local list/delete routes. Its security and retention boundary is documented in [Beekeeper-Monitor](https://github.com/simonthomas-ai/Beekeeper-Monitor/blob/main/integrations/LOCAL-INGESTION.md).
+- Database encryption at rest, encrypted off-device backups and a deployment-specific privacy review are still required for multi-station operation.
