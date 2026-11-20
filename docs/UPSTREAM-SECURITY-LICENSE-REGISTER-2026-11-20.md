@@ -35,6 +35,38 @@ Before any optional component becomes a production dependency, record:
 6. Runtime permissions, data egress, storage limits and rollback strategy.
 7. Device-level and field tests on the actual supported station hardware.
 
+## Immutable upstream source and license-file references
+
+The following values were retrieved from the upstream GitHub Content/Commit APIs on 2026-11-20. The commit SHA is an immutable snapshot of the upstream default branch at review time; it is **not** a declaration that this arbitrary HEAD is the product's approved runtime version. The license SHA is GitHub's Git blob object ID for the named license file (not a raw-file SHA-256). Tags/releases must still be selected and pinned deliberately at integration time.
+
+| Upstream repository | Default-branch commit SHA reviewed | License file | License blob SHA |
+|---|---|---|---|
+| `meshcore-dev/MeshCore` | `75b04ef06def54b348400cb1b138afb6749ffd4f` | `license.txt` (MIT) | `4b1f85cefcf80306f65e5066af20950bca0fff33` |
+| `meshtastic/firmware` | `bb3c25eb6701ebec89e8ad6c4d01c35d0d3b5e62` | `LICENSE` (GPL-3.0) | `10926e87f113fb026c366866d6fa466061562870` |
+| `freenet/freenet-core` | `3965e511e36f845381cf13cee4fc1a64f5bff07e` | `LICENSE.md` (AGPL-3.0; includes upstream explanatory section) | `434fbfa8db3c1c6bd9b525d4e0e42111d3369b8e` |
+| `freenet/freenet-stdlib` | `7782c176a622efc3f284ce4710b4f184c4986405` | `LICENSE.md` (LGPL-3.0) | `6fb6a01ee0c21468ff46438fb765f0ae1e5bd98e` |
+| `maxsitt/insect-detect` | `f1a70c997ed6430f4ce0b8fe852d2fbccf05c513` | `LICENSE` (GPL-3.0) | `e62ec04cdeece724caeeeeaeb6ae1f6af1bb6b9a` |
+| `maxsitt/insect-detect-ml` | `23c772666cd8610646257292a8d91b4318ff08ee` | `LICENSE` (AGPL-3.0) | `0ad25db4bd1d86c452db3f9602ccdbe172438f52` |
+| `eclipse-mosquitto/mosquitto` | `7ae66ca5cf5e75dca18ba2f6cbdd21453c8e51a5` | `LICENSE.txt` (EPL-2.0 OR EDL-1.0) | `aae2e8ccf529cef6b058f98ede72090f6ae92721` |
+| `maplibre/maplibre-gl-js` | `7a6b265daecebb91e082f85d4fef09a8f75d84b0` | `LICENSE.txt` (BSD-3-Clause) | `1e8acbb54fa7baddc844377507cc5a79353174fb` |
+| `qgis/QGIS` | `32f15392873079dfca31b0b8e327fe7f3013569a` | `COPYING` (GPL-2.0) | `8e2daf6bc046673223b197d859fa9609255ef13c` |
+
+### Reproducibility limits
+
+- Upstream default-branch commit snapshots and license blob IDs above can be re-fetched and compared; they do not replace release tags, signed releases, binary hashes or a software bill of materials for an actually selected integration.
+- Freenet Core's explanatory license text is upstream-authored guidance. A real integration still needs a legal review of the actual linking, process, packaging and deployment arrangement.
+- No model weights, datasets, photos, audio, firmware or map tiles were downloaded or incorporated as part of this review; their hashes and permissions remain unverified.
+- The repository's inherited Hornet3000 root license chain remains unresolved because the full source archive and original notices are still not present.
+
+## Current in-repository audit outcome
+
+As of this review:
+- Node dependency audit completed successfully for the committed lockfile, which contains no third-party package entries.
+- Python vulnerability audit completed successfully for the exact optional MeshCore lock file.
+- CycloneDX 1.6 generation and JSON validation completed successfully for that same optional Python lock.
+- CodeQL Python and JavaScript/TypeScript analysis completed successfully for the component-register change.
+- These results do not imply that unmanifested firmware/model/C++ dependencies or the full product are free of vulnerabilities.
+
 ## Sources reviewed
 
 - [MeshCore source license](https://github.com/meshcore-dev/MeshCore/blob/main/license.txt)
