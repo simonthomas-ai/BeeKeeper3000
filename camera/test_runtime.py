@@ -32,12 +32,16 @@ class FakeCV2:
     CAP_AVFOUNDATION = 1200
     CAP_ANY = 0
     CAP_PROP_BUFFERSIZE = 38
+    CAP_PROP_OPEN_TIMEOUT_MSEC = 53
+    CAP_PROP_READ_TIMEOUT_MSEC = 54
 
     def __init__(self):
         self.calls = []
 
-    def VideoCapture(self, source, backend):
+    def VideoCapture(self, source, backend, params=None):
         capture = FakeCapture(source, backend)
+        capture.params = params
+
         self.calls.append(capture)
         return capture
 
@@ -73,6 +77,16 @@ class RuntimeTests(unittest.TestCase):
         with patch.dict(sys.modules, {"cv2": fake}), patch("camera.runtime.sys.platform", "linux"):
             _capture_source("rtsp://127.0.0.1:554/stream")
         self.assertEqual(fake.calls[0].backend, fake.CAP_FFMPEG)
+
+    def test_network_camera_uses_bounded_open_and_read_timeouts(self):
+        fake = FakeCV2()
+        with patch.dict(sys.modules, {"cv2": fake}), patch("camera.runtime.sys.platform", "linux"):
+            _capture_source("rtsp://127.0.0.1:554/stream")
+        self.assertEqual(fake.calls[0].backend, fake.CAP_FFMPEG)
+        self.assertEqual(fake.calls[0].params, [
+            fake.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000,
+            fake.CAP_PROP_READ_TIMEOUT_MSEC, 5000,
+        ])
 
     def test_windows_local_camera_uses_directshow(self):
         fake = FakeCV2()
