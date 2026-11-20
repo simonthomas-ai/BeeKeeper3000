@@ -49,7 +49,23 @@ def _capture_source(value: str):
         backend = cv2.CAP_ANY
     else:
         backend = cv2.CAP_FFMPEG
-    capture = cv2.VideoCapture(source, backend)
+    if local_device:
+        capture = cv2.VideoCapture(source, backend)
+    else:
+        # FFmpeg/GStreamer backends accept open/read timeout parameters in the
+        # VideoCapture constructor. Do not silently fall back to an unbounded
+        # RTSP/file read when the installed OpenCV build lacks this support.
+        open_timeout = getattr(cv2, "CAP_PROP_OPEN_TIMEOUT_MSEC", None)
+        read_timeout = getattr(cv2, "CAP_PROP_READ_TIMEOUT_MSEC", None)
+        if open_timeout is None or read_timeout is None:
+            raise CameraRuntimeError("OpenCV backend lacks bounded open/read timeout support")
+        try:
+            capture = cv2.VideoCapture(
+                source, backend,
+                [open_timeout, 5000, read_timeout, 5000],
+            )
+        except (TypeError, Exception) as exc:
+            raise CameraRuntimeError("OpenCV could not apply bounded capture timeouts") from exc
     if hasattr(cv2, "CAP_PROP_BUFFERSIZE"):
         capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
     return capture
