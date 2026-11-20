@@ -25,7 +25,7 @@
 
 ## Known release gaps
 
-- The bridge client now supports cursor pagination and backlog catch-up, but the actual Hornet3000 source API in this repository still exposes only the latest 100 events. The server-side cursor implementation, durable sequence, retention and live end-to-end acceptance are not present here. Until those ship, default compatibility mode remains lossy; deployments can set `BRIDGE_REQUIRE_CURSOR=true` to fail closed. See `monitor-bridge/SOURCE-CURSOR-CONTRACT.md` and BeeKeeper3000 issue #7.
+- The bridge defaults to requiring the opaque cursor contract and fails closed when the source does not provide it. The legacy latest-100 mode is an explicitly lossy compatibility fallback and must not be used for a complete operational event history. A recorded software end-to-end run delivered 205 synthetic events in 100/100/5 pages, resumed after restart and replayed idempotently; this does not prove every external Hornet3000 source deployment implements the same contract. Verify the exact source version and cursor support before connecting a station. See `monitor-bridge/SOURCE-CURSOR-CONTRACT.md`.
 - MeshCore has only simulated protocol/transport tests; no real radio, antenna, repeater or multi-station field test is claimed.
 - Freenet, Meshtastic, Mosquitto and MapLibre are not active runtime dependencies of BeeKeeper3000.
 - ONNX inference and the Vespa-velutina classifier are not validated as operational.
