@@ -1,39 +1,70 @@
-# Upload and integration status
+# Veröffentlichungs- und Integrationsstatus
 
-## Published to GitHub
+Stand: 20.11.2026
 
-- New repository: https://github.com/simonthomas-ai/BeeKeeper3000
-- Published: project overview, provenance/licensing/security notes, and the `monitor-bridge/` adapter with setup guide and tests.
-- Published monitor-side connection guide: https://github.com/simonthomas-ai/Beekeeper-Monitor/blob/main/integrations/HORNET3000-CONNECTION.md
+## In GitHub veröffentlichte Komponenten
 
-## Not yet published
+Repository: https://github.com/simonthomas-ai/BeeKeeper3000
 
-The complete 1.6.0 source tree (C++ service, web UI, firmware, bridges, packaging, and full test suite) is prepared as a local source archive but has **not** been committed into this GitHub repository. Do not mistake the adapter/documentation commits for a complete source upload.
+- Architektur-, Security-, Lizenz-, Provenienz- und Lieferketten-Dokumentation.
+- Cursor-fähige lokale Quell-API mit HMAC-signierten Cursor-Tokens, strengem Ereignisvertrag, begrenztem SQLite-Quelljournal, Aufbewahrungsgrenze und explizitem Fehler bei abgelaufenen/wiederaufzuholenden Cursorn.
+- Node.js-Monitor-Bridge mit Cursor-Paginierung, begrenzten Wiederholungen, Retry-After, schema- und größenbegrenzten Antworten, atomarem Checkpoint und Metadaten-Minimierung.
+- Optionaler MeshCore-Serialadapter mit kompaktem signiertem Ereignisformat, Ed25519-Prüfung, Station-Key-Bindung, TTL, Replay-Schutz und lokalem SQLite-Empfänger-/Peilungsspeicher.
+- Robuste Winkelpeilungs-Triangulation mit Zeitfenster, Geometrieprüfung, Huber-Gewichtung, begrenzter Ausreißerbehandlung und 95-%-Unsicherheitsellipse. Das Resultat ist immer eine Suchhypothese.
+- Windows-Start-/Stopp- und Backup-Skripte mit lokalem DPAPI-Schutz für Stationsgeheimnisse, ACL-geschütztem Arbeitsverzeichnis, SQLite-Online-Backups und SHA-256-Manifest.
+- CI für Python-/Netzwerk-/MeshCore-Regressionen, Bridge-Tests auf Ubuntu und Windows, CodeQL, optionalen Dependency-Audit und CycloneDX-SBOM für die vorhandene optionale MeshCore-Python-Abhängigkeitsliste.
 
-## Network implementation added
+Monitor-Repository: https://github.com/simonthomas-ai/Beekeeper-Monitor
 
-- `NETWORK-ARCHITECTURE.md`: bundesweite Architektur mit Teilnehmerklassen, LoRa/MeshCore, Freenet-P2P, IP-Fallback, Datenschutz und Pilot-Abnahme.
-- `network/triangulation.py`: gewichtete Peilungs-Triangulation mit Zeitfenster-, Geometrie-, Rückwärtsstrahl- und Restfehlerprüfung.
-- `network/protocol-v1.schema.json`: versionierter Ereignisrahmen für künftige Funk-/IP-Adapter.
-- `network/test_triangulation.py`: synthetische Regressionstests; lokale numerische Referenzprüfung durchgeführt. GitHub Actions führt die Tests bei Push/PR aus.
+- Authentifizierter Loopback-Eingang für streng validierte Metadatenereignisse.
+- Dauerhafte SQLite-Speicherung, Replay-Deduplizierung, Retention, Export-/Löschpfade, begrenzte Requests und lokale Stationsereignisansicht.
+- Software-Ende-zu-Ende-Test Quelle → Bridge → Monitor mit realen lokalen HTTP-Handlern und temporären SQLite-Datenbanken.
 
-Diese Komponenten sind ein Software-Referenzstart, noch kein fertig installierbares bundesweites Funknetz. Hardware-/Feldtests und echte Funkadapter fehlen.
+## Ende-zu-Ende-Nachweis
 
-## Validation
+Der Test übertrug 205 Ereignisse durch echte lokale Softwareprozesse und HTTP-Schnittstellen:
+- 205 Quellereignisse wurden über Cursor-Seiten 100/100/5 an den Monitor übertragen.
+- Nach Neustart der Bridge wurde am gespeicherten Cursor weitergearbeitet; es kamen keine weiteren Datensätze hinzu.
+- Ein absichtlicher vollständiger Replay sendete die 205 Ereignisse erneut; der Monitor behielt trotzdem genau 205 eindeutige Datensätze.
+- Die Tests prüfen, dass keine Bilder, Audiodaten oder GPS-Koordinaten über die Bridge gehen und Kandidaten nicht als fachlich bestätigt hochgestuft werden.
 
-- C++ release build: passed.
-- C++ core tests: 1/1 passed.
-- Freenet, MeshCore, and Monitor-bridge Node tests: 12/12 passed.
-- ONNX Runtime was unavailable in the baseline environment; model inference is therefore not confirmed active.
+Nachweise:
+- Monitor-Integrations-Workflow: https://github.com/simonthomas-ai/Beekeeper-Monitor/actions/runs/44733301612
+- BeeKeeper3000 Bridge-Tests Linux/Windows: https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44734124679
+- BeeKeeper3000 Netzwerk-/MeshCore-/Python-Regressionen: https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44734124954
+- CodeQL auf dem PR-Stand: https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44734124850
 
-## Integration boundary
+Diese Ergebnisse belegen die automatisierte Softwarestrecke mit Testdaten. Sie belegen weder den Betrieb einer realen Kamera/KI noch eine Funkverbindung, ein bundesweites LoRa-Netz oder die Genauigkeit einer Feldtriangulation.
 
-The adapter maps Hornet3000 events to the existing Monitor authenticated ingestion schema and omits image/audio/GPS data. The Monitor receiver currently validates and logs accepted metadata but does not yet persist it into PWA IndexedDB or display it in the dashboard. No live end-to-end deployment test has been performed.
+## Noch nicht veröffentlichte bzw. nicht vollständig belegte Bestandteile
 
-## Release blockers
+Der vollständige ursprüngliche Hornet3000-Wächter-Quellbaum 1.6.0 ist im aktuellen GitHub-Tree nicht enthalten. Insbesondere fehlen weiterhin der vollständige ursprüngliche C++-Dienst, zugehörige CMake-/Build-Manifeste, vollständige Packaging-/Installer-Bestandteile und eine durchgehende Artefakt-Provenienzkette. Der Repository-Baum darf nicht mit einem vollständigen Upload des ursprünglichen Produkts verwechselt werden.
 
-- Complete source tree upload and repository verification.
-- Monitor-side persistence and dashboard UI integration.
-- Runtime retention/deletion implementation and deployment-specific GDPR assessment.
-- Model weights/dataset rights audit, full SBOM, and real camera/field validation.
-- Real secrets must be provisioned locally; never commit API keys, camera credentials, captures, audio, or GPS traces.
+Nicht als integriert oder betriebsbereit behauptet werden:
+- validierte lokale KI-Inferenz bzw. ein nach unabhängigen Daten geprüftes Vespa-velutina-Modell,
+- physischer MeshCore-/LoRa-Betrieb mit zwei oder mehr echten Funkgeräten,
+- bundesweite Relais-/Gateway-Abdeckung,
+- Meshtastic als eigener Adapter,
+- Freenet-P2P-Adapter,
+- MQTT/Mosquitto-Adapter,
+- MapLibre-Live-Karte,
+- Anbindung von Kamera-/Audio-Hardware an einen validierten Detektor.
+
+## Noch offene Freigabe- und Betriebsarbeiten
+
+1. Vollständige ursprüngliche C++-Quellbasis, Lizenztexte, Urheberhinweise und Provenienz aus vertrauenswürdiger Quelle wiederherstellen und abgleichen. GitHub erkennt für das Repository weiterhin keine Root-Lizenz; keine pauschale Weiterverteilungslizenz ableiten.
+2. Vollständige SBOM-/Lizenzabdeckung für alle tatsächlich veröffentlichten Runtime-, OS-, Firmware-, Modell-, Datensatz- und Kartenartefakte herstellen. Die vorhandenen SBOM-/Audit-Jobs decken die vorhandene Bridge-Abhängigkeitsstruktur und die optionale MeshCore-Python-Lockdatei ab, nicht das fehlende Gesamtprodukt.
+3. Physische MeshCore-Hardwaretests einschließlich unterstützter Boards/Firmware, Paketverlust, Reichweite, Antennen-/Standortkonfiguration und gesetzlicher Funkparameter durchführen.
+4. Peilung mit kalibrierten Sensoren, dokumentiertem Fehlerbudget und unabhängig vermessenen Zielpositionen im Feld validieren.
+5. Modellgewichte, Trainingsdaten und Fotos separat auf Lizenz/Einwilligung prüfen und ein unabhängiges Testset mit Precision/Recall und Verwechslungsmatrix bereitstellen.
+6. PWA auf echten iOS-/Android-Geräten installieren, Offline-Neustart und Backup-/Restore auf einer Teststation abnehmen.
+7. Datenschutz- und Sicherheitsreview für den konkreten Betreiber, Datenfluss, Speicherort, Rollen, Aufbewahrung, Export und Löschung durchführen. Diese Dokumentation ist keine DSGVO-Zertifizierung.
+
+## Betrieb und Datensicherheit
+
+- Keine API-Schlüssel, Stations-Private-Keys, Kamerapasswörter, privaten Bilder, Audioaufnahmen oder präzisen Standortdaten committen.
+- Standarddienste bleiben auf Loopback; Remotezugriff nur über ein separat abgesichertes VPN/TLS-Gateway.
+- SQLite-Dateien sind nicht anwendungsseitig verschlüsselt. Dateisystemrechte und Datenträgerverschlüsselung (z. B. BitLocker) bleiben erforderlich.
+- Windows-DPAPI-Geheimnisse sind Benutzer-/Rechner-gebunden und nicht als portable Backup-Datei gedacht.
+- Keine öffentliche Kartenfreigabe präziser Standorte ohne ausdrücklich geregelte Freigabe und Rollenmodell.
+- Kein automatischer Artbestätigungs- oder Bekämpfungsentscheid aus einem Modellscore oder einer Peilhypothese.
