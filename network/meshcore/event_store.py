@@ -231,6 +231,14 @@ class SQLiteMeshCoreEventStore:
                     raise MeshCoreStoreError(f"invalid local {name}")
             if bearing.observed_at != event["observed_at"]:
                 raise MeshCoreStoreError("local bearing timestamp does not match signed event")
+            if not math.isclose(
+                float(bearing.azimuth_deg), float(event["bearing_deg"]), abs_tol=0.005
+            ):
+                raise MeshCoreStoreError("resolved bearing azimuth does not match signed packet")
+            if not math.isclose(
+                float(bearing.sigma_deg), float(event["bearing_sigma_deg"]), abs_tol=0.005
+            ):
+                raise MeshCoreStoreError("resolved bearing uncertainty does not match signed packet")
             station_id = bearing.station_id
             latitude = float(bearing.latitude)
             longitude = float(bearing.longitude)
