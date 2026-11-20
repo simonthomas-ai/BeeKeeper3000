@@ -1,36 +1,33 @@
-# External model and dataset provenance register — 20.11.2026
+# Register externer Modelle und Datensätze – 20.11.2026
 
-**Purpose:** identify reusable Vespa velutina detector assets without importing files whose exact model/data rights are not established. This is an engineering screening, not a legal opinion.
+**Zweck:** Wiederverwendbare Erkennungsmodelle für *Vespa velutina* finden, ohne Dateien mit ungeklärten Modell- oder Datenrechten zu übernehmen. Dies ist eine technische Vorprüfung und **kein Rechtsgutachten**.
 
-## Candidate review
+## Bewertung der Kandidaten
 
-| Candidate | Observed evidence | Decision |
+| Kandidat | Festgestellte Hinweise | Entscheidung |
 |---|---|---|
-| [vespCV/hornet3000](https://github.com/vespCV/hornet3000) | Public repository marked GPL-3.0; archived 07.06.2025. Tracks YOLOv8s `best.onnx` (44,737,849 bytes) and `best.pt`. README says training/validation images came mainly from waarnemingen.nl/Observation.org using “approved” and “shareable licenses”, with the dataset on Kaggle. No artifact-level weight license, per-image license manifest, immutable training-dataset snapshot or permission chain was found in the reviewed README/manual. | **HOLD — do not bundle, redistribute or mark approved.** Ask the maintainer for explicit weight licensing, source dataset version, per-image rights/attribution and the model's corresponding training source. Repository GPL marker alone does not prove the training-data rights or the exact weight artifact's status. |
-| [vespCV/vespcv](https://github.com/vespCV/vespcv) | Repository has a `best.pt` artifact (19,174,547 bytes) and training results. GitHub repository metadata reports `NOASSERTION`; no complete model/dataset rights chain was established. | **HOLD — no import.** Obtain an explicit license and data provenance from the maintainers. |
-| [andrw3000/vespai](https://github.com/andrw3000/vespai) | Repository LICENSE explicitly states CC BY-NC-SA 4.0 for repository material and AGPL-3.0 for constituent model code. It contains YOLOv5 model weights and references Plainsight labelling outputs. | **REJECT for general-purpose distribution.** NonCommercial and ShareAlike conditions restrict downstream uses; they do not satisfy the project's intended unrestricted free/open reuse. Do not combine these weights or code into BeeKeeper3000. |
-| [PauMonterosa/vespa-velutina-tracker](https://github.com/PauMonterosa/vespa-velutina-tracker) | README reports experimental YOLOv8s metrics and says a `best.pt` exists locally, but the model binaries are ignored by Git. The README also says the exact dataset YAML and source-dataset licenses are missing. | **HOLD — no usable weight artifact or rights chain.** Reported metrics are not transferable evidence for this project. |
-| [Roboflow ISR Vespa velutina dataset v1](https://universe.roboflow.com/institute-of-systems-and-robotics-isr/vespa-velutina-hihv9-upzpe/dataset/1) | Dataset page labels it CC BY 4.0 and lists 1,508 images in the version record; the generated dataset view reports augmentation and train/validation/test splits. | **CANDIDATE DATA ONLY — not imported.** Verify uploader authority, underlying image sources, per-image attribution, current terms, split leakage and whether redistribution of the processed set is permitted before use. CC BY 4.0 on the dataset page is not proof that every underlying photograph was licensed by its actual rights holder. |
+| [vespCV/hornet3000](https://github.com/vespCV/hornet3000) | Öffentliches Repository mit GPL-3.0-Kennzeichnung, am 07.06.2025 archiviert. Enthält YOLOv8s-`best.onnx` (44.737.849 Byte) und `best.pt`. Laut README stammen Trainings-/Validierungsbilder überwiegend von waarnemingen.nl/Observation.org mit angeblich genehmigten und teilbaren Lizenzen; der Datensatz wird auf Kaggle genannt. Im geprüften README/Handbuch wurden keine eindeutige Lizenz der konkreten Modellgewichte, keine Lizenzliste je Bild, kein unveränderlicher Trainingsdatensatzstand und keine vollständige Rechtekette gefunden. | **ZURÜCKSTELLEN – nicht bündeln, weitergeben oder freigeben.** Rechte an den Gewichten, genaue Datensatzversion, Rechte/Urhebernennung je Bild und zugehörige Trainingsquellen bei den Verantwortlichen anfragen. Die GPL-Angabe allein belegt diese Rechte nicht. |
+| [vespCV/vespcv](https://github.com/vespCV/vespcv) | Enthält `best.pt` (19.174.547 Byte) und Trainingsergebnisse. GitHub meldet als Lizenz `NOASSERTION`; eine vollständige Rechtekette für Modell und Datensatz wurde nicht belegt. | **ZURÜCKSTELLEN – kein Import.** Ausdrückliche Lizenz- und Herkunftsnachweise anfordern. |
+| [andrw3000/vespai](https://github.com/andrw3000/vespai) | Die LICENSE-Datei nennt CC BY-NC-SA 4.0 für Repository-Inhalte und AGPL-3.0 für enthaltenen Modellcode. YOLOv5-Gewichte und Verweise auf Plainsight-Annotationen sind vorhanden. | **FÜR ALLGEMEINE WEITERGABE ABLEHNEN.** Die Bedingungen „Nicht kommerziell“ und „Weitergabe unter gleichen Bedingungen“ beschränken nachgelagerte Nutzung und erfüllen nicht das Ziel einer allgemein frei wiederverwendbaren Verteilung. Diese Gewichte oder diesen Code nicht ungeprüft übernehmen. |
+| [PauMonterosa/vespa-velutina-tracker](https://github.com/PauMonterosa/vespa-velutina-tracker) | Das README nennt experimentelle YOLOv8s-Kennzahlen und eine lokal vorhandene `best.pt`, aber die Modellbinärdateien werden von Git ignoriert. Außerdem fehlen laut README die genaue Datensatz-YAML und Lizenzen der Ausgangsdaten. | **ZURÜCKSTELLEN – keine nutzbare Gewichtsdatei und keine vollständige Rechtekette.** Die berichteten Kennzahlen sind kein Leistungsnachweis für dieses Projekt. |
+| [Roboflow ISR Vespa-velutina-Datensatz v1](https://universe.roboflow.com/institute-of-systems-and-robotics-isr/vespa-velutina-hihv9-upzpe/dataset/1) | Die Datensatzseite nennt CC BY 4.0 und 1.508 Bilder im Versionsdatensatz. Die generierte Ansicht beschreibt Augmentierung sowie Trainings-/Validierungs-/Testaufteilung. | **NUR DATENKANDIDAT – nicht importiert.** Berechtigung der hochladenden Person, Originalbildquellen, Urhebernennung und Lizenz je Bild, aktuelle Bedingungen, Überschneidungen zwischen Datensätzen und Rechte zur Weitergabe des bearbeiteten Datensatzes vor Nutzung prüfen. Die CC-BY-Angabe auf der Plattform allein belegt nicht die Zustimmung sämtlicher Fotografen. |
 
-## Licensing and technical rules
+## Lizenzrechtliche und technische Regeln
+1. Niemals annehmen, dass eine Softwarelizenz automatisch für separat trainierte Gewichte, Originalfotos, fremde Datensätze oder Modellausgaben gilt.
+2. Auch Trainingsdatensätze können Rechte und Bedingungen beeinflussen. Eine dokumentierte rechtliche Prüfung der **konkreten Gewichtsdatei** und des Datensatzes ist erforderlich.
+3. Bedingungen mit `NonCommercial` werden für das allgemeine Verteilungsprofil von BeeKeeper3000 nicht akzeptiert: Auch ein nicht gewinnorientiertes Projekt kann kommerzielle Nutzer oder Nutzungen haben.
+4. Modelle mit fehlenden, mehrdeutigen oder unvereinbaren Nutzungsrechten nicht in das öffentliche Repository importieren.
+5. Vor einer Freigabe durch `camera/model_manifest.py` müssen exakte Modell-SHA-256, Originaldateiadresse, URL des Lizenznachweises, namentliche prüfende Person, Prüfzeitstempel mit Zeitzone und ausdrückliche Berechtigungen für Inferenz und Weitergabe vorliegen.
+6. Nach Klärung der Rechte das Modell in den unterstützten ONNX-Ausgabevertrag umwandeln, Werkzeuge/Versionen/Prüfsummen dokumentieren und mit unabhängig annotierten, zurückgehaltenen Testdaten bewerten.
+7. Kennzahlen aus fremden README-Dateien **nicht** als eigene BeeKeeper3000-Ergebnisse veröffentlichen.
 
-1. Do not assume that a repository's software license automatically covers separately trained weights, source photographs, third-party datasets or model outputs.
-2. A model trained on a dataset may have rights/terms implications beyond the source code license. Require a documented legal review of the exact weight artifact and dataset.
-3. NonCommercial terms are not accepted for the general BeeKeeper3000 distribution profile; a non-profit project can still have commercial users or uses.
-4. Do not import models with missing, ambiguous or incompatible licensing into the public repository.
-5. Before a model can pass `camera/model_manifest.py`, the local manifest must contain the exact model SHA-256, upstream artifact URL, license evidence URL, named reviewer, timezone-aware review timestamp, and explicit inference/redistribution permissions.
-6. After rights clearance, convert the candidate to the supported ONNX output contract, record conversion tooling/versions and hashes, then evaluate it using an independently annotated held-out dataset with the documented evaluator.
-7. Do not publish model metrics from the upstream README as BeeKeeper3000 results.
+## Aktueller Stand
+**Kein externes Modell ist für BeeKeeper3000 freigegeben.** Das standardmäßig sperrende Modellmanifest bleibt daher ohne genehmigtes Produktionsmodell. Die Auswertungswerkzeuge und Kamerapipeline sind für einen korrekt lizenzierten Kandidaten vorbereitet. Es dürfen weder Erkennungen erfunden noch ein installiertes Modell vorgetäuscht werden.
 
-## Current outcome
-
-**No external model is approved for BeeKeeper3000.** The fail-closed manifest therefore remains without an approved production model. The evaluation harness and camera pipeline are ready for a properly licensed candidate, but the project must not fabricate detections or imply that a model is installed.
-
-## References
-
-- vespCV/hornet3000 README, model files and GPL-3.0 repository license: https://github.com/vespCV/hornet3000
-- vespCV/vespcv model tree and repository metadata: https://github.com/vespCV/vespcv
-- VespAI license and weights: https://github.com/andrw3000/vespai
-- Vespa Velutina Tracker README: https://github.com/PauMonterosa/vespa-velutina-tracker
-- Roboflow ISR dataset v1: https://universe.roboflow.com/institute-of-systems-and-robotics-isr/vespa-velutina-hihv9-upzpe/dataset/1
-- Kaggle Hornet3000+ dataset referenced by vespCV: https://www.kaggle.com/datasets/marcoryvandijk/vespa-velutina-v-crabro-vespulina-vulgaris
+## Quellen
+- vespCV/hornet3000: https://github.com/vespCV/hornet3000
+- vespCV/vespcv: https://github.com/vespCV/vespcv
+- VespAI: https://github.com/andrw3000/vespai
+- Vespa Velutina Tracker: https://github.com/PauMonterosa/vespa-velutina-tracker
+- Roboflow ISR Datensatz v1: https://universe.roboflow.com/institute-of-systems-and-robotics-isr/vespa-velutina-hihv9-upzpe/dataset/1
+- Von vespCV genannter Kaggle-Datensatz: https://www.kaggle.com/datasets/marcoryvandijk/vespa-velutina-v-crabro-vespulina-vulgaris
