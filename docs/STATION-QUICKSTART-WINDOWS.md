@@ -6,7 +6,7 @@ This starts the three software services already implemented:
 2. BeeKeeper3000 authenticated SQLite source journal.
 3. BeeKeeper3000 Node.js bridge with cursor pagination required.
 
-It does not install drivers or start an original Hornet3000 C++ daemon, camera driver, AI detector, MeshCore radio or Freenet node. Those components are not yet connected in the published source tree.
+It does not install camera drivers or start an original Hornet3000 C++ daemon, detector or MeshCore radio. The new optional ONNX camera producer is a separate service that must be configured with a locally rights-reviewed model; see [camera/README.md](../camera/README.md). A Freenet node is not started.
 
 ## Requirements
 
@@ -72,7 +72,7 @@ The launcher is a per-user process supervisor, not a Windows Service and not an 
 ## Create a verified local backup
 
 With both services running, create a consistent snapshot of the BeeKeeper source
-journal and Monitor event database, plus the bridge checkpoint:
+journal, Monitor event database, optional camera outbox and bridge checkpoint:
 
 ```powershell
 .\scripts\Backup-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
@@ -80,7 +80,7 @@ journal and Monitor event database, plus the bridge checkpoint:
 
 The script writes a timestamped backup set under
 `%LOCALAPPDATA%\BeeKeeper3000\backups\`, verifies both SQLite snapshots,
-validates and copies the bridge checkpoint when present, and writes a SHA-256
+validates and copies the bridge checkpoint and the camera outbox when present, and writes a SHA-256
 manifest. It stages the set privately and publishes it only after all required
 steps succeed. It refuses backup paths outside the protected station directory.
 The DPAPI secret file is intentionally excluded; it is user/machine-bound and
