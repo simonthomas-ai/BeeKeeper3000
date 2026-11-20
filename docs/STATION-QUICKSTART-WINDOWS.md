@@ -53,6 +53,26 @@ The stop script checks the recorded executable and command line before terminati
 
 The launcher is a per-user process supervisor, not a Windows Service and not an automatic startup task. Re-run it after login to start the station again. Logs are retained locally; apply a rotation/retention policy before long-term unattended use.
 
+## Create a verified local backup
+
+With both services running, create a consistent snapshot of the BeeKeeper source
+journal and Monitor event database, plus the bridge checkpoint:
+
+```powershell
+.\scripts\Backup-BeeKeeperStation.ps1 -MonitorRepo "C:\path\to\Beekeeper-Monitor"
+```
+
+The script writes a timestamped backup set under
+`%LOCALAPPDATA%\BeeKeeper3000\backups\`, verifies both SQLite snapshots,
+validates and copies the bridge checkpoint when present, and writes a SHA-256
+manifest. It stages the set privately and publishes it only after all required
+steps succeed. It refuses backup paths outside the protected station directory.
+The DPAPI secret file is intentionally excluded; it is user/machine-bound and
+must be protected and recovered separately. Backups contain sensitive station
+metadata; use BitLocker and define a retention policy. See
+[SOURCE-JOURNAL-BACKUP.md](SOURCE-JOURNAL-BACKUP.md) for standalone verification
+and restore commands.
+
 ## Validation without starting services
 
 ```powershell
