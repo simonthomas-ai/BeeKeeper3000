@@ -1,69 +1,69 @@
-# BeeKeeper3000 – low-voltage wiring templates
+# BeeKeeper3000 – Verdrahtungsvorlagen für Niederspannung
 
-Status: conceptual reference wiring only. Exact board revisions, part numbers, conductor sizes and fuses must be selected from datasheets and measured load before construction. These are not certified drawings.
+**Stand:** ausschließlich konzeptionelle Anschlussbeispiele. Vor einem Aufbau müssen die genauen Platinenrevisionen, Bauteilnummern, Leitungsquerschnitte und Sicherungen anhand der Herstellerdatenblätter und gemessenen Belastungen ausgewählt werden. **Dies sind keine zertifizierten Schaltpläne.**
 
-## 1. Smartphone-only participant
+## 1. Teilnahme nur mit dem Smartphone
 
 ```text
 Android / iPhone
-  ├─ integrated camera → user-selected photo → local PWA storage
-  ├─ GPS/compass → one-shot permission → local-only metadata
-  └─ Wi-Fi / mobile data → manual metadata export only
-No extra electronics, radio or power wiring required.
+  ├─ eingebaute Kamera → vom Nutzer gewähltes Foto → lokaler PWA-Speicher
+  ├─ GPS/Kompass → einmalige Berechtigung → ausschließlich lokale Metadaten
+  └─ WLAN / Mobilfunk → ausschließlich manueller Metadatenexport
+Keine zusätzliche Elektronik, Funk- oder Stromverkabelung nötig.
 ```
 
-## 2. USB GNSS receiver (UART TTL alternative)
+## 2. USB-GNSS-Empfänger (alternativ UART-TTL)
 
 ```text
-USB GNSS receiver ──USB──> Edge PC / Raspberry Pi
+USB-GNSS-Empfänger ──USB──> Edge-PC / Raspberry Pi
 
-UART breakout (only after voltage check):
+UART-Anschluss (erst nach Prüfung der Spannungspegel):
 GNSS TX ───────────────> Host RX
-GNSS RX <─────────────── Host TX (optional configuration)
+GNSS RX <─────────────── Host TX (optionale Konfiguration)
 GNSS GND ────────────── Host GND
-GNSS VCC <───────────── documented regulated supply
+GNSS VCC <───────────── dokumentierte, geregelte Versorgung
 ```
 
-Check 3.3 V/5 V logic levels and supply voltage on the exact receiver. Never connect a 5 V UART output to a 3.3 V-only input. Record NMEA fix quality, HDOP/accuracy and timestamp; do not infer accuracy from coordinates alone.
+Logikpegel von 3,3 V beziehungsweise 5 V und Versorgungsspannung am **konkreten Empfänger** prüfen. Niemals einen 5-V-UART-Ausgang an einen Eingang anschließen, der nur 3,3 V verträgt. NMEA-Fixqualität, HDOP/Genauigkeit und Zeitstempel aufzeichnen. Aus Koordinaten allein lässt sich keine Genauigkeit ableiten.
 
-## 3. Environmental sensors over isolated RS-485 / Modbus RTU
+## 3. Umweltsensoren über galvanisch getrenntes RS-485 / Modbus RTU
 
 ```text
 Sensor A A(+) ───────────────┐
-Sensor B A(+) ───────────────┼── twisted pair A(+) ── Isolated RS-485 A
+Sensor B A(+) ───────────────┼── verdrilltes Adernpaar A(+) ── isoliertes RS-485 A
 Sensor A B(-) ───────────────┤
-Sensor B B(-) ───────────────┴── twisted pair B(-) ── Isolated RS-485 B
-Sensor bus reference/shield ───── per transceiver/site design only
-Gateway USB/UART ──────────────── Edge host
-120-ohm termination only at the two physical bus ends, when required.
+Sensor B B(-) ───────────────┴── verdrilltes Adernpaar B(-) ── isoliertes RS-485 B
+Sensorbus-Bezug/Schirm ────────── nur nach Transceiver-/Standortplanung
+Gateway USB/UART ─────────────── Edge-Rechner
+120-Ohm-Abschluss nur an den beiden physikalischen Busenden, soweit erforderlich.
 ```
 
-Use one linear bus, not a star, unless the selected transceiver/network explicitly permits it. Set bias and termination per vendor data. Outdoor lines need galvanic isolation and surge protection appropriate to the installation.
+Eine lineare Busstruktur verwenden, keine Sternverkabelung, sofern der ausgewählte Transceiver beziehungsweise das Netz dies nicht ausdrücklich unterstützt. Vorspannung und Abschlusswiderstände nach Herstellerangaben einstellen. Außenleitungen benötigen eine für die Installation geeignete galvanische Trennung und Überspannungsschutz.
 
-## 4. Solar DC power tree (concept)
+## 4. Solare Gleichstromversorgung (Konzept)
 
 ```text
-PV panel → matched MPPT/PWM controller ↔ protected battery/BMS
-                                      |
-Battery positive → DC fuse near battery → DC distribution
-                                      ├─ regulated supply → edge host
-                                      ├─ rated DC supply → camera
-                                      └─ rated DC supply → radio / sensors
-All returns → engineered common/isolated return scheme per device datasheets
+PV-Modul → passender MPPT-/PWM-Laderegler ↔ geschützter Akku/BMS
+                                              |
+Akku-Plus → DC-Sicherung nahe am Akku → Gleichstromverteilung
+                                       ├─ geregelte Versorgung → Edge-Rechner
+                                       ├─ geeignete DC-Versorgung → Kamera
+                                       └─ geeignete DC-Versorgung → Funk / Sensoren
+Alle Rückleiter → geplante gemeinsame oder getrennte Rückführung laut Datenblättern
 ```
 
-Do not connect a panel directly to a battery or SBC. Calculate Wh/day from measured peak and average loads, startup currents, duty cycle, temperature, autonomy days and worst-month irradiation. Select fuse, wire gauge, connector, BMS, converter and enclosure by datasheet and derating. AC mains wiring, building wiring, lightning protection, mast bonding and permanent outdoor installation require qualified professionals.
+Ein Solarmodul niemals direkt an Akku oder Einplatinenrechner anschließen. Den täglichen Energiebedarf in Wh aus gemessenen Spitzen- und Durchschnittslasten, Anlaufströmen, Einschaltdauer, Temperatur, gewünschten Autonomietagen und Einstrahlung im ungünstigsten Monat berechnen. Sicherungen, Leitungsquerschnitte, Steckverbinder, BMS, Wandler und Gehäuse nach Datenblatt und Sicherheitsreserven auswählen. Netzspannung, Gebäudeinstallation, Blitzschutz, Mast-Erdung und dauerhafte Außeninstallation gehören in die Hände qualifizierter Fachkräfte.
 
-## 5. Bill-of-materials template
+## 5. Vorlage für die Stückliste
 
-| Item | Required evidence before ordering |
+| Bauteil | Vor der Bestellung erforderlicher Nachweis |
 |---|---|
-| Edge host / phone | Exact model/revision, OS and supported interfaces |
-| Camera / GNSS / sensor | Datasheet, pinout, voltage, current, environmental rating |
-| Radio module | Exact firmware, permitted band/power/airtime, antenna approval |
-| Power supply / converter | Input range, regulated output, continuous/peak current, thermal rating |
-| Fuse / holder / conductor | DC interrupt rating, current curve, cable length, temperature and voltage drop |
-| Enclosure / glands | IP rating, UV/temperature, condensation and service access |
-| Surge / isolation | Installation-specific rated device and grounding design |
+| Edge-Rechner / Smartphone | Genaues Modell, Revision, Betriebssystem und unterstützte Anschlüsse |
+| Kamera / GNSS / Sensor | Datenblatt, Anschlussbelegung, Spannung, Strom und Umgebungsfestigkeit |
+| Funkmodul | Exakte Firmware, erlaubtes Frequenzband, Leistung, Sendezeit und zugelassene Antenne |
+| Netzteil / Wandler | Eingangsspannungsbereich, geregelter Ausgang, Dauer-/Spitzenstrom, thermische Belastbarkeit |
+| Sicherung / Halter / Leitung | DC-Abschaltvermögen, Auslösekennlinie, Leitungslänge, Temperatur und Spannungsabfall |
+| Gehäuse / Kabelverschraubung | Schutzart (IP), UV-/Temperaturbeständigkeit, Kondenswasser und Wartungszugang |
+| Überspannungsschutz / Isolation | Für die Installation bemessene Komponenten und Erdungskonzept |
 
-No universal GPIO pin numbers or unverified part numbers are supplied. The final build-to-print drawing must be reviewed against exact manufacturer datasheets and by a qualified electrical/radio professional. Do not DIY mains wiring or modify transmitter power/antenna limits.
+Es werden bewusst **keine allgemeingültigen GPIO-Pinnummern oder ungeprüften Bauteilnummern** angegeben. Der endgültige, nachbaubare Schaltplan muss anhand der exakten Herstellerdatenblätter und von einer qualifizierten Elektro-/Funkfachkraft geprüft werden. Keine Eigenarbeiten an Netzspannung und keine unerlaubte Veränderung von Senderleistung oder Antennengrenzen.
