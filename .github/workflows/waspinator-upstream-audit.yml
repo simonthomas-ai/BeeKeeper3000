@@ -1,6 +1,10 @@
 name: Audit upstream Waspinator model metadata
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/waspinator-upstream-audit.yml'
 permissions:
   contents: read
 jobs:
