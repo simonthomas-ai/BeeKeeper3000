@@ -24,6 +24,30 @@ class OutboxTests(unittest.TestCase):
             self.assertFalse(box.acknowledge("a"))
             self.assertEqual(box.count(), 1)
 
+    def test_offline_restart_retry_and_acknowledgement(self):
+        """Failed sends must remain queued across restart; only acknowledged IDs leave."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "private" / "outbox.sqlite3")
+            offline = SQLiteOutbox(path, max_rows=3)
+            offline.enqueue(event("offline-001"))
+            offline.enqueue(event("offline-002"))
+            self.assertEqual([x["id"] for x in offline.pending()], ["offline-001", "offline-002"])
+
+            # A connection failure cannot acknowledge either pending event.
+            del offline
+            recovered = SQLiteOutbox(path, max_rows=3)
+            self.assertEqual(recovered.count(), 2)
+            self.assertFalse(recovered.enqueue(event("offline-001")))
+            self.assertEqual(recovered.count(), 2)
+
+            # After transport recovery, only the confirmed event is removed.
+            self.assertTrue(recovered.acknowledge("offline-001"))
+            restarted = SQLiteOutbox(path, max_rows=3)
+            self.assertEqual([x["id"] for x in restarted.pending()], ["offline-002"])
+            self.assertFalse(restarted.acknowledge("offline-001"))
+            self.assertTrue(restarted.acknowledge("offline-002"))
+            self.assertEqual(SQLiteOutbox(path).count(), 0)
+
     def test_rejects_payload_with_media_or_extra_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
