@@ -21,6 +21,26 @@ python -m camera.evaluate_detections --annotations private-test.jsonl --output p
 
 Der JSON-Bericht enthält die SHA-256-Prüfsumme der Annotationsdatei. Bericht, Herkunft der Annotationen, Modell-SHA-256 und Modellmanifest gemeinsam in einer zugriffsgeschützten Prüfdokumentation aufbewahren. Rohbilder, private Standortdaten oder sensible Annotationen niemals in ein öffentliches Repository einchecken.
 
+
+## Ereignis- und Fehlalarmbewertung im Kamerabetrieb
+
+camera/evaluate_events.py ergänzt die Bild-/Box-Metriken um eine ereignisbasierte Auswertung. Das ist für eine Station wichtig, weil mehrere aufeinanderfolgende Frames desselben Vorbeiflugs nicht als unabhängige Sichtungen zählen sollen und die Zahl falscher Alarme pro überwachte Kamerastunde für den Betrieb entscheidend ist.
+
+Jede JSONL-Zeile beschreibt eine nicht überlappende Sitzung einer pseudonymisierten Kamera:
+- session_id, camera_id, model_sha256, start_time_utc und duration_seconds
+- ground_truth_review_status: "verified" und ein pseudonymisierter reviewer_id
+- ground_truth_events mit Event-ID, Klassen-ID sowie Start-/Endsekunde relativ zur Sitzung
+- predicted_events mit denselben Zeit-/Klassenfeldern und einer Konfidenz
+
+Die Referenzereignisse müssen fachkundig menschlich geprüft sein. Das Modell-Hashfeld muss für alle Sitzungen identisch sein. Überlappende Sitzungen derselben Kamera werden abgewiesen, damit überwachte Kamerastunden nicht doppelt gezählt werden. Standortkoordinaten oder Bilddaten gehören nicht in diese Datei.
+
+Ausführung:
+    python -m camera.evaluate_events --sessions private-events.jsonl --output private-event-report.json --temporal-iou 0.5 --confidence 0.5
+
+Der Bericht weist pro Klasse und insgesamt TP/FP/FN, Ereignis-Precision/Recall/F1 sowie false_alarms_per_camera_hour aus. Ereignisse werden nur innerhalb derselben Kamerasitzung, derselben Klasse und anhand zeitlicher Intervall-IoU zugeordnet. Bei fehlenden positiven oder vorhergesagten Ereignissen wird eine nicht definierte Kennzahl als null ausgegeben, nicht als scheinbare Null-Leistung.
+
+Diese Software-Metriken sind nur so gut wie die geprüften Ereignisannotationen und die unabhängigen Aufnahmesitzungen. Sie ersetzen weder einen externen Standort-Holdout noch Konfidenzintervalle oder eine fachliche Feldabnahme.
+
 ## Aussagegrenzen
 - AP wird für jede Klasse mit einer nach Konfidenz sortierten, schrittweisen Zuordnung und 101-Punkte-Interpolation bei **einem** IoU-Schwellwert berechnet. Das ist **nicht** die COCO-mAP über mehrere IoU-Schwellwerte.
 - Das Werkzeug untersucht keine Bilder, überprüft keine Annotationen, erkennt keine Überschneidung zwischen Trainings- und Testdaten und bestätigt keine Lizenzrechte.
