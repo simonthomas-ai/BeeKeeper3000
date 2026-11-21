@@ -1,11 +1,6 @@
-# Biene & Schnecke – Natur der Dinge
+# BEEKEEPER3000
 
-**Projektinitiative und Leitbild.** Eine Initiative für Naturbeobachtung, Bienenschutz und die verantwortungsvolle Erfassung von Hinweisen auf invasive Arten.
-
-Die technischen Komponenten werden modular unter den Projektnamen **BeeKeeper3000** und **Beekeeper Monitor** entwickelt. „Biene & Schnecke – Natur der Dinge“ ist eine Projekt-/Markenbezeichnung, keine eigenständige juristische Person und kein Ersatz für den tatsächlichen rechtlichen Diensteanbieter oder den datenschutzrechtlich Verantwortlichen.
-
-## BEEKEEPER3000
-
+**Lokale, modulare und herstellerneutrale Plattform für Beobachtung und Ereignisverarbeitung rund um Bienenstände und Insekten.**
 **Lokale, modulare und herstellerneutrale Plattform für Beobachtung und Ereignisverarbeitung rund um Bienenstände und Insekten.**
 
 Dieses Repository enthält eine veröffentlichte Teilmenge der BeeKeeper3000-/Hornet3000-Entwicklung: Architektur- und Lizenzdokumentation, Python-Referenz-Triangulation, Node.js-Monitor-Bridge, optionalen MeshCore-Transport und nun eine optionale lokale Kamera-/ONNX-Produzentenpipeline. Der vollständige ursprüngliche Hornet3000-Wächter-Quellbaum und ein nach unabhängigen Felddaten validiertes KI-Modell sind nicht vollständig in diesem Repository enthalten.
