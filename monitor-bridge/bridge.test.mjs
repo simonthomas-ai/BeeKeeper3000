@@ -20,6 +20,18 @@ const sampleEvent = {
   prey_detected: true
 };
 
+test('pollOnce rejects legacy latest-100 responses by default', async () => {
+  const state = new Set();
+  state.cursor = null;
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    fetchImpl: async () => new Response(JSON.stringify({ events: [] }), {
+      status: 200, headers: { 'content-type': 'application/json' }
+    })
+  }), /refusing a lossy downgrade/);
+});
+
 test('cursor pagination is required by default and invalid configuration fails closed', () => {
   assert.equal(parseCursorRequirement(undefined), true);
   assert.equal(parseCursorRequirement(''), true);
