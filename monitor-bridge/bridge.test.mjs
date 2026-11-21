@@ -255,6 +255,9 @@ test('pollOnce retries a rate-limited source API', async () => {
   const sleeps = [];
   let calls = 0;
   const result = await pollOnce(new Set(), {
+    // This test exercises rate limiting against the legacy response shape.
+    // Explicitly opt in; production requires cursor pagination by default.
+    requireCursor: false,
     sourceUrl: 'http://127.0.0.1:8787',
     sourceKey: 'test-source-api-key-long-enough',
     token: 'test-only-monitor-token-long-enough-123',
