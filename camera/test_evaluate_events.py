@@ -37,16 +37,19 @@ class EventEvaluationTests(unittest.TestCase):
             "predicted_events": predictions or [],
         }
 
-    def run_file(self, rows, **kwargs):
+    def load_rows(self, rows):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "sessions.jsonl"
             path.write_text(
                 "\n".join(json.dumps(row) for row in rows) + "\n",
                 encoding="utf-8",
             )
-            sessions, digest, model_sha = load_sessions(path)
-            report = evaluate_sessions(sessions, **kwargs)
-            return report, digest, model_sha
+            return load_sessions(path)
+
+    def run_file(self, rows, **kwargs):
+        sessions, digest, model_sha = self.load_rows(rows)
+        report = evaluate_sessions(sessions, **kwargs)
+        return report, digest, model_sha
 
     def event(self, event_id, class_id, start, end, confidence=None):
         item = {
@@ -124,7 +127,7 @@ class EventEvaluationTests(unittest.TestCase):
 
     def test_boolean_and_nonfinite_thresholds_are_rejected(self):
         session = self.session()
-        sessions, _, _ = self.run_file([session])
+        sessions, _, _ = self.load_rows([session])
         with self.assertRaisesRegex(EventEvaluationError, "temporal IoU threshold"):
             evaluate_sessions(sessions, temporal_iou_threshold=True)
         with self.assertRaisesRegex(EventEvaluationError, "confidence threshold"):
