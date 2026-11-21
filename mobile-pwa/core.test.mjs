@@ -106,3 +106,30 @@ test("orientation helper rejects invalid targets and timeout values",()=>{
  const target=orientationTarget();
  assert.throws(()=>waitForOrientationSample(target,{timeoutMs:50}),/Timeout/);
 });
+
+test("orientation capture ignores non-finite and out-of-range azimuths, sanitizes optional axes",async()=>{
+ const target=orientationTarget();
+ const pending=waitForOrientationSample(target,{
+  timeoutMs:5000,
+  now:()=>"2026-11-21T11:00:00.000Z",
+  setTimer:()=>1,
+  clearTimer:()=>{}
+ });
+ for(const event of [
+  null,
+  {alpha:NaN},
+  {alpha:Infinity},
+  {alpha:-0.01},
+  {alpha:360.01}
+ ]){
+  target.emit("deviceorientation",event);
+  assert.equal(target.listenerCount("deviceorientation"),1);
+ }
+ target.emit("deviceorientation",{alpha:360,beta:NaN,gamma:Infinity,absolute:1});
+ assert.deepEqual(await pending,{
+  alpha_deg:360,beta_deg:null,gamma_deg:null,absolute:false,
+  captured_at:"2026-11-21T11:00:00.000Z",
+  status:"raw_uncalibrated_not_for_triangulation"
+ });
+ assert.equal(target.listenerCount("deviceorientation"),0);
+});
