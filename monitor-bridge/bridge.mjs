@@ -367,7 +367,7 @@ export async function pollOnce(state, options = {}) {
   // lossless delivery. Once a cursor has been checkpointed, never silently
   // downgrade to the lossy API.
   if (!hasCursorFields) {
-    if (options.requireCursor || currentState.cursor !== null) {
+    if ((options.requireCursor ?? requireCursor) || currentState.cursor !== null) {
       throw new Error('Hornet3000 cursor pagination disappeared; refusing a lossy downgrade');
     }
     currentState.paginationMode = 'legacy-latest-100';
