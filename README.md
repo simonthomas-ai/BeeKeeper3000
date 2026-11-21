@@ -1,5 +1,7 @@
 # BEEKEEPER3000
 
+**Internationale Forschung und Technik:** [Internationale Hornissenerkennung: Technik, Quellen und Lizenzlage](docs/INTERNATIONALE-HORNISSENERKENNUNG-2026.md). Die beschriebenen Fremdsysteme sind keine bereits freigegebenen VespaGuard-KI-Modelle.
+
 **Lokale, modulare und herstellerneutrale Plattform für Beobachtung und Ereignisverarbeitung rund um Bienenstände und Insekten.**
 
 Dieses Repository enthält eine veröffentlichte Teilmenge der BeeKeeper3000-/Hornet3000-Entwicklung: Architektur- und Lizenzdokumentation, Python-Referenz-Triangulation, Node.js-Monitor-Bridge, optionalen MeshCore-Transport und nun eine optionale lokale Kamera-/ONNX-Produzentenpipeline. Der vollständige ursprüngliche Hornet3000-Wächter-Quellbaum und ein nach unabhängigen Felddaten validiertes KI-Modell sind nicht vollständig in diesem Repository enthalten.
