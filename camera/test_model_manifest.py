@@ -78,5 +78,45 @@ class ManifestTests(unittest.TestCase):
                 load_manifest(path)
 
 
+    def test_rejects_non_integer_manifest_version(self):
+        for version in (True, 1.0):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp, manifest_version=version)
+                with self.subTest(version=version), self.assertRaises(ModelManifestError):
+                    load_manifest(path)
+
+    def test_rejects_duplicate_class_labels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["classes"].append({
+                "id": 1,
+                "label": data["classes"][0]["label"],
+                "threshold": 0.7,
+                "prey_detected": False,
+            })
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ModelManifestError, "duplicate class"):
+                load_manifest(path)
+
+    def test_rejects_internal_symlink_model_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            model = Path(tmp) / "detector.onnx"
+            target = Path(tmp) / "real-model.onnx"
+            target.write_bytes(model.read_bytes())
+            model.unlink()
+            alias = Path(tmp) / "alias.onnx"
+            try:
+                alias.symlink_to(target)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symbolic links are unavailable: {exc}")
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["model_file"] = "alias.onnx"
+            data["model_sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ModelManifestError, "symbolic links"):
+                load_manifest(path)
+
 if __name__ == "__main__":
     unittest.main()
