@@ -83,7 +83,17 @@ class MeshCoreSerialTransport:
             if data.get("channel_idx") != self.channel or data.get("data_type") != self.data_type:
                 return
             try:
-                raw = bytes.fromhex(data.get("payload", ""))
+                payload_hex = data.get("payload")
+                if (
+                    not isinstance(payload_hex, str)
+                    or not payload_hex
+                    or len(payload_hex) > MAX_WIRE_BYTES * 2
+                    or len(payload_hex) % 2
+                ):
+                    return
+                raw = bytes.fromhex(payload_hex)
+                if not raw or len(raw) > MAX_WIRE_BYTES:
+                    return
                 result = callback(raw)
                 if inspect.isawaitable(result):
                     await result
