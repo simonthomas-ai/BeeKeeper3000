@@ -111,7 +111,7 @@ class MeshCoreTransportTests(unittest.TestCase):
         asyncio.run(client.subscription_callback(radio_event("00" * 164)))
         asyncio.run(client.subscription_callback(radio_event("not-hex")))
         asyncio.run(client.subscription_callback(radio_event("00" * 163)))
-        self.assertEqual(received, [b"\\x00" * 163])
+        self.assertEqual(received, [b"\x00" * 163])
 
     def test_configuration_bounds(self):
         with self.assertRaises(ValueError):
