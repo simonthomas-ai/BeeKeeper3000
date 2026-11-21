@@ -38,7 +38,10 @@ def _unique_object(pairs):
 def _finite(value, field: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise EventEvaluationError(f"{field} must be a finite number")
-    numeric = float(value)
+    try:
+        numeric = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise EventEvaluationError(f"{field} must be a finite number") from exc
     if not math.isfinite(numeric):
         raise EventEvaluationError(f"{field} must be a finite number")
     return numeric
@@ -115,7 +118,8 @@ def load_sessions(path: str | Path):
     source = Path(path).expanduser().resolve(strict=True)
     if not source.is_file() or source.stat().st_size > MAX_BYTES:
         raise EventEvaluationError("event annotation file must be a regular file under 128 MiB")
-    raw = source.read_bytes()
+    with source.open("rb") as handle:
+        raw = handle.read(MAX_BYTES + 1)
     if len(raw) > MAX_BYTES:
         raise EventEvaluationError("event annotation file exceeds the 128 MiB limit")
     digest = hashlib.sha256(raw).hexdigest()
@@ -222,11 +226,10 @@ def _metrics(tp: int, fp: int, fn: int, camera_hours: float) -> dict:
     ground_truth_count = tp + fn
     precision = tp / prediction_count if prediction_count else None
     recall = tp / ground_truth_count if ground_truth_count else None
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if precision is not None and recall is not None and precision + recall
-        else None
-    )
+    if precision is not None and recall is not None:
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    else:
+        f1 = None
     return {
         "ground_truth_events": ground_truth_count,
         "predicted_events_at_threshold": prediction_count,
@@ -247,6 +250,8 @@ def evaluate_sessions(
     confidence_threshold: float = 0.5,
 ) -> dict:
     """Match events within each session and report event recall and false alarms/hour."""
+    temporal_iou_threshold = _finite(temporal_iou_threshold, "temporal IoU threshold")
+    confidence_threshold = _finite(confidence_threshold, "confidence threshold")
     if not 0.1 <= temporal_iou_threshold <= 1.0:
         raise EventEvaluationError("temporal IoU threshold must be in 0.1..1.0")
     if not 0.0 <= confidence_threshold <= 1.0:
