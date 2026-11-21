@@ -48,6 +48,26 @@ class OutboxTests(unittest.TestCase):
             self.assertTrue(restarted.acknowledge("offline-002"))
             self.assertEqual(SQLiteOutbox(path).count(), 0)
 
+    def test_full_queue_survives_restart_without_data_loss(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "private" / "outbox.sqlite3")
+            box = SQLiteOutbox(path, max_rows=2)
+            box.enqueue(event("oldest"))
+            box.enqueue(event("second"))
+            with self.assertRaises(OutboxFull):
+                box.enqueue(event("overflow"))
+            restarted = SQLiteOutbox(path, max_rows=2)
+            self.assertEqual([x["id"] for x in restarted.pending()], ["oldest", "second"])
+            self.assertFalse(restarted.enqueue(event("oldest")))
+            collision = event("oldest")
+            collision["confidence"] = 0.9
+            with self.assertRaises(OutboxError):
+                restarted.enqueue(collision)
+            self.assertTrue(restarted.acknowledge("oldest"))
+            self.assertTrue(SQLiteOutbox(path, max_rows=2).enqueue(event("overflow")))
+            self.assertEqual([x["id"] for x in SQLiteOutbox(path, max_rows=2).pending()],
+                             ["second", "overflow"])
+
     def test_rejects_payload_with_media_or_extra_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
