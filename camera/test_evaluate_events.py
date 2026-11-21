@@ -112,6 +112,24 @@ class EventEvaluationTests(unittest.TestCase):
         self.assertEqual(report["overall"]["fp"], 1)
         self.assertEqual(report["overall"]["fn"], 1)
 
+    def test_nonmatching_events_have_zero_f1_not_null(self):
+        target = self.event("gt-1", 0, 10, 12)
+        prediction = self.event("pred-1", 0, 30, 32, 0.9)
+        report, _, _ = self.run_file([
+            self.session(ground_truth=[target], predictions=[prediction])
+        ])
+        self.assertEqual(report["overall"]["precision"], 0.0)
+        self.assertEqual(report["overall"]["recall"], 0.0)
+        self.assertEqual(report["overall"]["f1"], 0.0)
+
+    def test_boolean_and_nonfinite_thresholds_are_rejected(self):
+        session = self.session()
+        sessions, _, _ = self.run_file([session])
+        with self.assertRaisesRegex(EventEvaluationError, "temporal IoU threshold"):
+            evaluate_sessions(sessions, temporal_iou_threshold=True)
+        with self.assertRaisesRegex(EventEvaluationError, "confidence threshold"):
+            evaluate_sessions(sessions, confidence_threshold=float("nan"))
+
     def test_false_alarm_rate_uses_sum_of_non_overlapping_camera_hours(self):
         first = self.session(
             session_id="s1",
