@@ -66,14 +66,20 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         raw = json.loads(manifest_path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object)
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ModelManifestError("cannot read UTF-8 JSON model manifest") from exc
-    if not isinstance(raw, dict) or raw.get("manifest_version") != 1:
+    if not isinstance(raw, dict) or type(raw.get("manifest_version")) is not int or raw.get("manifest_version") != 1:
         raise ModelManifestError("unsupported model manifest version")
     model_file = raw.get("model_file")
     if not isinstance(model_file, str) or not model_file or Path(model_file).is_absolute():
         raise ModelManifestError("model_file must be a non-empty relative path")
     model_root = manifest_path.parent.resolve()
+    candidate = model_root / model_file
+    cursor = model_root
+    for part in Path(model_file).parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise ModelManifestError("model_file must not traverse symbolic links")
     try:
-        model_path = (model_root / model_file).resolve()
+        model_path = candidate.resolve()
         model_path.relative_to(model_root)
     except (OSError, ValueError) as exc:
         raise ModelManifestError("model_file must stay inside the manifest directory") from exc
@@ -169,6 +175,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if not isinstance(class_rows, list) or not class_rows:
         raise ModelManifestError("at least one class mapping is required")
     classes: dict[int, ModelClass] = {}
+    labels: set[str] = set()
     for row in class_rows:
         if not isinstance(row, dict) or type(row.get("id")) is not int:
             raise ModelManifestError("each class requires an integer id")
@@ -176,8 +183,15 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         label = row.get("label")
         threshold = row.get("threshold")
         prey = row.get("prey_detected", False)
-        if cid in classes or not isinstance(label, str) or not label.strip() or len(label) > 160:
-            raise ModelManifestError("duplicate class id or invalid class label")
+        if (
+            cid in classes
+            or not isinstance(label, str)
+            or not label.strip()
+            or len(label) > 160
+            or label.strip() in labels
+        ):
+            raise ModelManifestError("duplicate class id/label or invalid class label")
+        labels.add(label.strip())
         if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not math.isfinite(float(threshold)) or not 0 <= float(threshold) <= 1:
             raise ModelManifestError("class threshold must be finite and in 0..1")
         if type(prey) is not bool:
