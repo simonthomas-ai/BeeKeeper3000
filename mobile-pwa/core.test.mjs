@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { confidenceScore, makeStationId, toSourceEvent, validateSourceEvent } from "./core.mjs";
+import { confidenceScore, makeStationId, toSourceEvent, validateSourceEvent, waitForOrientationSample } from "./core.mjs";
 
 const sample = {
   id: "mobile-test-123456",
@@ -50,4 +50,59 @@ test("metadata export strips every local-only field", () => {
 test("creates stable technical mobile station IDs", () => {
   assert.equal(makeStationId("0123456789ABCDEF"), "mobile-0123456789abcdef");
   assert.throws(() => makeStationId("not-a-uuid"));
+});
+
+
+function orientationTarget(){
+ const listeners=new Map();
+ return {
+  addEventListener(type,fn){if(!listeners.has(type))listeners.set(type,new Set());listeners.get(type).add(fn)},
+  removeEventListener(type,fn){listeners.get(type)?.delete(fn)},
+  emit(type,event){for(const fn of [...(listeners.get(type)||[])])fn(event)},
+  listenerCount(type){return listeners.get(type)?.size||0}
+ };
+}
+
+test("orientation capture ignores an uninitialized first event and accepts the next valid sample", async()=>{
+ const target=orientationTarget();
+ let timeoutHandler,cleared=false;
+ const pending=waitForOrientationSample(target,{
+  timeoutMs:5000,
+  now:()=>"2026-11-21T10:00:00.000Z",
+  setTimer:fn=>{timeoutHandler=fn;return 1},
+  clearTimer:id=>{assert.equal(id,1);cleared=true}
+ });
+ target.emit("deviceorientation",{alpha:null,beta:null,gamma:null});
+ assert.equal(target.listenerCount("deviceorientation"),1);
+ target.emit("deviceorientation",{alpha:42.5,beta:-2,gamma:3,absolute:true});
+ assert.deepEqual(await pending,{
+  alpha_deg:42.5,beta_deg:-2,gamma_deg:3,absolute:true,
+  captured_at:"2026-11-21T10:00:00.000Z",
+  status:"raw_uncalibrated_not_for_triangulation"
+ });
+ assert.equal(target.listenerCount("deviceorientation"),0);
+ assert.equal(cleared,true);
+ assert.equal(typeof timeoutHandler,"function");
+});
+
+test("orientation capture rejects after timeout and always removes its listener",async()=>{
+ const target=orientationTarget();
+ let timeoutHandler,cleared=false;
+ const pending=waitForOrientationSample(target,{
+  timeoutMs:5000,
+  setTimer:fn=>{timeoutHandler=fn;return 7},
+  clearTimer:id=>{assert.equal(id,7);cleared=true}
+ });
+ target.emit("deviceorientation",{alpha:null});
+ assert.equal(target.listenerCount("deviceorientation"),1);
+ timeoutHandler();
+ await assert.rejects(pending,/Keine Sensordaten empfangen/);
+ assert.equal(target.listenerCount("deviceorientation"),0);
+ assert.equal(cleared,true);
+});
+
+test("orientation helper rejects invalid targets and timeout values",()=>{
+ assert.throws(()=>waitForOrientationSample(null),/Event-Listener/);
+ const target=orientationTarget();
+ assert.throws(()=>waitForOrientationSample(target,{timeoutMs:50}),/Timeout/);
 });

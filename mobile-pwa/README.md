@@ -1,6 +1,6 @@
 # BeeKeeper3000 Mobile PWA
 
-Responsive installable participant client for Android, iPhone and tablets. It supports manual insect reports, an optional user-selected photo (resized through canvas), optional one-shot GPS, optional raw device orientation, local IndexedDB storage and an explicit metadata-only JSON export.
+Responsive installable participant client for Android, iPhone and tablets. It supports manual insect reports, an optional user-selected photo (resized through canvas), optional one-shot GPS, optional raw device orientation (waits for a valid sensor sample, but remains uncalibrated), local IndexedDB storage and an explicit metadata-only JSON export.
 
 ## Run locally
 
