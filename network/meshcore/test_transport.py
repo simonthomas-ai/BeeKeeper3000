@@ -27,6 +27,11 @@ class FakeClient:
     async def disconnect(self):
         self.disconnected = True
 
+    def subscribe(self, event_type, callback):
+        self.subscription_event_type = event_type
+        self.subscription_callback = callback
+        return "subscription-1"
+
 
 class MeshCoreTransportTests(unittest.TestCase):
     def setUp(self):
@@ -83,6 +88,30 @@ class MeshCoreTransportTests(unittest.TestCase):
         self.assertTrue(client.disconnected)
         self.assertIsNone(self.transport._meshcore)
         asyncio.run(self.transport.disconnect())
+
+    def test_subscribe_rejects_oversized_and_malformed_payloads_before_callback(self):
+        client = FakeClient()
+        self.transport._meshcore = client
+        received = []
+
+        async def callback(payload):
+            received.append(payload)
+
+        subscription = asyncio.run(self.transport.subscribe(callback))
+        self.assertEqual(subscription, "subscription-1")
+        self.assertEqual(client.subscription_event_type, EventType.CHANNEL_DATA_RECV)
+
+        def radio_event(payload_hex):
+            return SimpleNamespace(payload={
+                "channel_idx": 2,
+                "data_type": 0xB301,
+                "payload": payload_hex,
+            })
+
+        asyncio.run(client.subscription_callback(radio_event("00" * 164)))
+        asyncio.run(client.subscription_callback(radio_event("not-hex")))
+        asyncio.run(client.subscription_callback(radio_event("00" * 163)))
+        self.assertEqual(received, [b"\\x00" * 163])
 
     def test_configuration_bounds(self):
         with self.assertRaises(ValueError):
