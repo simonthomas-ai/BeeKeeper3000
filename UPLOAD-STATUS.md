@@ -1,6 +1,6 @@
 # Veröffentlichungs- und Integrationsstatus
 
-Stand: 20.11.2026
+Stand: 22.11.2026
 
 ## Aktualisierung – 22.11.2026
 
@@ -23,7 +23,7 @@ Der aktuelle Hauptzweig enthält inzwischen eine experimentelle lokale Kamera-/O
 Ein erfolgreicher Softwarelauf belegt nur die darin ausgeführten Tests. Er ist weder KI-Modellfreigabe noch Hardware-/Feldabnahme, rechtliche Freigabe oder Erlaubnis zum produktiven Nestmanagement.
 
 
-Stand: 20.11.2026
+## Bisheriger Integrationsstand (Dokumentation vom 20.11.2026)
 
 ## In GitHub veröffentlichte Komponenten
 
