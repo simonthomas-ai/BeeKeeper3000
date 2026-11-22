@@ -262,6 +262,9 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             + struct.pack(">II", 50000, 50000)
         )
         path = self.root / "huge.png"
+        path.write_bytes(payload)
+        adapter = self.make_adapter("huge.png", max_image_pixels=50_000_000)
+        cv2 = FakeCV2()
         with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
             await adapter.discover()
             with self.assertRaisesRegex(AdapterConfigurationError, "dimension"):
