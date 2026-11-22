@@ -300,6 +300,20 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(image_dimensions(webp), (640, 480))
 
+    async def test_rejects_image_file_replaced_after_discovery(self):
+        path = self.root / "replace.png"
+        path.write_bytes(PNG_HEADER)
+        adapter = self.make_adapter("replace.png")
+        cv2 = FakeCV2()
+        replacement = self.root / "replacement-image.tmp"
+        replacement.write_bytes(PNG_HEADER + b"new bytes")
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            os.replace(replacement, path)
+            with self.assertRaisesRegex(AdapterConfigurationError, "source_changed"):
+                await adapter.start()
+        self.assertEqual(cv2.decode_calls, 0)
+
     async def test_rejects_video_file_replaced_after_discovery(self):
         path = self.root / "replace.mp4"
         path.write_bytes(b"old video source")
