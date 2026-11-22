@@ -48,7 +48,8 @@ class GeoJsonExportTests(unittest.TestCase):
                            ellipse_minor_95_m=100, ellipse_bearing_deg=90.0)
         result = estimate_to_geojson(estimate, vertices=24)
         point = result["features"][0]["geometry"]["coordinates"]
-        self.assertEqual(point, [179.9999, 51.0])
+        self.assertAlmostEqual(point[0], 179.9999, places=7)
+        self.assertAlmostEqual(point[1], 51.0, places=7)
         ring = result["features"][1]["geometry"]["coordinates"][0]
         self.assertTrue(any(lon < -179.9 for lon, lat in ring))
         self.assertTrue(all(-180 <= lon <= 180 and -90 <= lat <= 90 for lon, lat in ring))
