@@ -33,11 +33,13 @@ class FakeNumpy:
 
 
 class FakeVideoCapture:
-    def __init__(self, source, backend, params, frames=None):
+    def __init__(self, source, backend, params, frames=None, *, fps=30.0, frame_count=None):
         self.source = source
         self.backend = backend
         self.params = params
         self.frames = list(frames or [])
+        self.fps = fps
+        self.frame_count = len(self.frames) if frame_count is None else frame_count
         self.opened = True
         self.released = False
         self.position_ms = 0.0
@@ -51,9 +53,9 @@ class FakeVideoCapture:
         if prop == FakeCV2.CAP_PROP_FRAME_HEIGHT:
             return 480
         if prop == FakeCV2.CAP_PROP_FRAME_COUNT:
-            return len(self.frames)
+            return self.frame_count
         if prop == FakeCV2.CAP_PROP_FPS:
-            return 30.0
+            return self.fps
         if prop == FakeCV2.CAP_PROP_POS_MSEC:
             return self.position_ms
         return 0.0
@@ -81,9 +83,11 @@ class FakeCV2:
     CAP_PROP_FRAME_COUNT = 7
     CAP_PROP_POS_MSEC = 0
 
-    def __init__(self, *, frames=None, image_frame=None):
+    def __init__(self, *, frames=None, image_frame=None, fps=30.0, frame_count_override=None):
         self.frames = list(frames or [])
         self.image_frame = image_frame or FakeFrame()
+        self.fps = fps
+        self.frame_count_override = frame_count_override
         self.captures = []
         self.decode_calls = 0
 
@@ -92,7 +96,10 @@ class FakeCV2:
         return self.image_frame
 
     def VideoCapture(self, source, backend, params):
-        capture = FakeVideoCapture(source, backend, params, self.frames)
+        capture = FakeVideoCapture(
+            source, backend, params, self.frames,
+            fps=self.fps, frame_count=self.frame_count_override,
+        )
         self.captures.append(capture)
         return capture
 
@@ -317,6 +324,32 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(AdapterConfigurationError, "frame_limit"):
                 await adapter.start()
         self.assertTrue(cv2.captures[0].released)
+
+    async def test_rejects_video_when_duration_metadata_is_unavailable(self):
+        path = self.root / "unknown-duration.mp4"
+        path.write_bytes(b"fake video")
+        adapter = self.make_adapter("unknown-duration.mp4")
+        cv2 = FakeCV2(frames=[FakeFrame()], fps=0.0)
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            with self.assertRaisesRegex(AdapterConfigurationError, "duration_unverifiable"):
+                await adapter.start()
+        self.assertTrue(cv2.captures[0].released)
+
+    async def test_enforces_video_duration_during_frame_reads(self):
+        path = self.root / "duration-cap.mp4"
+        path.write_bytes(b"fake video")
+        adapter = self.make_adapter("duration-cap.mp4", max_video_duration_seconds=1)
+        cv2 = FakeCV2(frames=[FakeFrame(), FakeFrame()], fps=1.0)
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            await adapter.start()
+            capture = cv2.captures[0]
+            capture.position_ms = 1_500.0
+            self.assertIsNone(await adapter.read_event(1.0))
+            self.assertTrue(adapter.completed)
+            self.assertTrue(capture.released)
+        self.assertEqual(adapter._frames_seen, 1)
 
     def test_image_header_reader_rejects_malformed_or_unknown_data(self):
         for payload in (b"", b"\x89PNG\r\n\x1a\n", b"not an image payload"):
