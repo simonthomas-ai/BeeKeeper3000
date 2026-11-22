@@ -19,8 +19,10 @@ from typing import Any, Awaitable, Callable, Mapping, Protocol
 _ADAPTER_ID = re.compile(r"^[a-z][a-z0-9._-]{1,63}$")
 _PERMISSION_ID = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
 _FORBIDDEN_EVENT_KEYS = {
-    "image", "images", "frame", "frames", "video", "audio", "raw_media",
-    "media", "latitude", "longitude", "lat", "lon", "gps", "coordinates",
+    "image", "images", "image_bytes", "image_data", "image_url", "thumbnail",
+    "frame", "frames", "frame_data", "video", "video_bytes", "video_url",
+    "audio", "audio_bytes", "audio_url", "raw_media", "media", "media_bytes",
+    "media_url", "latitude", "longitude", "lat", "lon", "gps", "coordinates",
     "location", "api_key", "token", "password", "secret", "authorization",
     "cookie", "private_key", "credential",
 }
