@@ -112,8 +112,16 @@ DiagnosticSink = Callable[[Mapping[str, Any]], Awaitable[None] | None]
 def _contains_forbidden_key(value: Any) -> bool:
     if isinstance(value, Mapping):
         for key, child in value.items():
-            normalized = str(key).strip().lower().replace("-", "_")
-            if normalized in _FORBIDDEN_EVENT_KEYS or _contains_forbidden_key(child):
+            # Compare a separator-free form as well: API payloads commonly use
+            # camelCase, kebab-case or dotted names for the same sensitive field.
+            normalized = str(key).strip().casefold().replace("-", "_")
+            compact = re.sub(r"[^a-z0-9]", "", normalized)
+            forbidden_compact = {
+                re.sub(r"[^a-z0-9]", "", name) for name in _FORBIDDEN_EVENT_KEYS
+            }
+            if normalized in _FORBIDDEN_EVENT_KEYS or compact in forbidden_compact:
+                return True
+            if _contains_forbidden_key(child):
                 return True
     elif isinstance(value, (list, tuple)):
         return any(_contains_forbidden_key(item) for item in value)
