@@ -262,10 +262,11 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             + struct.pack(">II", 50000, 50000)
         )
         path = self.root / "huge.png"
-        path.write_bytes(payload)
-        adapter = self.make_adapter("huge.png", max_image_pixels=50_000_000)
-        with self.assertRaisesRegex(AdapterConfigurationError, "dimension"):
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
             await adapter.discover()
+            with self.assertRaisesRegex(AdapterConfigurationError, "dimension"):
+                await adapter.start()
+        self.assertEqual(cv2.decode_calls, 0)
 
     async def test_rejects_unknown_file_extensions(self):
         path = self.root / "payload.exe"
@@ -278,13 +279,13 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(image_dimensions(PNG_HEADER), (640, 480))
 
     def test_image_header_reader_supports_jpeg_and_webp_dimensions(self):
-        jpeg = b"\\xff\\xd8\\xff\\xc0" + bytes([0, 8, 8, 1, 224, 2, 128, 3])
+        jpeg = b"\xff\xd8\xff\xc0" + bytes([0, 8, 8, 1, 224, 2, 128, 3])
         self.assertEqual(image_dimensions(jpeg), (640, 480))
 
         webp = (
             b"RIFF" + (22).to_bytes(4, "little") + b"WEBP"
             + b"VP8X" + (10).to_bytes(4, "little")
-            + b"\\x00\\x00\\x00\\x00"
+            + b"\x00\x00\x00\x00"
             + (639).to_bytes(3, "little") + (479).to_bytes(3, "little")
         )
         self.assertEqual(image_dimensions(webp), (640, 480))
