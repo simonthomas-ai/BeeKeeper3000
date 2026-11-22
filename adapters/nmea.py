@@ -12,7 +12,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
 
 from adapters.lifecycle import AdapterConfigurationError, AdapterTransientError
@@ -165,7 +165,9 @@ class Nmea0183Parser:
         self._rmc_time: float | None = None
         self._rmc_active = False
         self._rmc_position: tuple[float, float] | None = None
-        self._gga: tuple[float, float, float, float, int, int] | None = None
+        self._gga: tuple[float, float, float, int, int, float] | None = None
+        self._rmc_received_monotonic: float | None = None
+        self._gga_received_monotonic: float | None = None
 
     @staticmethod
     def _pair_distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -181,34 +183,50 @@ class Nmea0183Parser:
             or self._rmc_time is None
             or self._rmc_position is None
             or self._gga is None
+            or self._rmc_received_monotonic is None
+            or self._gga_received_monotonic is None
         ):
             self.fix = None
             return
 
         gga_time, latitude, longitude, quality, satellites, hdop = self._gga
-        if abs(gga_time - self._rmc_time) > 1.0:
+        time_difference = abs(gga_time - self._rmc_time)
+        time_difference = min(time_difference, 86_400.0 - time_difference)
+        if time_difference > 1.0:
+            self.fix = None
+            return
+        if abs(self._gga_received_monotonic - self._rmc_received_monotonic) > 2.0:
             self.fix = None
             return
         if self._pair_distance_m((latitude, longitude), self._rmc_position) > 250.0:
             self.fix = None
             return
-        if quality <= 0 or satellites <= 0 or hdop <= 0 or not math.isfinite(hdop):
+        # Accept autonomous/DGPS/PPS/RTK fixes only. Dead-reckoning,
+        # manual and simulated GGA quality codes are not GNSS station fixes.
+        if quality not in {1, 2, 3, 4, 5} or satellites <= 0 or hdop <= 0 or not math.isfinite(hdop):
             self.fix = None
             return
 
-        time_delta = gga_time
-        hour = int(time_delta // 3600)
-        minute = int((time_delta % 3600) // 60)
-        seconds_float = time_delta - hour * 3600 - minute * 60
+        hour = int(gga_time // 3600)
+        minute = int((gga_time % 3600) // 60)
+        seconds_float = gga_time - hour * 3600 - minute * 60
         second = int(seconds_float)
         microsecond = int(round((seconds_float - second) * 1_000_000))
-        if microsecond == 1_000_000:
+        if microsecond >= 1_000_000:
             second += 1
-            microsecond = 0
-        captured = datetime(
+            microsecond -= 1_000_000
+        base_date = datetime(
             self._rmc_date.year, self._rmc_date.month, self._rmc_date.day,
-            hour, minute, second, microsecond, tzinfo=timezone.utc
+            tzinfo=timezone.utc,
         )
+        rmc_stamp = base_date + timedelta(seconds=self._rmc_time)
+        gga_candidates = [
+            base_date + timedelta(days=day_offset, seconds=gga_time)
+            for day_offset in (-1, 0, 1)
+        ]
+        captured = min(gga_candidates, key=lambda candidate: abs((candidate - rmc_stamp).total_seconds()))
+        if captured.microsecond != microsecond:
+            captured = captured.replace(microsecond=microsecond)
         self.fix = NmeaFix(
             latitude_degrees=latitude,
             longitude_degrees=longitude,
@@ -238,6 +256,7 @@ class Nmea0183Parser:
             status = fields[2]
             if status != "A":
                 self._rmc_active = False
+                self._rmc_received_monotonic = None
                 self.fix = None
                 return True
             latitude = _coordinate(fields[3], fields[4], latitude=True)
@@ -246,11 +265,13 @@ class Nmea0183Parser:
             mode = fields[12] if len(fields) > 12 else ""
             if mode.upper() == "N":
                 self._rmc_active = False
+                self._rmc_received_monotonic = None
                 self.fix = None
                 return True
             self._rmc_date = parsed_date
             self._rmc_time = time_value
             self._rmc_position = (latitude, longitude)
+            self._rmc_received_monotonic = received
             self._rmc_active = True
             self._refresh_fix(received)
             return True
@@ -272,6 +293,7 @@ class Nmea0183Parser:
             if not math.isfinite(hdop) or hdop < 0 or hdop > 100:
                 raise ValueError("nmea_gga_hdop_out_of_range")
             self._gga = (time_value, latitude, longitude, quality, satellites, hdop)
+            self._gga_received_monotonic = received
             self._refresh_fix(received)
             return True
 
@@ -342,8 +364,8 @@ class NmeaSerialAdapter:
         ):
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
                 raise ValueError(f"{name} must be finite")
-        if not 0.1 <= float(calibrated_heading_accuracy_degrees) <= 45:
-            raise ValueError("calibrated heading accuracy must be within 0.1..45 degrees")
+        if not 0.5 <= float(calibrated_heading_accuracy_degrees) <= 45:
+            raise ValueError("calibrated heading sigma must be within 0.5..45 degrees")
         if not 0.2 <= float(read_timeout_seconds) <= 5:
             raise ValueError("serial read timeout must be between 0.2 and 5 seconds")
         if not 0.5 <= float(maximum_fix_age_seconds) <= 30:
@@ -384,7 +406,7 @@ class NmeaSerialAdapter:
         return callable(self.serial_factory)
 
     async def capabilities(self) -> Mapping[str, bool]:
-        return {"nmea_serial": callable(self.serial_factory), "gnss_fix": True, "heading_sensor": True}
+        return {"nmea_serial": callable(self.serial_factory), "nmea0183_parser": True}
 
     async def permissions(self) -> Mapping[str, bool]:
         # Explicit constructor consent is required before serial opening.
@@ -446,19 +468,19 @@ class NmeaSerialAdapter:
         self._last_emitted = signature
         # Coordinates remain in parser.fix only; outbound bearing metadata is
         # explicitly safe for the common metadata-only event supervisor.
+        observed_at = fix.captured_at.astimezone(timezone.utc)
+        expires_at = observed_at + timedelta(hours=1)
         return {
-            "event_id": "nmea-" + uuid.uuid4().hex,
-            "observed_at": fix.captured_at.isoformat().replace("+00:00", "Z"),
+            "event_id": uuid.uuid4().hex,
             "station_id": self.station_id,
-            "event_type": "bearing_observation",
+            "observed_at": observed_at.isoformat().replace("+00:00", "Z"),
+            "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
+            "event_type": "bearing",
+            "candidate_taxon": "unknown",
+            "confidence": 0.0,
+            "verification_status": "unverified",
             "bearing_deg": round(heading.true_degrees, 4),
-            "bearing_accuracy_deg": round(self.calibrated_heading_accuracy_degrees, 3),
-            "heading_reference": "true",
-            "heading_source": heading.source,
-            "gnss_fix_quality": fix.fix_quality,
-            "gnss_satellites": fix.satellites,
-            "gnss_hdop": round(fix.hdop, 2),
-            "verification_status": "unverified_bearing",
+            "bearing_sigma_deg": round(self.calibrated_heading_accuracy_degrees, 3),
         }
 
     async def health(self) -> Mapping[str, Any]:
