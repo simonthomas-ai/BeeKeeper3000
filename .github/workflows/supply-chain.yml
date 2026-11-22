@@ -12,9 +12,6 @@ on:
       - "adapters/**/*.py"
       - "adapters/*.lock"
       - "docs/NMEA-GNSS-HEADING-ADAPTER.md"
-      - "adapters/**/*.py"
-      - "adapters/*.lock"
-      - "docs/NMEA-GNSS-HEADING-ADAPTER.md"
       - "network/meshcore/**/*.py"
       - "monitor-bridge/**/*.js"
       - "monitor-bridge/**/*.mjs"
@@ -30,6 +27,9 @@ on:
     paths:
       - "camera/requirements.txt"
       - "camera/**/*.py"
+      - "adapters/**/*.py"
+      - "adapters/*.lock"
+      - "docs/NMEA-GNSS-HEADING-ADAPTER.md"
       - "network/meshcore/**/*.py"
       - "monitor-bridge/**/*.js"
       - "monitor-bridge/**/*.mjs"
@@ -74,7 +74,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-vulnerability-audit
-          path: reports/pip-audit.json
+          path: |
+            reports/pip-audit.json
+            reports/nmea-serial-audit.json
           if-no-files-found: ignore
           retention-days: 30
 
