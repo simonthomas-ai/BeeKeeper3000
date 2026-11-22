@@ -225,6 +225,7 @@ class AdapterSupervisor:
             raise AdapterConfigurationError("adapter_supervisor_already_running")
 
         self._started = False
+        failed = False
         try:
             self.state = AdapterState.DISCOVERING
             if await self._call("discover") is not True:
@@ -261,26 +262,29 @@ class AdapterSupervisor:
                 if inspect.isawaitable(result):
                     await asyncio.wait_for(result, timeout=self.operation_timeout_seconds)
         except AdapterLifecycleError:
+            failed = True
             self.state = AdapterState.FAILED
             raise
         except asyncio.CancelledError:
             self.state = AdapterState.STOPPING
             raise
         except Exception:
+            failed = True
             self.state = AdapterState.FAILED
             raise AdapterTransientError("adapter_supervisor_failed") from None
         finally:
             if self._started:
-                self.state = AdapterState.STOPPING
+                if not failed:
+                    self.state = AdapterState.STOPPING
                 try:
                     await self._call("stop")
                 except AdapterLifecycleError:
+                    failed = True
                     self.state = AdapterState.FAILED
                     raise
                 finally:
                     self._started = False
-            if self.state != AdapterState.FAILED:
-                self.state = AdapterState.STOPPED
+            self.state = AdapterState.FAILED if failed else AdapterState.STOPPED
 
     async def run_forever(self, event_sink: EventSink, stop_event: asyncio.Event,
                           *, base_backoff_seconds: float = 1.0,
