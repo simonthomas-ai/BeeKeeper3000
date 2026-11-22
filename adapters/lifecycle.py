@@ -24,8 +24,13 @@ _FORBIDDEN_EVENT_KEYS = {
     "audio", "audio_bytes", "audio_url", "raw_media", "media", "media_bytes",
     "media_url", "latitude", "longitude", "lat", "lon", "gps", "coordinates",
     "location", "api_key", "token", "password", "secret", "authorization",
-    "cookie", "private_key", "credential",
+    "cookie", "private_key", "credential", "access_token", "refresh_token",
+    "authorization_token", "client_secret", "secret_key", "gps_coordinates",
+    "rtsp_url", "stream_url",
 }
+_FORBIDDEN_EVENT_KEYS_COMPACT = frozenset(
+    re.sub(r"[^a-z0-9]", "", name) for name in _FORBIDDEN_EVENT_KEYS
+)
 _MAX_EVENT_BYTES = 64 * 1024
 
 
@@ -116,10 +121,7 @@ def _contains_forbidden_key(value: Any) -> bool:
             # camelCase, kebab-case or dotted names for the same sensitive field.
             normalized = str(key).strip().casefold().replace("-", "_")
             compact = re.sub(r"[^a-z0-9]", "", normalized)
-            forbidden_compact = {
-                re.sub(r"[^a-z0-9]", "", name) for name in _FORBIDDEN_EVENT_KEYS
-            }
-            if normalized in _FORBIDDEN_EVENT_KEYS or compact in forbidden_compact:
+            if normalized in _FORBIDDEN_EVENT_KEYS or compact in _FORBIDDEN_EVENT_KEYS_COMPACT:
                 return True
             if _contains_forbidden_key(child):
                 return True
