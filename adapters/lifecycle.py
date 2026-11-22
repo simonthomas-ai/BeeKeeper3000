@@ -120,7 +120,13 @@ def _contains_forbidden_key(value: Any) -> bool:
         for key, child in value.items():
             # Compare separator-free names as well so camelCase, kebab-case
             # and dotted aliases cannot bypass the privacy denylist.
-            normalized = unicodedata.normalize("NFKC", str(key)).strip().casefold().replace("-", "_")
+            unicode_normalized = unicodedata.normalize("NFKC", str(key)).strip()
+            # Event field names are protocol identifiers, not free text. Reject
+            # remaining non-ASCII characters to block homoglyph/combining-mark
+            # aliases that compatibility normalization cannot safely map.
+            if not unicode_normalized.isascii():
+                return True
+            normalized = unicode_normalized.casefold().replace("-", "_")
             compact = re.sub(r"[^a-z0-9]", "", normalized)
             if normalized in _FORBIDDEN_EVENT_KEYS or compact in _FORBIDDEN_EVENT_KEYS_COMPACT:
                 return True
