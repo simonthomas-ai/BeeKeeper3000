@@ -183,6 +183,7 @@ class LocalMediaAdapter:
         self._image_processed = False
         self._eof = False
         self._frames_seen = 0
+        self._video_fps: float | None = None
         self._started = False
         self._last_event_by_species: dict[str, float] = {}
 
@@ -359,15 +360,22 @@ class LocalMediaAdapter:
                 self._validate_image_dimensions(width, height)
             frame_count = float(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_COUNT", 7)))
             fps = float(self._capture.get(getattr(cv2, "CAP_PROP_FPS", 5)))
-            if not math.isfinite(frame_count) or not math.isfinite(fps):
+            if (
+                not math.isfinite(frame_count) or not math.isfinite(fps)
+                or frame_count <= 0 or fps <= 0
+            ):
+                # A local file with unknown duration metadata is rejected rather
+                # than processed without an enforceable time ceiling.
                 self._release_capture()
-                raise AdapterConfigurationError("local_video_metadata_invalid")
+                raise AdapterConfigurationError("local_video_duration_unverifiable")
             if frame_count > self.max_video_frames:
                 self._release_capture()
                 raise AdapterConfigurationError("local_video_frame_limit_exceeded")
-            if fps > 0 and frame_count > 0 and frame_count / fps > self.max_video_duration_seconds:
+            estimated_duration = frame_count / fps
+            if not math.isfinite(estimated_duration) or estimated_duration > self.max_video_duration_seconds:
                 self._release_capture()
                 raise AdapterConfigurationError("local_video_duration_limit_exceeded")
+            self._video_fps = fps
         self._started = True
 
     def _queue_detections(self, frame: Any) -> None:
@@ -417,7 +425,18 @@ class LocalMediaAdapter:
             self._frames_seen += 1
             processed += 1
             media_position_ms = float(self._capture.get(getattr(self._cv2, "CAP_PROP_POS_MSEC", 0)))
-            if math.isfinite(media_position_ms) and media_position_ms > self.max_video_duration_seconds * 1000:
+            estimated_position_ms = (
+                self._frames_seen / self._video_fps * 1000.0
+                if self._video_fps is not None and self._video_fps > 0
+                else float("inf")
+            )
+            if (
+                estimated_position_ms > self.max_video_duration_seconds * 1000
+                or (
+                    math.isfinite(media_position_ms)
+                    and media_position_ms > self.max_video_duration_seconds * 1000
+                )
+            ):
                 self._eof = True
                 self._release_capture()
                 return None
