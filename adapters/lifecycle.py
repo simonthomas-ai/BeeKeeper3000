@@ -258,6 +258,11 @@ class AdapterSupervisor:
                     raise AdapterTransientError("adapter_unhealthy")
                 event = await self._call("read_event", self.read_timeout_seconds)
                 if event is None:
+                    # Finite adapters such as an explicitly selected local
+                    # file may expose a completion flag. Live camera/radio
+                    # adapters omit it and continue waiting for new events.
+                    if getattr(self.adapter, "completed", False) is True:
+                        break
                     continue
                 safe_event = validate_metadata_event(event)
                 result = event_sink(safe_event)
