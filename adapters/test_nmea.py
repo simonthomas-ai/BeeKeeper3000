@@ -212,7 +212,7 @@ class NmeaSerialAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await adapter.read_event(1.0))
         self.assertIsNone(await adapter.read_event(1.0))
         event = await adapter.read_event(1.0)
-        self.assertEqual(event["event_type"], "bearing_observation")
+        self.assertEqual(event["event_type"], "bearing")
         self.assertNotIn("private-invalid", str(event))
         await adapter.stop()
 
