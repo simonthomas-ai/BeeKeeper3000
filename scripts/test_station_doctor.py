@@ -1,10 +1,13 @@
 import json
+import sys
 import threading
+import types
 import unittest
 from unittest import mock
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
-from station_doctor import Report, _is_loopback_url, _request, _version, check_bridge_config
+from station_doctor import Report, _is_loopback_url, _request, _version, check_bridge_config, check_model
 
 
 class StationDoctorTests(unittest.TestCase):
@@ -76,6 +79,44 @@ class StationDoctorTests(unittest.TestCase):
     def test_python_version_parser_handles_missing(self):
         with mock.patch("station_doctor.shutil.which", return_value=None):
             self.assertIsNone(_version("node"))
+
+    def test_model_check_runs_and_discards_local_synthetic_inference(self):
+        manifest = types.SimpleNamespace(width=320, height=240)
+        fake_numpy = types.SimpleNamespace(uint8="uint8", zeros=mock.Mock(return_value="synthetic-frame"))
+        fake_runtime = types.SimpleNamespace(get_available_providers=lambda: ["CPUExecutionProvider"])
+        report = Report()
+        with mock.patch.dict(sys.modules, {"numpy": fake_numpy, "onnxruntime": fake_runtime}):
+            with mock.patch("camera.model_manifest.load_manifest", return_value=manifest), \
+                 mock.patch("camera.onnx_detector.OnnxDetector") as detector_type:
+                check_model(report, Path("."), "local-manifest.json")
+
+        detector_type.assert_called_once_with(manifest, intra_op_threads=2)
+        detector_type.return_value.detect.assert_called_once_with("synthetic-frame")
+        fake_numpy.zeros.assert_called_once_with((240, 320, 3), dtype="uint8")
+        self.assertEqual(
+            [(item.name, item.status) for item in report.checks],
+            [
+                ("Camera model manifest", "PASS"),
+                ("ONNX Runtime CPU", "PASS"),
+                ("ONNX CPU inference smoke test", "PASS"),
+            ],
+        )
+
+    def test_model_check_fails_when_synthetic_inference_fails(self):
+        manifest = types.SimpleNamespace(width=320, height=240)
+        fake_numpy = types.SimpleNamespace(uint8="uint8", zeros=mock.Mock(return_value="synthetic-frame"))
+        fake_runtime = types.SimpleNamespace(get_available_providers=lambda: ["CPUExecutionProvider"])
+        report = Report()
+        with mock.patch.dict(sys.modules, {"numpy": fake_numpy, "onnxruntime": fake_runtime}):
+            with mock.patch("camera.model_manifest.load_manifest", return_value=manifest), \
+                 mock.patch("camera.onnx_detector.OnnxDetector") as detector_type:
+                detector_type.return_value.detect.side_effect = ValueError("private local detail")
+                check_model(report, Path("."), "local-manifest.json")
+
+        self.assertTrue(report.failed)
+        self.assertEqual(report.checks[-1].name, "ONNX CPU inference smoke test")
+        self.assertEqual(report.checks[-1].status, "FAIL")
+        self.assertNotIn("private local detail", report.checks[-1].detail)
 
 
 if __name__ == "__main__":

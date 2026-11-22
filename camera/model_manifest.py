@@ -48,6 +48,7 @@ class ModelManifest:
     license_reviewed_at: str
     inference_use_allowed: bool
     redistribution_allowed: bool
+    inference_status: str
     input_name: str
     width: int
     height: int
@@ -137,7 +138,8 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         raise ModelManifestError("model license review does not permit inference use")
     if raw.get("inference_status") not in {"experimental", "independently_validated"}:
         raise ModelManifestError("inference_status must be experimental or independently_validated")
-    if raw.get("inference_status") == "independently_validated":
+    inference_status = raw["inference_status"]
+    if inference_status == "independently_validated":
         report = raw.get("validation_report_url")
         if not isinstance(report, str) or not report.startswith("https://"):
             raise ModelManifestError("independent validation requires a public validation_report_url")
@@ -211,6 +213,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         license_reviewed_at=reviewed_at,
         inference_use_allowed=inference_use_allowed,
         redistribution_allowed=redistribution_allowed,
+        inference_status=inference_status,
         input_name=input_name.strip(),
         width=width,
         height=height,

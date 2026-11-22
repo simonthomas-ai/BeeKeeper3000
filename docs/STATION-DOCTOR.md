@@ -25,11 +25,21 @@ Set \`BRIDGE_REQUIRE_CURSOR=true\` and a persistent \`BRIDGE_STATE_FILE\` for th
 
 ## Optional checks
 
-Model manifest and ONNX CPU runtime:
+Model manifest, ONNX CPU runtime and a synthetic inference smoke test:
 
 ~~~powershell
 python .\scripts\station_doctor.py --model-manifest "$env:LOCALAPPDATA\BeeKeeper3000\models\manifest.json"
 ~~~
+
+If the manifest and optional camera dependencies pass, the doctor runs one inference on a synthetic all-zero frame at the manifest's input dimensions. It discards the detections locally and does not open a camera, queue an event, or contact a service. This checks that the installed ONNX graph can execute through the configured CPU detector contract; it does not validate biological accuracy, calibration, throughput, or field performance. No model is included, and the example manifest remains deliberately invalid.
+
+Inspect a locally supplied ONNX graph without creating a manifest or running inference:
+
+~~~powershell
+python -m camera.model_inspector "$env:LOCALAPPDATA\BeeKeeper3000\models\candidate.onnx"
+~~~
+
+The report contains the file size, SHA-256, runtime provider, and actual graph input/output names, types, and shapes. It is local stdout only and does not establish licensing, class labels, or field fitness. Treat the graph as untrusted input and inspect only after reviewing its provenance.
 
 One-frame camera check (explicit opt-in; set the source in the environment so RTSP credentials do not appear in shell history or process arguments):
 
@@ -52,4 +62,4 @@ The radio check uses a dedicated test identity. It only opens and closes the ser
 - \`WARN\`: optional hardware/model configuration is absent or authentication could not be verified because the secret was not available to this shell.
 - \`FAIL\`: a required file, version, local service contract, path or enabled safety setting is invalid.
 
-Exit code 1 means at least one FAIL. WARN-only runs exit 0 but are not a field-acceptance certificate. A successful software preflight does not prove radio range, camera classification quality, triangulation accuracy, GDPR compliance, or successful field operation. Test the real station and documented acceptance plan before deployment.
+Exit code 1 means at least one FAIL. WARN-only runs exit 0 but are not a field-acceptance certificate. A successful synthetic inference smoke test proves only that the configured graph executed on a synthetic frame; it does not prove radio range, camera compatibility, classification quality, triangulation accuracy, GDPR compliance, or successful field operation. Test the real station and documented acceptance plan before deployment.

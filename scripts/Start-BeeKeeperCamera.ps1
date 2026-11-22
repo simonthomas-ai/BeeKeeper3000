@@ -9,7 +9,8 @@ param(
     [string]$SourceApiUrl = "http://127.0.0.1:8787",
     [ValidateRange(0.1,15)][double]$MaxFps = 5,
     [ValidateRange(0,86400)][double]$CooldownSeconds = 30,
-    [ValidateRange(1,8)][int]$OnnxThreads = 2
+    [ValidateRange(1,8)][int]$OnnxThreads = 2,
+    [switch]$Shadow
 )
 
 Set-StrictMode -Version Latest
@@ -75,7 +76,9 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "Camera dependencies are missing. Install camera\requirements.txt into this Python environment."
         }
-        & $pythonPath -m camera.runtime
+        $runtimeArgs = @("-m", "camera.runtime")
+        if ($Shadow) { $runtimeArgs += "--shadow" }
+        & $pythonPath @runtimeArgs
         if ($LASTEXITCODE -ne 0) { throw "Camera runtime exited with code $LASTEXITCODE." }
     } finally {
         Pop-Location
