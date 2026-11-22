@@ -62,6 +62,10 @@ Der Kamerastarter liest den Quell-API-Schlüssel aus der DPAPI-geschützten Schl
 
 Unter Windows müssen NTFS-Zugriffsrechte eingeschränkt sein; unter Linux/macOS erhalten Verzeichnisse den Modus 0700 und Datenbankdateien 0600. SQLite ist nicht anwendungsseitig verschlüsselt: BitLocker oder verschlüsselten Datenträger einsetzen. Die Versandwarteschlange ist eine eigene Datenbank und muss vor dem produktiven Einsatz in einem vollständigen Sicherungs-/Wiederherstellungstest berücksichtigt werden.
 
+## Expliziter lokaler Bild-/Videoimport
+
+Für den einzelnen Dateiimport steht zusätzlich der gemeinsame Adapter `adapters/local_media.py` mit CLI `scripts/import_local_media.py` bereit. Er verarbeitet JPEG/PNG/WebP und ausgewählte lokale Videodateien innerhalb eines ausdrücklich erlaubten Stammordners, führt die Inferenz lokal aus und legt nur unbestätigte Metadaten in der privaten SQLite-Outbox ab. Er lädt keine Medien hoch und spricht keine Netzwerk-API an. Größen-, Pixel-, Frame- und Zeitlimits sowie Symlink-/Traversal-Sperren sind dokumentiert und automatisiert getestet. Siehe [Local Media Import](../docs/LOCAL-MEDIA-IMPORT.md).
+
 ## Tests
 
 ~~~sh

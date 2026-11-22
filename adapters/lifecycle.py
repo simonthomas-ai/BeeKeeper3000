@@ -117,8 +117,8 @@ DiagnosticSink = Callable[[Mapping[str, Any]], Awaitable[None] | None]
 def _contains_forbidden_key(value: Any) -> bool:
     if isinstance(value, Mapping):
         for key, child in value.items():
-            # Compare a separator-free form as well: API payloads commonly use
-            # camelCase, kebab-case or dotted names for the same sensitive field.
+            # Compare separator-free names as well so camelCase, kebab-case
+            # and dotted aliases cannot bypass the privacy denylist.
             normalized = str(key).strip().casefold().replace("-", "_")
             compact = re.sub(r"[^a-z0-9]", "", normalized)
             if normalized in _FORBIDDEN_EVENT_KEYS or compact in _FORBIDDEN_EVENT_KEYS_COMPACT:
@@ -268,6 +268,11 @@ class AdapterSupervisor:
                     raise AdapterTransientError("adapter_unhealthy")
                 event = await self._call("read_event", self.read_timeout_seconds)
                 if event is None:
+                    # Finite adapters such as an explicitly selected local
+                    # file may expose a completion flag. Live camera/radio
+                    # adapters omit it and continue waiting for new events.
+                    if getattr(self.adapter, "completed", False) is True:
+                        break
                     continue
                 safe_event = validate_metadata_event(event)
                 result = event_sink(safe_event)
