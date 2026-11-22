@@ -29,6 +29,35 @@ _SOF_MARKERS = {
 }
 
 
+def _file_identity_from_stat(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
+    """Capture stable identity and platform-meaningful change metadata.
+
+    POSIX ctime records inode metadata/content changes. On Windows Python's
+    st_ctime is the file creation time, not a change time, and must not be
+    compared as one; there the stable file index, size and mtime are used.
+    """
+    change_time_ns = (
+        int(getattr(metadata, "st_ctime_ns", int(metadata.st_ctime * 1_000_000_000)))
+        if os.name == "posix"
+        else 0
+    )
+    return (
+        int(metadata.st_dev),
+        int(metadata.st_ino),
+        int(metadata.st_size),
+        int(metadata.st_mtime_ns),
+        change_time_ns,
+    )
+
+
+def _is_link_or_junction(path: Path) -> bool:
+    """Reject symbolic links and Windows junctions at every trust boundary."""
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction()) if callable(is_junction) else False
+
+
 def image_dimensions(payload: bytes) -> tuple[int, int]:
     """Read JPEG/PNG/WebP dimensions without decoding the image."""
     if not isinstance(payload, bytes) or len(payload) < 16:
@@ -151,15 +180,16 @@ class LocalMediaAdapter:
             current_root = Path(root_input.anchor)
             for part in root_parts[1:]:
                 current_root = current_root / part.name
-                if current_root.is_symlink():
+                if _is_link_or_junction(current_root):
                     raise AdapterConfigurationError("allowed_media_root_symlink_not_allowed")
             if not root_input.exists() or not root_input.is_dir():
                 raise AdapterConfigurationError("allowed_media_root_invalid")
+            self.allowed_root_input = root_input
             self.allowed_root = root_input.resolve(strict=True)
         except OSError:
             raise AdapterConfigurationError("allowed_media_root_invalid") from None
         source = Path(source_path).expanduser()
-        self.source_path = source if source.is_absolute() else self.allowed_root / source
+        self.source_path = source if source.is_absolute() else self.allowed_root_input / source
         self.detector = detector
         self.station_id = station_id.strip()
         self.max_image_bytes = max_image_bytes
@@ -173,7 +203,7 @@ class LocalMediaAdapter:
         self.max_detections_per_frame = max_detections_per_frame
 
         self._path: Path | None = None
-        self._file_identity: tuple[int, int, int, int] | None = None
+        self._file_identity: tuple[int, int, int, int, int] | None = None
         self._extension = ""
         self._image_snapshot: bytes | None = None
         self._capture = None
@@ -190,18 +220,24 @@ class LocalMediaAdapter:
     def _resolve_local_path(self) -> Path:
         candidate = self.source_path
         try:
-            root = self.allowed_root.resolve(strict=True)
-            # Reject symlinks in every component below the configured root.
-            relative = candidate.relative_to(root)
-            if any(part in {"", ".", ".."} for part in relative.parts):
+            # Keep the configured root's lexical spelling for containment.
+            # Windows resolve() may expand an 8.3 path to its long name while
+            # an operator-selected file still uses the original spelling.
+            root_input = self.allowed_root_input
+            relative = candidate.relative_to(root_input)
+            if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
                 raise AdapterConfigurationError("local_media_path_not_canonical")
-            current = root
+
+            # Walk every component without following links. Junctions are also
+            # rejected on Windows because they can redirect an allowed path.
+            current = root_input
             for part in relative.parts:
                 current = current / part
-                if current.is_symlink():
+                if _is_link_or_junction(current):
                     raise AdapterConfigurationError("local_media_symlink_not_allowed")
+
             resolved = current.resolve(strict=True)
-            resolved.relative_to(root)
+            resolved.relative_to(self.allowed_root)
             if not resolved.is_file() or not stat.S_ISREG(resolved.stat().st_mode):
                 raise AdapterConfigurationError("local_media_not_regular_file")
             return resolved
@@ -237,13 +273,13 @@ class LocalMediaAdapter:
                 metadata = os.fstat(stream.fileno())
                 if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > maximum:
                     raise AdapterConfigurationError("local_media_size_or_type_rejected")
-                identity = (
-                    int(metadata.st_dev), int(metadata.st_ino),
-                    int(metadata.st_size), int(metadata.st_mtime_ns),
-                )
+                identity = _file_identity_from_stat(metadata)
                 if self._file_identity is not None and identity != self._file_identity:
                     raise AdapterConfigurationError("local_media_source_changed")
                 payload = stream.read(maximum + 1)
+                after_read = _file_identity_from_stat(os.fstat(stream.fileno()))
+                if after_read != identity:
+                    raise AdapterConfigurationError("local_media_source_changed")
         except OSError:
             raise AdapterConfigurationError("local_media_read_failed") from None
         if len(payload) > maximum:
@@ -259,10 +295,7 @@ class LocalMediaAdapter:
             raise AdapterConfigurationError("local_media_stat_failed") from None
         if not stat.S_ISREG(metadata.st_mode):
             raise AdapterConfigurationError("local_media_not_regular_file")
-        self._file_identity = (
-            int(metadata.st_dev), int(metadata.st_ino),
-            int(metadata.st_size), int(metadata.st_mtime_ns),
-        )
+        self._file_identity = _file_identity_from_stat(metadata)
         if self._extension in _IMAGE_EXTENSIONS:
             if not 0 < metadata.st_size <= self.max_image_bytes:
                 raise AdapterConfigurationError("local_image_size_limit_exceeded")
@@ -281,10 +314,7 @@ class LocalMediaAdapter:
             metadata = current.stat()
         except (OSError, AdapterConfigurationError):
             raise AdapterConfigurationError("local_video_source_changed") from None
-        identity = (
-            int(metadata.st_dev), int(metadata.st_ino),
-            int(metadata.st_size), int(metadata.st_mtime_ns),
-        )
+        identity = _file_identity_from_stat(metadata)
         if identity != self._file_identity or current != self._path:
             raise AdapterConfigurationError("local_video_source_changed")
 

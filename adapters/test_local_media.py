@@ -314,6 +314,26 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
                 await adapter.start()
         self.assertEqual(cv2.decode_calls, 0)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX ctime semantics are required for this regression")
+    async def test_rejects_same_inode_content_change_even_when_mtime_is_restored(self):
+        path = self.root / "same-inode.png"
+        original = PNG_HEADER + b"original-tail"
+        path.write_bytes(original)
+        adapter = self.make_adapter("same-inode.png")
+        cv2 = FakeCV2()
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            before = path.stat()
+            with path.open("r+b") as stream:
+                stream.seek(-1, os.SEEK_END)
+                stream.write(b"X")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+            with self.assertRaisesRegex(AdapterConfigurationError, "source_changed"):
+                await adapter.start()
+        self.assertEqual(cv2.decode_calls, 0)
+
     async def test_rejects_video_file_replaced_after_discovery(self):
         path = self.root / "replace.mp4"
         path.write_bytes(b"old video source")
