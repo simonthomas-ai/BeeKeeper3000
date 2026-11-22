@@ -282,7 +282,7 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(image_dimensions(PNG_HEADER), (640, 480))
 
     def test_image_header_reader_supports_jpeg_and_webp_dimensions(self):
-        jpeg = b"\xff\xd8\xff\xc0" + bytes([0, 8, 8, 1, 224, 2, 128, 3])
+        jpeg = b"\xff\xd8\xff\xc0" + bytes([0, 12, 8, 1, 224, 2, 128, 3, 1, 0x11, 0, 0])
         self.assertEqual(image_dimensions(jpeg), (640, 480))
 
         webp = (
