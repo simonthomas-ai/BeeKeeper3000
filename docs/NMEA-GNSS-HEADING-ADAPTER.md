@@ -1,6 +1,6 @@
 # NMEA 0183 GNSS/True-heading adapter
 
-Status: **software adapter and parser tests in review; no receiver or compass has been hardware-accepted**.
+Status (22 November 2026): **Software adapter merged into `main` via PR #105; Linux/Windows parser and fake-serial regression tests added via PR #107. Post-merge Quality Gates and CodeQL were reported successful for commit `3b4f8953c7e82ce96010f5095577830ce90e8361` ([Quality Gates](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/45016389940), [CodeQL](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/45016389962)). No physical GNSS receiver, compass, calibration, or field bearing has been accepted.**
 
 ## Supported NMEA sentences
 
