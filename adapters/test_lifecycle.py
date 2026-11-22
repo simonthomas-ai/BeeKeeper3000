@@ -114,6 +114,8 @@ class AdapterLifecycleTests(unittest.IsolatedAsyncioTestCase):
             {"imageUrl": "https://example.invalid/image.jpg"},
             {"gpsCoordinates": [51.0, 7.0]},
             {"metadata": {"authorizationToken": "secret"}},
+            {"accessToken": "secret"},
+            {"streamUrl": "rtsp://user:password@camera.invalid/live"},
         )
         for event in variants:
             with self.subTest(event=event):
