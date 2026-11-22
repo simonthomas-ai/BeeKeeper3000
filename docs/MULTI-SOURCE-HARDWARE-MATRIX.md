@@ -63,6 +63,8 @@ Never describe a generic interface as universal plug-and-play. Record exact devi
 ## Adapter contract
 Every adapter must declare a stable ID/version, class, device/backend, capabilities and permissions; normalize typed validated observations; attach provenance and calibration metadata; keep raw media local unless a separately reviewed export is explicitly enabled; enforce bounded timeouts, rate/payload limits, cancellation and reconnect backoff; fail closed when permissions/calibration/provenance are missing; never execute received payloads or arbitrary commands; and redact credentials, media and exact private coordinates from diagnostics.
 
+The shared asynchronous lifecycle baseline now exists in `adapters/lifecycle.py`: discovery, capability and permission gates, bounded calls, health checks, mandatory stop, capped exponential reconnect and allowlisted diagnostics. It rejects event payloads containing raw media, credentials or exact coordinates before forwarding. This is a software contract, not evidence that a named camera, sensor or radio has been tested.
+
 Existing camera/contracts.py and network/protocol-v1.schema.json remain authoritative event boundaries until a versioned migration is reviewed. Do not bypass signature, expiry, verification-status or privacy checks.
 
 ## Smartphone-PWA – current implementation boundary
