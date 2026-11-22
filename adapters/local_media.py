@@ -118,6 +118,7 @@ class LocalMediaAdapter:
         max_video_duration_seconds: int = 3_600,
         max_frames_per_read: int = 24,
         cooldown_seconds: float = 30.0,
+        max_detections_per_frame: int = 64,
     ):
         if type(permission_granted) is not bool:
             raise ValueError("permission_granted must be an explicit boolean")
@@ -141,6 +142,8 @@ class LocalMediaAdapter:
             raise ValueError("max_frames_per_read must be between 1 and 120")
         if not 0 <= float(cooldown_seconds) <= 86_400:
             raise ValueError("cooldown_seconds must be between 0 and 24 hours")
+        if type(max_detections_per_frame) is not int or not 1 <= max_detections_per_frame <= 512:
+            raise ValueError("max_detections_per_frame must be between 1 and 512")
 
         root_input = Path(allowed_root).expanduser().absolute()
         try:
@@ -167,8 +170,10 @@ class LocalMediaAdapter:
         self.max_video_duration_seconds = max_video_duration_seconds
         self.max_frames_per_read = max_frames_per_read
         self.cooldown_seconds = float(cooldown_seconds)
+        self.max_detections_per_frame = max_detections_per_frame
 
         self._path: Path | None = None
+        self._file_identity: tuple[int, int, int, int] | None = None
         self._extension = ""
         self._image_snapshot: bytes | None = None
         self._capture = None
@@ -188,6 +193,8 @@ class LocalMediaAdapter:
             root = self.allowed_root.resolve(strict=True)
             # Reject symlinks in every component below the configured root.
             relative = candidate.relative_to(root)
+            if any(part in {"", ".", ".."} for part in relative.parts):
+                raise AdapterConfigurationError("local_media_path_not_canonical")
             current = root
             for part in relative.parts:
                 current = current / part
@@ -232,11 +239,33 @@ class LocalMediaAdapter:
             self._image_snapshot = payload
             return True
         if self._extension in _VIDEO_EXTENSIONS:
-            size = self._path.stat().st_size
-            if not 0 < size <= self.max_video_bytes:
+            try:
+                metadata = self._path.stat()
+            except OSError:
+                raise AdapterConfigurationError("local_video_stat_failed") from None
+            if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= self.max_video_bytes:
                 raise AdapterConfigurationError("local_video_size_limit_exceeded")
+            self._file_identity = (
+                int(metadata.st_dev), int(metadata.st_ino),
+                int(metadata.st_size), int(metadata.st_mtime_ns),
+            )
             return True
         raise AdapterConfigurationError("local_media_extension_not_allowed")
+
+    def _verify_video_identity(self) -> None:
+        if self._path is None or self._file_identity is None:
+            raise AdapterConfigurationError("local_video_identity_missing")
+        try:
+            current = self._resolve_local_path()
+            metadata = current.stat()
+        except (OSError, AdapterConfigurationError):
+            raise AdapterConfigurationError("local_video_source_changed") from None
+        identity = (
+            int(metadata.st_dev), int(metadata.st_ino),
+            int(metadata.st_size), int(metadata.st_mtime_ns),
+        )
+        if identity != self._file_identity or current != self._path:
+            raise AdapterConfigurationError("local_video_source_changed")
 
     def _validate_image_dimensions(self, width: int, height: int) -> None:
         if (
@@ -284,8 +313,9 @@ class LocalMediaAdapter:
             ffmpeg = getattr(cv2, "CAP_FFMPEG", None)
             if open_timeout is None or read_timeout is None or ffmpeg is None:
                 raise AdapterConfigurationError("opencv_bounded_video_backend_unavailable")
+            self._verify_video_identity()
             try:
-                    self._capture = cv2.VideoCapture(
+                self._capture = cv2.VideoCapture(
                     str(self._path), ffmpeg,
                     [open_timeout, 5_000, read_timeout, 5_000],
                 )
@@ -295,6 +325,7 @@ class LocalMediaAdapter:
             if self._capture is None or not self._capture.isOpened():
                 self._release_capture()
                 raise AdapterTransientError("local_video_open_failed")
+            self._verify_video_identity()
             width = int(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_WIDTH", 3)))
             height = int(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_HEIGHT", 4)))
             if width > 0 and height > 0:
@@ -320,6 +351,8 @@ class LocalMediaAdapter:
             raise AdapterTransientError("local_media_inference_failed") from None
         if not isinstance(detections, list):
             raise AdapterConfigurationError("detector_contract_invalid")
+        if len(detections) > self.max_detections_per_frame:
+            raise AdapterConfigurationError("detector_result_limit_exceeded")
         for detection in detections:
             if not isinstance(detection, Detection):
                 raise AdapterConfigurationError("detector_contract_invalid")
