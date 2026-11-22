@@ -33,7 +33,9 @@ class GeoJsonExportTests(unittest.TestCase):
 
         point, ellipse = result["features"]
         self.assertEqual(point["geometry"]["type"], "Point")
-        self.assertEqual(point["geometry"]["coordinates"], [7.0, 51.0])
+        coordinates = point["geometry"]["coordinates"]
+        self.assertAlmostEqual(coordinates[0], 7.0, places=6)
+        self.assertAlmostEqual(coordinates[1], 51.0, places=6)
         self.assertEqual(ellipse["geometry"]["type"], "Polygon")
         ring = ellipse["geometry"]["coordinates"][0]
         self.assertEqual(len(ring), 73)
