@@ -30,13 +30,23 @@ _SOF_MARKERS = {
 
 
 def _file_identity_from_stat(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
-    """Capture stable identity and change metadata for a local-file snapshot."""
+    """Capture stable identity and platform-meaningful change metadata.
+
+    POSIX ctime records inode metadata/content changes. On Windows Python's
+    st_ctime is the file creation time, not a change time, and must not be
+    compared as one; there the stable file index, size and mtime are used.
+    """
+    change_time_ns = (
+        int(getattr(metadata, "st_ctime_ns", int(metadata.st_ctime * 1_000_000_000)))
+        if os.name == "posix"
+        else 0
+    )
     return (
         int(metadata.st_dev),
         int(metadata.st_ino),
         int(metadata.st_size),
         int(metadata.st_mtime_ns),
-        int(getattr(metadata, "st_ctime_ns", int(metadata.st_ctime * 1_000_000_000))),
+        change_time_ns,
     )
 
 
