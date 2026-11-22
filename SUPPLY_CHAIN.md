@@ -13,6 +13,7 @@ This register documents what automated checks actually cover. It is not a statem
 | Node.js bridge | `monitor-bridge/package-lock.json` | `npm ci` plus `npm audit --audit-level=low`; bridge currently has no third-party runtime dependencies |
 | Source code | CodeQL | Python and JavaScript/TypeScript static analysis |
 | Dependency update process | Dependabot | Weekly checks for npm, Python and GitHub Actions manifests |
+| External GitHub Actions references | `scripts/audit_workflow_action_pins.py` | Quality-gates CI scans all 10 workflow YAML files; external actions require full 40-character commit SHAs, local actions are allowed, Docker actions require SHA-256 digests |
 
 The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. The generated SBOM is a CI artifact, not yet a complete release SBOM for the inherited Hornet3000 product.
 
@@ -23,7 +24,7 @@ The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. T
 - The Python SBOM covers the optional MeshCore binding lock only. The bridge is a zero-external-dependency Node.js module. It does not inventory missing C++ build dependencies, firmware binaries, operating-system packages, inference runtime, camera SDKs, model weights, training datasets, photos, audio, map tiles or future adapters.
 - The MeshCore requirements lock is a Linux CI lock captured for the current optional binding; other operating systems and hardware require independent resolution and testing.
 - The SBOM generator and audit tools are themselves CI tools, not product runtime dependencies.
-- All external GitHub Actions references in the reviewed workflow sets are pinned to immutable 40-character commit SHAs. Main-branch verification on 2026-11-20 covered 4 BeeKeeper3000 workflow files (6 references) and 19 Beekeeper-Monitor workflow files (13 references). New workflow actions must also be SHA-pinned; review Dependabot updates and rerun CI before merging.
+- All external GitHub Actions references are now checked automatically by `scripts/audit_workflow_action_pins.py` in the BeeKeeper3000 quality-gates workflow. The audit scans every workflow YAML file, requires a full 40-character commit SHA for external actions, permits local action paths, and requires a SHA-256 digest for Docker actions. This audit covers `uses:` references; job/container image references, runtime dependencies and operating-system packages are separate supply-chain surfaces and must be reviewed independently.
 - Secret scanning depends on repository/account feature availability; do not treat CodeQL or dependency auditing as a substitute for secret scanning.
 
 ## Reproducible local commands

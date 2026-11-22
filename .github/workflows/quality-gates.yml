@@ -26,6 +26,10 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
+      - name: Verify immutable GitHub Actions references
+        run: |
+          python -m unittest scripts.test_audit_workflow_action_pins -v
+          python scripts/audit_workflow_action_pins.py
       - name: Run dependency-free core and LLM safety tests
         run: python -m unittest network.test_triangulation tests.test_llm_council tests.test_mobile_export_import -v
       - name: Install pinned optional MeshCore runtime
