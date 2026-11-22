@@ -277,6 +277,43 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
     def test_image_header_reader_supports_png(self):
         self.assertEqual(image_dimensions(PNG_HEADER), (640, 480))
 
+    def test_image_header_reader_supports_jpeg_and_webp_dimensions(self):
+        jpeg = b"\\xff\\xd8\\xff\\xc0" + bytes([0, 8, 8, 1, 224, 2, 128, 3])
+        self.assertEqual(image_dimensions(jpeg), (640, 480))
+
+        webp = (
+            b"RIFF" + (22).to_bytes(4, "little") + b"WEBP"
+            + b"VP8X" + (10).to_bytes(4, "little")
+            + b"\\x00\\x00\\x00\\x00"
+            + (639).to_bytes(3, "little") + (479).to_bytes(3, "little")
+        )
+        self.assertEqual(image_dimensions(webp), (640, 480))
+
+    async def test_rejects_video_file_replaced_after_discovery(self):
+        path = self.root / "replace.mp4"
+        path.write_bytes(b"old video source")
+        adapter = self.make_adapter("replace.mp4")
+        cv2 = FakeCV2()
+        replacement = self.root / "replacement.tmp"
+        replacement.write_bytes(b"new video source with a different identity")
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            os.replace(replacement, path)
+            with self.assertRaisesRegex(AdapterConfigurationError, "source_changed"):
+                await adapter.start()
+        self.assertEqual(cv2.captures, [])
+
+    async def test_releases_video_capture_when_declared_frame_count_exceeds_limit(self):
+        path = self.root / "too-many-frames.mp4"
+        path.write_bytes(b"fake video")
+        adapter = self.make_adapter("too-many-frames.mp4", max_video_frames=1)
+        cv2 = FakeCV2(frames=[FakeFrame(), FakeFrame()])
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            with self.assertRaisesRegex(AdapterConfigurationError, "frame_limit"):
+                await adapter.start()
+        self.assertTrue(cv2.captures[0].released)
+
     def test_image_header_reader_rejects_malformed_or_unknown_data(self):
         for payload in (b"", b"\x89PNG\r\n\x1a\n", b"not an image payload"):
             with self.subTest(payload=payload):
