@@ -9,6 +9,12 @@ on:
       - "network/meshcore/requirements.lock"
       - "camera/requirements.txt"
       - "camera/**/*.py"
+      - "adapters/**/*.py"
+      - "adapters/*.lock"
+      - "docs/NMEA-GNSS-HEADING-ADAPTER.md"
+      - "adapters/**/*.py"
+      - "adapters/*.lock"
+      - "docs/NMEA-GNSS-HEADING-ADAPTER.md"
       - "network/meshcore/**/*.py"
       - "monitor-bridge/**/*.js"
       - "monitor-bridge/**/*.mjs"
@@ -60,6 +66,9 @@ jobs:
           mkdir -p reports
           pip-audit --requirement network/meshcore/requirements.lock --no-deps --strict --format json --output reports/pip-audit.json
 
+      - name: Audit optional NMEA serial dependency
+        run: pip-audit --requirement adapters/nmea-requirements.lock --no-deps --strict --format json --output reports/nmea-serial-audit.json
+
       - name: Upload vulnerability report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -84,6 +93,17 @@ jobs:
           mkdir -p reports
           cyclonedx-py requirements network/meshcore/requirements.lock --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/meshcore-runtime.cdx.json
           python -m json.tool reports/meshcore-runtime.cdx.json >/dev/null
+      - name: Generate CycloneDX SBOM for optional NMEA serial dependency
+        run: |
+          cyclonedx-py requirements adapters/nmea-requirements.lock --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/nmea-serial.cdx.json
+          python -m json.tool reports/nmea-serial.cdx.json >/dev/null
+      - name: Upload NMEA serial SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nmea-serial-cyclonedx-sbom
+          path: reports/nmea-serial.cdx.json
+          retention-days: 90
+
       - name: Upload SBOM
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
