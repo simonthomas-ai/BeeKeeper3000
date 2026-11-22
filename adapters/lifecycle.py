@@ -123,6 +123,8 @@ def _contains_forbidden_key(value: Any) -> bool:
             compact = re.sub(r"[^a-z0-9]", "", normalized)
             if normalized in _FORBIDDEN_EVENT_KEYS or compact in _FORBIDDEN_EVENT_KEYS_COMPACT:
                 return True
+            if _contains_forbidden_key(child):
+                return True
     elif isinstance(value, (list, tuple)):
         return any(_contains_forbidden_key(item) for item in value)
     return False
