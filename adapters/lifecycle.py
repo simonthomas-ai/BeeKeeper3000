@@ -11,6 +11,7 @@ import inspect
 import json
 import random
 import re
+import unicodedata
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Awaitable, Callable, Mapping, Protocol
@@ -119,7 +120,7 @@ def _contains_forbidden_key(value: Any) -> bool:
         for key, child in value.items():
             # Compare separator-free names as well so camelCase, kebab-case
             # and dotted aliases cannot bypass the privacy denylist.
-            normalized = str(key).strip().casefold().replace("-", "_")
+            normalized = unicodedata.normalize("NFKC", str(key)).strip().casefold().replace("-", "_")
             compact = re.sub(r"[^a-z0-9]", "", normalized)
             if normalized in _FORBIDDEN_EVENT_KEYS or compact in _FORBIDDEN_EVENT_KEYS_COMPACT:
                 return True
