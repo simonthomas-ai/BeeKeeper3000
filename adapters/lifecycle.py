@@ -24,8 +24,13 @@ _FORBIDDEN_EVENT_KEYS = {
     "audio", "audio_bytes", "audio_url", "raw_media", "media", "media_bytes",
     "media_url", "latitude", "longitude", "lat", "lon", "gps", "coordinates",
     "location", "api_key", "token", "password", "secret", "authorization",
-    "cookie", "private_key", "credential",
+    "cookie", "private_key", "credential", "access_token", "refresh_token",
+    "authorization_token", "client_secret", "secret_key", "gps_coordinates",
+    "rtsp_url", "stream_url",
 }
+_FORBIDDEN_EVENT_KEYS_COMPACT = frozenset(
+    re.sub(r"[^a-z0-9]", "", name) for name in _FORBIDDEN_EVENT_KEYS
+)
 _MAX_EVENT_BYTES = 64 * 1024
 
 
@@ -112,8 +117,11 @@ DiagnosticSink = Callable[[Mapping[str, Any]], Awaitable[None] | None]
 def _contains_forbidden_key(value: Any) -> bool:
     if isinstance(value, Mapping):
         for key, child in value.items():
-            normalized = str(key).strip().lower().replace("-", "_")
-            if normalized in _FORBIDDEN_EVENT_KEYS or _contains_forbidden_key(child):
+            # Compare separator-free names as well so camelCase, kebab-case
+            # and dotted aliases cannot bypass the privacy denylist.
+            normalized = str(key).strip().casefold().replace("-", "_")
+            compact = re.sub(r"[^a-z0-9]", "", normalized)
+            if normalized in _FORBIDDEN_EVENT_KEYS or compact in _FORBIDDEN_EVENT_KEYS_COMPACT:
                 return True
     elif isinstance(value, (list, tuple)):
         return any(_contains_forbidden_key(item) for item in value)
