@@ -174,11 +174,12 @@ class LocalMediaAdapter:
                     raise AdapterConfigurationError("allowed_media_root_symlink_not_allowed")
             if not root_input.exists() or not root_input.is_dir():
                 raise AdapterConfigurationError("allowed_media_root_invalid")
+            self.allowed_root_input = root_input
             self.allowed_root = root_input.resolve(strict=True)
         except OSError:
             raise AdapterConfigurationError("allowed_media_root_invalid") from None
         source = Path(source_path).expanduser()
-        self.source_path = source if source.is_absolute() else self.allowed_root / source
+        self.source_path = source if source.is_absolute() else self.allowed_root_input / source
         self.detector = detector
         self.station_id = station_id.strip()
         self.max_image_bytes = max_image_bytes
@@ -209,49 +210,24 @@ class LocalMediaAdapter:
     def _resolve_local_path(self) -> Path:
         candidate = self.source_path
         try:
-            # Preserve and reject explicit traversal components before making
-            # the absolute path. pathlib/os.path normalization would otherwise
-            # erase evidence of an operator-supplied '..' segment.
-            if any(part in {"", ".", ".."} for part in candidate.parts):
-                raise AdapterConfigurationError("local_media_path_not_canonical")
-
-            root = self.allowed_root.resolve(strict=True)
-            candidate = Path(os.path.abspath(os.fspath(candidate)))
-
-            # Windows may expose the same directory through a short 8.3 path
-            # while resolve() returns its long name. Locate the existing path
-            # ancestor that is the same directory as the trusted root instead
-            # of relying on case-/alias-sensitive lexical relative_to(root).
-            # Do not accept a symlink/junction as that ancestor: it would let a
-            # link back into the root hide the link in the component walk below.
-            root_alias = None
-            ancestor = candidate
-            while True:
-                if not _is_link_or_junction(ancestor):
-                    try:
-                        if os.path.samefile(ancestor, root):
-                            root_alias = ancestor
-                            break
-                    except OSError:
-                        pass
-                if ancestor.parent == ancestor:
-                    break
-                ancestor = ancestor.parent
-
-            if root_alias is None:
-                raise AdapterConfigurationError("local_media_path_outside_allowed_root")
-            relative = candidate.relative_to(root_alias)
+            # Keep the configured root's lexical spelling for containment.
+            # Windows resolve() may expand an 8.3 path to its long name while
+            # an operator-selected file still uses the original spelling.
+            root_input = self.allowed_root_input
+            relative = candidate.relative_to(root_input)
             if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
                 raise AdapterConfigurationError("local_media_path_not_canonical")
 
-            current = root
+            # Walk every component without following links. Junctions are also
+            # rejected on Windows because they can redirect an allowed path.
+            current = root_input
             for part in relative.parts:
                 current = current / part
                 if _is_link_or_junction(current):
                     raise AdapterConfigurationError("local_media_symlink_not_allowed")
 
             resolved = current.resolve(strict=True)
-            resolved.relative_to(root)
+            resolved.relative_to(self.allowed_root)
             if not resolved.is_file() or not stat.S_ISREG(resolved.stat().st_mode):
                 raise AdapterConfigurationError("local_media_not_regular_file")
             return resolved
