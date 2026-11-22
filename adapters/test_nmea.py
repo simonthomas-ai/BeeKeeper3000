@@ -217,5 +217,22 @@ class NmeaSerialAdapterTests(unittest.IsolatedAsyncioTestCase):
         await adapter.stop()
 
 
+class NmeaRegistryTests(unittest.TestCase):
+    def test_registry_keeps_hardware_and_field_acceptance_blocked(self):
+        import json
+        from pathlib import Path
+
+        registry_path = Path(__file__).parent / "registry" / "gnss-nmea0183.json"
+        entry = json.loads(registry_path.read_text(encoding="utf-8"))
+        self.assertEqual(entry["adapter_id"], "gnss.nmea0183")
+        self.assertEqual(entry["status"], "software-tested")
+        self.assertTrue(entry["acceptance"]["automated_tests"])
+        self.assertFalse(entry["acceptance"]["hardware_evidence"])
+        self.assertFalse(entry["acceptance"]["field_evidence"])
+        self.assertTrue(entry["calibration_required"])
+        self.assertEqual(entry["data_policy"]["location_default"], "none")
+        self.assertEqual(entry["data_policy"]["raw_media_default"], "local-only")
+
+
 if __name__ == "__main__":
     unittest.main()
