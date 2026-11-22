@@ -83,6 +83,28 @@ class NmeaParserTests(unittest.TestCase):
                 "GPGGA,120000.00,4807.038,N,01131.000,E,1,08,101,545.4,M,46.9,M,,"
             ))
 
+    def test_stale_gga_and_rmc_pair_is_rejected(self):
+        parser = Nmea0183Parser()
+        parser.feed(sentence(RMC), received_monotonic=100.0)
+        parser.feed(sentence(GGA), received_monotonic=103.0)
+        self.assertIsNone(parser.fix)
+
+    def test_midnight_rollover_uses_nearest_rmc_date(self):
+        parser = Nmea0183Parser()
+        rmc = "GPRMC,235959.80,A,4807.038,N,01131.000,E,0.0,0.0,230394,,,A"
+        gga = "GPGGA,000000.20,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,"
+        parser.feed(sentence(rmc), received_monotonic=100.0)
+        parser.feed(sentence(gga), received_monotonic=100.1)
+        self.assertEqual(parser.fix.captured_at.isoformat(), "1994-03-24T00:00:00.200000+00:00")
+
+    def test_dead_reckoning_and_simulated_gga_fixes_are_rejected(self):
+        parser = Nmea0183Parser()
+        parser.feed(sentence(RMC), received_monotonic=100.0)
+        for quality in (6, 7, 8):
+            gga = f"GPGGA,120000.00,4807.038,N,01131.000,E,{quality},08,0.9,545.4,M,46.9,M,,"
+            parser.feed(sentence(gga), received_monotonic=100.1)
+            self.assertIsNone(parser.fix)
+
     def test_only_matching_rmc_and_gga_positions_produce_fix(self):
         parser = Nmea0183Parser()
         parser.feed(sentence(RMC), received_monotonic=100.0)
@@ -140,10 +162,13 @@ class NmeaSerialAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await adapter.read_event(1.0))
         event = await adapter.read_event(1.0)
         self.assertIsNotNone(event)
-        self.assertEqual(event["event_type"], "bearing_observation")
+        self.assertEqual(event["event_type"], "bearing")
+        self.assertEqual(event["candidate_taxon"], "unknown")
+        self.assertEqual(event["verification_status"], "unverified")
         self.assertEqual(event["station_id"], "station-01")
         self.assertEqual(event["bearing_deg"], 87.5)
-        self.assertEqual(event["bearing_accuracy_deg"], 2.0)
+        self.assertEqual(event["bearing_sigma_deg"], 2.0)
+        self.assertIn("expires_at", event)
         self.assertNotIn("latitude", event)
         self.assertNotIn("longitude", event)
         self.assertNotIn("coordinates", event)
