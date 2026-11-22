@@ -35,7 +35,7 @@ jobs:
       - name: Run shared adapter lifecycle and privacy contract tests
         run: python -m unittest adapters.test_lifecycle -v
       - name: Run local image and video adapter safety tests
-        run: python -m unittest adapters.test_local_media -v
+        run: python -m unittest adapters.test_local_media scripts.test_import_local_media -v
       - name: Install pinned optional MeshCore runtime
         run: python -m pip install --disable-pip-version-check --requirement network/meshcore/requirements.lock
       - name: Check Python environment
