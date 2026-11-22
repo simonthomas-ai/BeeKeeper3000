@@ -326,21 +326,27 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(cv2.captures[0].released)
 
     async def test_rejects_video_when_duration_metadata_is_unavailable(self):
-        path = self.root / "unknown-duration.mp4"
-        path.write_bytes(b"fake video")
-        adapter = self.make_adapter("unknown-duration.mp4")
-        cv2 = FakeCV2(frames=[FakeFrame()], fps=0.0)
-        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
-            await adapter.discover()
-            with self.assertRaisesRegex(AdapterConfigurationError, "duration_unverifiable"):
-                await adapter.start()
-        self.assertTrue(cv2.captures[0].released)
+        cases = (
+            {"fps": 0.0},
+            {"fps": 30.0, "frame_count_override": 0},
+        )
+        for index, metadata in enumerate(cases):
+            with self.subTest(metadata=metadata):
+                path = self.root / f"unknown-duration-{index}.mp4"
+                path.write_bytes(b"fake video")
+                adapter = self.make_adapter(f"unknown-duration-{index}.mp4")
+                cv2 = FakeCV2(frames=[FakeFrame()], **metadata)
+                with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+                    await adapter.discover()
+                    with self.assertRaisesRegex(AdapterConfigurationError, "duration_unverifiable"):
+                        await adapter.start()
+                self.assertTrue(cv2.captures[0].released)
 
     async def test_enforces_video_duration_during_frame_reads(self):
         path = self.root / "duration-cap.mp4"
         path.write_bytes(b"fake video")
         adapter = self.make_adapter("duration-cap.mp4", max_video_duration_seconds=1)
-        cv2 = FakeCV2(frames=[FakeFrame(), FakeFrame()], fps=1.0)
+        cv2 = FakeCV2(frames=[FakeFrame(), FakeFrame()], fps=2.0)
         with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
             await adapter.discover()
             await adapter.start()
