@@ -198,7 +198,7 @@ class Nmea0183Parser:
         if abs(self._gga_received_monotonic - self._rmc_received_monotonic) > 2.0:
             self.fix = None
             return
-        if self._pair_distance_m((latitude, longitude), self._rmc_position) > 250.0:
+        if self._pair_distance_m((latitude, longitude), self._rmc_position) > 50.0:
             self.fix = None
             return
         # Accept autonomous/DGPS/PPS/RTK fixes only. Dead-reckoning,
@@ -250,6 +250,8 @@ class Nmea0183Parser:
             if status != "A":
                 self._rmc_active = False
                 self._rmc_received_monotonic = None
+                self._gga = None
+                self._gga_received_monotonic = None
                 self.fix = None
                 return True
             latitude = _coordinate(fields[3], fields[4], latitude=True)
@@ -259,6 +261,8 @@ class Nmea0183Parser:
             if mode.upper() == "N":
                 self._rmc_active = False
                 self._rmc_received_monotonic = None
+                self._gga = None
+                self._gga_received_monotonic = None
                 self.fix = None
                 return True
             self._rmc_date = parsed_date
