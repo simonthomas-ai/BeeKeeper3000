@@ -175,8 +175,11 @@ class AdapterLifecycleTests(unittest.IsolatedAsyncioTestCase):
 
     def test_event_contract_rejects_raw_media_secrets_and_exact_location(self):
         bad_events = [
-            {"image_bytes": "raw"},
+            {"image_bytes": 123},
+            {"image_url": "https://images.example.invalid/photo.jpg"},
             {"audio": "raw"},
+            {"video_bytes": 123},
+            {"media_url": "https://images.example.invalid/source"},
             {"gps": {"latitude": 51.0}},
             {"authorization": "Bearer secret"},
             {"payload": {"longitude": 7.0}},
