@@ -71,6 +71,7 @@ Existing camera/contracts.py and network/protocol-v1.schema.json remain authorit
 
 The client in `mobile-pwa/` is the first implemented multi-source participant endpoint. It stores reports and optional media/location/sensor values locally; there is no server upload, remote API key, auto-sync, background capture or radio pairing. The metadata export intentionally emits only the existing six-field source API v1 event contract. Device interfaces such as Web Bluetooth, WebUSB, Web Serial and NFC are feature-detected only; the browser capability list is not a connection test or compatibility guarantee. See [Mobile PWA acceptance plan](MOBILE-PWA-ACCEPTANCE.md).
 The shared lifecycle implementation in `adapters/lifecycle.py` adds asynchronous discovery, declared capabilities, permission checks, bounded calls, health, stop and reconnect policy for future adapters. It rejects event payloads containing raw media, credentials or precise location fields and emits only allowlisted diagnostics. Its state is software-tested only; no hardware adapter is thereby considered connected or field-validated.
+The new `adapters/local_media.py` consumes one explicitly selected local image/video file under an approved root. It rejects symlink/traversal paths and oversized sources; image dimensions are checked before decode, video reads have FFmpeg timeouts plus frame/duration ceilings, and only unverified metadata enters the local SQLite outbox. It is software-tested, not yet validated against every real codec, camera, model or workstation; see [local media import](LOCAL-MEDIA-IMPORT.md).
 
 Triangulation estimates can be exported by `network/geojson.py` as a point plus a closed local linearized 95% uncertainty ellipse. Both GeoJSON features are marked `search_hypothesis` with an explicit approximation warning; the polygon is not a legal boundary or an instruction for intervention.
 
@@ -81,7 +82,7 @@ Triangulation estimates can be exported by `network/geojson.py` as a point plus 
 | mobile-pwa | Manual report, local photo, optional one-shot GPS/compass, offline queue, metadata-only export | Implemented; browser-independent tests pass; physical Android/iOS acceptance pending |
 | camera-uvc | USB webcam / microscope | Planned |
 | camera-rtsp | RTSP/ONVIF | Partial existing source path; hardware acceptance pending |
-| camera-files | User-selected image/video, local-only | Planned |
+| camera-files | User-selected JPEG/PNG/WebP and MP4/M4V/MOV/MKV/AVI/WebM; local ONNX inference; metadata-only SQLite outbox | Software adapter and boundary tests; real file/codec/model acceptance pending |
 | camera-csi | Raspberry Pi CSI | Planned |
 | camera-depth | OAK/depth device | Planned |
 | thermal | Thermal sensor/frame analysis | Planned |
