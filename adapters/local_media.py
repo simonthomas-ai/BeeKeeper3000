@@ -185,7 +185,6 @@ class LocalMediaAdapter:
         self._frames_seen = 0
         self._started = False
         self._last_event_by_species: dict[str, float] = {}
-        self._last_read_monotonic = time.monotonic()
 
     def _resolve_local_path(self) -> Path:
         candidate = self.source_path
@@ -232,23 +231,23 @@ class LocalMediaAdapter:
     async def discover(self) -> bool:
         self._path = self._resolve_local_path()
         self._extension = self._path.suffix.lower()
+        try:
+            metadata = self._path.stat()
+        except OSError:
+            raise AdapterConfigurationError("local_media_stat_failed") from None
+        if not stat.S_ISREG(metadata.st_mode):
+            raise AdapterConfigurationError("local_media_not_regular_file")
+        self._file_identity = (
+            int(metadata.st_dev), int(metadata.st_ino),
+            int(metadata.st_size), int(metadata.st_mtime_ns),
+        )
         if self._extension in _IMAGE_EXTENSIONS:
-            payload = self._read_bounded_file(self._path, self.max_image_bytes)
-            width, height = image_dimensions(payload)
-            self._validate_image_dimensions(width, height)
-            self._image_snapshot = payload
+            if not 0 < metadata.st_size <= self.max_image_bytes:
+                raise AdapterConfigurationError("local_image_size_limit_exceeded")
             return True
         if self._extension in _VIDEO_EXTENSIONS:
-            try:
-                metadata = self._path.stat()
-            except OSError:
-                raise AdapterConfigurationError("local_video_stat_failed") from None
-            if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= self.max_video_bytes:
+            if not 0 < metadata.st_size <= self.max_video_bytes:
                 raise AdapterConfigurationError("local_video_size_limit_exceeded")
-            self._file_identity = (
-                int(metadata.st_dev), int(metadata.st_ino),
-                int(metadata.st_size), int(metadata.st_mtime_ns),
-            )
             return True
         raise AdapterConfigurationError("local_media_extension_not_allowed")
 
@@ -298,15 +297,24 @@ class LocalMediaAdapter:
         self._cv2, self._np = cv2, np
 
         if self._extension in _IMAGE_EXTENSIONS:
-            encoded = np.frombuffer(self._image_snapshot or b"", dtype=np.uint8)
-            frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
-            if frame is None or not hasattr(frame, "shape") or len(frame.shape) != 3:
-                raise AdapterConfigurationError("local_image_decode_failed")
-            height, width = frame.shape[:2]
-            self._validate_image_dimensions(int(width), int(height))
-            self._queue_detections(frame)
-            del frame
-            self._image_processed = True
+            payload = self._read_bounded_file(self._path, self.max_image_bytes)
+            width, height = image_dimensions(payload)
+            self._validate_image_dimensions(width, height)
+            frame = None
+            self._image_snapshot = payload
+            try:
+                encoded = np.frombuffer(payload, dtype=np.uint8)
+                frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+                if frame is None or not hasattr(frame, "shape") or len(frame.shape) != 3:
+                    raise AdapterConfigurationError("local_image_decode_failed")
+                decoded_height, decoded_width = frame.shape[:2]
+                self._validate_image_dimensions(int(decoded_width), int(decoded_height))
+                self._queue_detections(frame)
+                self._image_processed = True
+            finally:
+                self._image_snapshot = None
+                if frame is not None:
+                    del frame
         else:
             open_timeout = getattr(cv2, "CAP_PROP_OPEN_TIMEOUT_MSEC", None)
             read_timeout = getattr(cv2, "CAP_PROP_READ_TIMEOUT_MSEC", None)
@@ -325,7 +333,11 @@ class LocalMediaAdapter:
             if self._capture is None or not self._capture.isOpened():
                 self._release_capture()
                 raise AdapterTransientError("local_video_open_failed")
-            self._verify_video_identity()
+            try:
+                self._verify_video_identity()
+            except AdapterConfigurationError:
+                self._release_capture()
+                raise
             width = int(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_WIDTH", 3)))
             height = int(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_HEIGHT", 4)))
             if width > 0 and height > 0:
