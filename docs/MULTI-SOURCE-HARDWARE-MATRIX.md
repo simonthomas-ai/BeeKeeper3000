@@ -74,6 +74,7 @@ The client in `mobile-pwa/` is the first implemented multi-source participant en
 ## Proposed adapter inventory
 | Adapter | Target | State |
 |---|---|---|
+| adapter-lifecycle | Shared discovery, capability/permission gates, health, timeouts, stop and reconnect supervisor | Implemented; automated contract tests; named-device acceptance pending |
 | mobile-pwa | Manual report, local photo, optional one-shot GPS/compass, offline queue, metadata-only export | Implemented; browser-independent tests pass; physical Android/iOS acceptance pending |
 | camera-uvc | USB webcam / microscope | Planned |
 | camera-rtsp | RTSP/ONVIF | Partial existing source path; hardware acceptance pending |
