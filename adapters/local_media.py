@@ -40,6 +40,14 @@ def _file_identity_from_stat(metadata: os.stat_result) -> tuple[int, int, int, i
     )
 
 
+def _is_link_or_junction(path: Path) -> bool:
+    """Reject symbolic links and Windows junctions at every trust boundary."""
+    if path.is_symlink():
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction()) if callable(is_junction) else False
+
+
 def image_dimensions(payload: bytes) -> tuple[int, int]:
     """Read JPEG/PNG/WebP dimensions without decoding the image."""
     if not isinstance(payload, bytes) or len(payload) < 16:
@@ -162,7 +170,7 @@ class LocalMediaAdapter:
             current_root = Path(root_input.anchor)
             for part in root_parts[1:]:
                 current_root = current_root / part.name
-                if current_root.is_symlink():
+                if _is_link_or_junction(current_root):
                     raise AdapterConfigurationError("allowed_media_root_symlink_not_allowed")
             if not root_input.exists() or not root_input.is_dir():
                 raise AdapterConfigurationError("allowed_media_root_invalid")
@@ -201,16 +209,47 @@ class LocalMediaAdapter:
     def _resolve_local_path(self) -> Path:
         candidate = self.source_path
         try:
-            root = self.allowed_root.resolve(strict=True)
-            # Reject symlinks in every component below the configured root.
-            relative = candidate.relative_to(root)
-            if any(part in {"", ".", ".."} for part in relative.parts):
+            # Preserve and reject explicit traversal components before making
+            # the absolute path. pathlib/os.path normalization would otherwise
+            # erase evidence of an operator-supplied '..' segment.
+            if any(part in {"", ".", ".."} for part in candidate.parts):
                 raise AdapterConfigurationError("local_media_path_not_canonical")
+
+            root = self.allowed_root.resolve(strict=True)
+            candidate = Path(os.path.abspath(os.fspath(candidate)))
+
+            # Windows may expose the same directory through a short 8.3 path
+            # while resolve() returns its long name. Locate the existing path
+            # ancestor that is the same directory as the trusted root instead
+            # of relying on case-/alias-sensitive lexical relative_to(root).
+            # Do not accept a symlink/junction as that ancestor: it would let a
+            # link back into the root hide the link in the component walk below.
+            root_alias = None
+            ancestor = candidate
+            while True:
+                if not _is_link_or_junction(ancestor):
+                    try:
+                        if os.path.samefile(ancestor, root):
+                            root_alias = ancestor
+                            break
+                    except OSError:
+                        pass
+                if ancestor.parent == ancestor:
+                    break
+                ancestor = ancestor.parent
+
+            if root_alias is None:
+                raise AdapterConfigurationError("local_media_path_outside_allowed_root")
+            relative = candidate.relative_to(root_alias)
+            if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
+                raise AdapterConfigurationError("local_media_path_not_canonical")
+
             current = root
             for part in relative.parts:
                 current = current / part
-                if current.is_symlink():
+                if _is_link_or_junction(current):
                     raise AdapterConfigurationError("local_media_symlink_not_allowed")
+
             resolved = current.resolve(strict=True)
             resolved.relative_to(root)
             if not resolved.is_file() or not stat.S_ISREG(resolved.stat().st_mode):
