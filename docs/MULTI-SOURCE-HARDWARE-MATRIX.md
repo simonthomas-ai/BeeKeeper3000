@@ -88,12 +88,14 @@ Triangulation estimates can be exported by `network/geojson.py` as a point plus 
 | thermal | Thermal sensor/frame analysis | Planned |
 | sensors-ble | BLE environmental/IMU sensors | Planned |
 | sensors-modbus | RS-485/Modbus gateway | Planned |
-| gnss-nmea | USB/UART GNSS | Planned |
+| gnss-nmea | USB/UART NMEA 0183 GNSS + true/magnetic heading | Software-tested parser/serial adapter; actual receiver, compass calibration and surveyed-bearing acceptance pending |
 | transport-mqtt | MQTT TLS bridge | Planned |
 | transport-meshcore | MeshCore companion transport | Separate existing work; hardware acceptance pending |
 | transport-meshtastic | Meshtastic transport | Planned; not MeshCore-compatible |
 | transport-lorawan | LoRaWAN gateway integration | Planned |
 | transport-freenet | P2P batch sync over IP | Planned; not radio |
+
+The NMEA adapter in `adapters/nmea.py` parses checksum-verified GGA/RMC and HDT/HDM/HDG sentences. It requires paired active GNSS fixes, bounded sentence/fix age, adequate satellite count and HDOP, and an explicit calibrated heading sigma. Only the MeshCore-compatible unverified bearing event leaves the parser; the exact GNSS position remains local and is resolved on a receiver from its local station registry. See [NMEA GNSS/heading adapter](NMEA-GNSS-HEADING-ADAPTER.md). This is software-tested only; no physical receiver, antenna, compass calibration or survey bearing has been accepted.
 
 ## Mobile permission and privacy rules
 Ask for camera/photo/location/motion/Bluetooth permission only at point of use. Explain purpose, precision, retention and recipient first. Default to coarse public location; exact private coordinates stay local or restricted to authorized search teams. Do not request contacts, microphone, background location or broad photo-library access for basic reporting. Provide manual location and allow GPS-free submission. Feature-detect browser APIs and degrade gracefully. Do not claim continuous/background capture on iOS or Android without separate implementation and OS acceptance tests.
