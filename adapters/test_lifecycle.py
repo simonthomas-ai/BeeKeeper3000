@@ -107,6 +107,19 @@ class AdapterLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(adapter.stop_calls, 1)
         self.assertEqual(supervisor.state, AdapterState.FAILED)
 
+    async def test_sensitive_camel_case_and_separator_variants_are_rejected(self):
+        variants = (
+            {"apiKey": "secret"},
+            {"privateKey": "secret"},
+            {"imageUrl": "https://example.invalid/image.jpg"},
+            {"gpsCoordinates": [51.0, 7.0]},
+            {"metadata": {"authorizationToken": "secret"}},
+        )
+        for event in variants:
+            with self.subTest(event=event):
+                with self.assertRaises(AdapterConfigurationError):
+                    validate_metadata_event(event)
+
     async def test_stop_is_called_when_event_sink_fails(self):
         stop = asyncio.Event()
         adapter = FakeAdapter(stop_event=stop)
