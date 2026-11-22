@@ -31,7 +31,7 @@ jobs:
           python -m unittest scripts.test_audit_workflow_action_pins -v
           python scripts/audit_workflow_action_pins.py
       - name: Run dependency-free core and LLM safety tests
-        run: python -m unittest network.test_triangulation tests.test_llm_council tests.test_mobile_export_import -v
+        run: python -m unittest network.test_triangulation network.test_geojson tests.test_llm_council tests.test_mobile_export_import -v
       - name: Run shared adapter lifecycle and privacy contract tests
         run: python -m unittest adapters.test_lifecycle -v
       - name: Install pinned optional MeshCore runtime
