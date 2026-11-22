@@ -237,6 +237,12 @@ class LocalMediaAdapter:
                 metadata = os.fstat(stream.fileno())
                 if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > maximum:
                     raise AdapterConfigurationError("local_media_size_or_type_rejected")
+                identity = (
+                    int(metadata.st_dev), int(metadata.st_ino),
+                    int(metadata.st_size), int(metadata.st_mtime_ns),
+                )
+                if self._file_identity is not None and identity != self._file_identity:
+                    raise AdapterConfigurationError("local_media_source_changed")
                 payload = stream.read(maximum + 1)
         except OSError:
             raise AdapterConfigurationError("local_media_read_failed") from None
