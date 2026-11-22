@@ -209,13 +209,28 @@ class LocalMediaAdapter:
         except (OSError, ValueError):
             raise AdapterConfigurationError("local_media_path_outside_allowed_root") from None
 
-    @staticmethod
-    def _read_bounded_file(path: Path, maximum: int) -> bytes:
-        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    def _read_bounded_file(self, path: Path, maximum: int) -> bytes:
+        nofollow = getattr(os, "O_NOFOLLOW", 0)
+        directory = getattr(os, "O_DIRECTORY", 0)
+        descriptor = None
         try:
-            descriptor = os.open(path, flags)
-        except OSError:
+            relative = path.relative_to(self.allowed_root)
+            if os.name == "posix" and nofollow and directory and os.open in getattr(os, "supports_dir_fd", set()):
+                current_fd = os.open(self.allowed_root, os.O_RDONLY | directory | nofollow)
+                try:
+                    for part in relative.parts[:-1]:
+                        next_fd = os.open(part, os.O_RDONLY | directory | nofollow, dir_fd=current_fd)
+                        os.close(current_fd)
+                        current_fd = next_fd
+                    descriptor = os.open(relative.name, os.O_RDONLY | nofollow, dir_fd=current_fd)
+                finally:
+                    os.close(current_fd)
+            else:
+                flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | nofollow
+                descriptor = os.open(path, flags)
+        except (OSError, ValueError):
             raise AdapterConfigurationError("local_media_open_failed") from None
+
         try:
             with os.fdopen(descriptor, "rb") as stream:
                 metadata = os.fstat(stream.fileno())
@@ -392,7 +407,9 @@ class LocalMediaAdapter:
                 self._eof = True
                 self._release_capture()
                 return None
+            self._verify_video_identity()
             ok, frame = self._capture.read()
+            self._verify_video_identity()
             if not ok or frame is None:
                 self._eof = True
                 self._release_capture()
