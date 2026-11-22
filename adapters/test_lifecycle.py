@@ -119,6 +119,8 @@ class AdapterLifecycleTests(unittest.IsolatedAsyncioTestCase):
             {"ａｐｉＫｅｙ": "secret"},
             {"ｉｍａｇｅＵｒｌ": "https://example.invalid/private.jpg"},
             {"metadata": {"ｇｐｓＣｏｏｒｄｉｎａｔｅｓ": [51.0, 7.0]}},
+            {"api\u0301key": "secret"},
+            {"аpiKey": "secret"},  # Cyrillic small a, not ASCII a
         )
         for event in variants:
             with self.subTest(event=event):
