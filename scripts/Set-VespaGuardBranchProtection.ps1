@@ -174,7 +174,11 @@ foreach ($plan in $plans) {
         }
     }
 
-    if (-not $verified.enforce_admins.enabled -or
+    if ($null -eq $verified.required_pull_request_reviews -or
+        $verified.required_pull_request_reviews.required_approving_review_count -ne 0 -or
+        $verified.required_pull_request_reviews.dismiss_stale_reviews -ne $true -or
+        $verified.required_linear_history.enabled -ne $true -or
+        -not $verified.enforce_admins.enabled -or
         $verified.required_status_checks.strict -ne $true -or
         $verified.allow_force_pushes.enabled -ne $false -or
         $verified.allow_deletions.enabled -ne $false -or
