@@ -105,6 +105,8 @@ jobs:
         run: python -m unittest discover -s camera -p 'test_*.py' -v
       - name: Run local media adapter safety tests on Windows
         run: python -m unittest adapters.test_local_media scripts.test_import_local_media -v
+      - name: Run NMEA parser and fake-serial adapter tests on Windows
+        run: python -m unittest adapters.test_nmea -v
 
   monitor-bridge:
     name: Monitor bridge tests
