@@ -25,23 +25,23 @@ Beekeeper-Monitor:
 - gesamttest
 - BeeKeeper3000 – Bridge-Integration
 
-Das Skript liest vorhandene Schutzregeln zuerst ein und übernimmt bereits konfigurierte Statuschecks zusätzlich zu diesen Pflichtchecks. Bei 403, fehlenden Adminrechten oder einem anderen unerwarteten API-Fehler bricht es vor jeder Änderung ab.
+Das Skript liest vorhandene Schutzregeln für beide Repositories zuerst ein. Ist auch nur eine main-Branch bereits geschützt, bricht es vor jeder Änderung ab, damit bestehende Ausnahmen, App-Bindungen oder Review-Regeln nicht versehentlich ersetzt werden. In diesem Fall die gewünschten Pflichtchecks manuell in GitHub ergänzen und die übrigen Regeln erhalten. Bei 403, fehlenden Adminrechten oder einem anderen unerwarteten API-Fehler bricht es ebenfalls vor jeder Änderung ab.
 
 ## Ausführung auf einem Administrations-PC
 
-Voraussetzungen: GitHub CLI, PowerShell, angemeldeter Repository-Administrator und Token mit Repository-Berechtigung Administration: write.
+Voraussetzungen: GitHub CLI, Windows PowerShell 5.1 oder PowerShell 7, angemeldeter Repository-Administrator und Token mit Repository-Berechtigung Administration: write. Die Skriptdatei ist ASCII-kompatibel; der en dash im Statuscheck-Namen wird als Unicode-Codepunkt erzeugt.
 
 Schritt 1 – Anmelden und Berechtigungen prüfen:
 
     gh auth login
     gh auth status
-    pwsh -NoProfile -File .\scripts\Set-VespaGuardBranchProtection.ps1
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Set-VespaGuardBranchProtection.ps1
 
 Der Standardlauf ist nur eine Vorschau und ändert nichts. Nach Prüfung der angezeigten Statuschecks die Konfiguration explizit anwenden:
 
-    pwsh -NoProfile -File .\scripts\Set-VespaGuardBranchProtection.ps1 -Apply
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Set-VespaGuardBranchProtection.ps1 -Apply
 
-Das Skript liest die Einstellungen nach dem Schreiben erneut ein und prüft die erforderlichen Statuschecks, Admin-Durchsetzung, Fast-Forward-Schutz, Löschschutz und Conversation Resolution. Bei einem Fehler bleibt die Aufgabe offen; anschließend in GitHub Settings → Branches beide main-Branches kontrollieren.
+Das Skript liest die Einstellungen nach dem Schreiben erneut ein und prüft die erforderlichen Statuschecks, erzwungene Pull-Requests (0 Approvals), veraltete Review-Verwerfung, lineare Historie, Admin-Durchsetzung, Fast-Forward-Schutz, Löschschutz und Conversation Resolution. Bei einem Fehler bleibt die Aufgabe offen; anschließend in GitHub Settings → Branches beide main-Branches kontrollieren.
 
 ## Grenzen
 

@@ -56,7 +56,7 @@ $policies = @(
         Repository = "$Owner/Beekeeper-Monitor"
         RequiredChecks = @(
             "gesamttest",
-            "BeeKeeper3000 – Bridge-Integration"
+            "BeeKeeper3000 $([char]0x2013) Bridge-Integration"
         )
     }
 )
@@ -79,17 +79,11 @@ foreach ($policy in $policies) {
     }
 
     $existing = Get-ExistingProtection -Repository $repository
-    $existingContexts = @()
-    if ($null -ne $existing -and $null -ne $existing.required_status_checks) {
-        if ($existing.required_status_checks.contexts) {
-            $existingContexts += @($existing.required_status_checks.contexts)
-        }
-        if ($existing.required_status_checks.checks) {
-            $existingContexts += @($existing.required_status_checks.checks | ForEach-Object { $_.context })
-        }
+    if ($null -ne $existing) {
+        throw "Existing branch protection is already configured for $repository. No repository was changed. This helper refuses to overwrite or weaken an existing policy; add the required status checks manually while preserving the existing rules."
     }
 
-    $contexts = @($policy.RequiredChecks + $existingContexts) |
+    $contexts = @($policy.RequiredChecks) |
         Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
         Sort-Object -Unique
 
@@ -180,7 +174,11 @@ foreach ($plan in $plans) {
         }
     }
 
-    if (-not $verified.enforce_admins.enabled -or
+    if ($null -eq $verified.required_pull_request_reviews -or
+        $verified.required_pull_request_reviews.required_approving_review_count -ne 0 -or
+        $verified.required_pull_request_reviews.dismiss_stale_reviews -ne $true -or
+        $verified.required_linear_history.enabled -ne $true -or
+        -not $verified.enforce_admins.enabled -or
         $verified.required_status_checks.strict -ne $true -or
         $verified.allow_force_pushes.enabled -ne $false -or
         $verified.allow_deletions.enabled -ne $false -or
