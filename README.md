@@ -23,7 +23,8 @@ BeeKeeper3000 bildet zusammen mit [Beekeeper-Monitor](https://github.com/simonth
 
 ### Netzwerk und Triangulation
 
-- `network/triangulation.py`: winkelgewichtete iterative Peilschnittberechnung mit Huber-Robustifizierung, begrenzter Ausreißererkennung und lokaler linearer 95-%-Unsicherheitsellipse. Mindestens drei unabhängige, zeitlich passende Stationen bleiben erforderlich; Ergebnis bleibt eine Suchhypothese.
+- `network/triangulation.py`: winkelgewichtete iterative Peilschnittberechnung mit Huber-Robustifizierung, begrenzter Ausreißererkennung und lokaler linearer 95-%-Unsicherheitsellipse. `network/geojson.py` exportiert den Schnittpunkt plus geschlossene GeoJSON-Unsicherheitsfläche; beide Features bleiben ausdrücklich `search_hypothesis`, nicht Nestbestätigung.
+- `adapters/lifecycle.py`: gemeinsamer asynchroner Adapter-Supervisor mit Discovery, Capability-/Berechtigungsprüfung, Zeitlimits, Health-Checks, sauberem Stop, exponentiellem Reconnect-Backoff und datensparsamen Diagnosen. Die Softwaretests sind kein Hardware-Nachweis.
 - `network/protocol-v1.schema.json`: JSON-Vertrag für künftige und lokale IP-/Netzwerkereignisse.
 - `network/meshcore/`: optionaler MeshCore-Serialadapter mit binärem Ereignisformat v1, Ed25519-Signaturen, 128-Bit-Fingerprints, Ablaufzeit, Duplikatfilter und lokalem Stationskoordinatenregister.
 - `network/meshcore/event_store.py`: lokaler SQLite-Speicher mit dauerhafter Ereignis-ID-Deduplizierung, Aufbewahrungs-/Datensatzlimit und lokaler Speicherung der zur Peilung aufgelösten Stationskoordinaten. Doppelte signierte Ereignisse werden auch nach einem Empfänger-Neustart nicht erneut gespeichert.
@@ -71,7 +72,7 @@ Die Referenzschaltbilder zeigen Smartphone-only, PoE-Kamera/Edge-Host, Solar-Nie
 Aus dem Repository-Hauptverzeichnis:
 
 ```sh
-python -m unittest network.test_triangulation tests.test_mobile_export_import -v
+python -m unittest adapters.test_lifecycle network.test_triangulation network.test_geojson tests.test_mobile_export_import -v
 ```
 
 Für den optionalen MeshCore-Adapter:

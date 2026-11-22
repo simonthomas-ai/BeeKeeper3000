@@ -63,15 +63,21 @@ Never describe a generic interface as universal plug-and-play. Record exact devi
 ## Adapter contract
 Every adapter must declare a stable ID/version, class, device/backend, capabilities and permissions; normalize typed validated observations; attach provenance and calibration metadata; keep raw media local unless a separately reviewed export is explicitly enabled; enforce bounded timeouts, rate/payload limits, cancellation and reconnect backoff; fail closed when permissions/calibration/provenance are missing; never execute received payloads or arbitrary commands; and redact credentials, media and exact private coordinates from diagnostics.
 
+The shared asynchronous lifecycle baseline now exists in `adapters/lifecycle.py`: discovery, capability and permission gates, bounded calls, health checks, mandatory stop, capped exponential reconnect and allowlisted diagnostics. It rejects event payloads containing raw media, credentials or exact coordinates before forwarding. This is a software contract, not evidence that a named camera, sensor or radio has been tested.
+
 Existing camera/contracts.py and network/protocol-v1.schema.json remain authoritative event boundaries until a versioned migration is reviewed. Do not bypass signature, expiry, verification-status or privacy checks.
 
 ## Smartphone-PWA – current implementation boundary
 
 The client in `mobile-pwa/` is the first implemented multi-source participant endpoint. It stores reports and optional media/location/sensor values locally; there is no server upload, remote API key, auto-sync, background capture or radio pairing. The metadata export intentionally emits only the existing six-field source API v1 event contract. Device interfaces such as Web Bluetooth, WebUSB, Web Serial and NFC are feature-detected only; the browser capability list is not a connection test or compatibility guarantee. See [Mobile PWA acceptance plan](MOBILE-PWA-ACCEPTANCE.md).
+The shared lifecycle implementation in `adapters/lifecycle.py` adds asynchronous discovery, declared capabilities, permission checks, bounded calls, health, stop and reconnect policy for future adapters. It rejects event payloads containing raw media, credentials or precise location fields and emits only allowlisted diagnostics. Its state is software-tested only; no hardware adapter is thereby considered connected or field-validated.
+
+Triangulation estimates can be exported by `network/geojson.py` as a point plus a closed local linearized 95% uncertainty ellipse. Both GeoJSON features are marked `search_hypothesis` with an explicit approximation warning; the polygon is not a legal boundary or an instruction for intervention.
 
 ## Proposed adapter inventory
 | Adapter | Target | State |
 |---|---|---|
+| adapter-lifecycle | Shared discovery, capability/permission gates, health, timeouts, stop and reconnect supervisor | Implemented; automated contract tests; named-device acceptance pending |
 | mobile-pwa | Manual report, local photo, optional one-shot GPS/compass, offline queue, metadata-only export | Implemented; browser-independent tests pass; physical Android/iOS acceptance pending |
 | camera-uvc | USB webcam / microscope | Planned |
 | camera-rtsp | RTSP/ONVIF | Partial existing source path; hardware acceptance pending |
