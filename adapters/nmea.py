@@ -207,14 +207,6 @@ class Nmea0183Parser:
             self.fix = None
             return
 
-        hour = int(gga_time // 3600)
-        minute = int((gga_time % 3600) // 60)
-        seconds_float = gga_time - hour * 3600 - minute * 60
-        second = int(seconds_float)
-        microsecond = int(round((seconds_float - second) * 1_000_000))
-        if microsecond >= 1_000_000:
-            second += 1
-            microsecond -= 1_000_000
         base_date = datetime(
             self._rmc_date.year, self._rmc_date.month, self._rmc_date.day,
             tzinfo=timezone.utc,
@@ -224,9 +216,10 @@ class Nmea0183Parser:
             base_date + timedelta(days=day_offset, seconds=gga_time)
             for day_offset in (-1, 0, 1)
         ]
-        captured = min(gga_candidates, key=lambda candidate: abs((candidate - rmc_stamp).total_seconds()))
-        if captured.microsecond != microsecond:
-            captured = captured.replace(microsecond=microsecond)
+        captured = min(
+            gga_candidates,
+            key=lambda candidate: abs((candidate - rmc_stamp).total_seconds()),
+        )
         self.fix = NmeaFix(
             latitude_degrees=latitude,
             longitude_degrees=longitude,
@@ -234,7 +227,7 @@ class Nmea0183Parser:
             fix_quality=quality,
             satellites=satellites,
             hdop=hdop,
-            received_monotonic=received_monotonic,
+            received_monotonic=min(self._gga_received_monotonic, self._rmc_received_monotonic),
         )
 
     def feed(self, sentence: str | bytes, *, received_monotonic: float | None = None) -> bool:
