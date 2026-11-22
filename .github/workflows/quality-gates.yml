@@ -100,6 +100,8 @@ jobs:
           }
       - name: Run camera and durable-outbox tests on Windows
         run: python -m unittest discover -s camera -p 'test_*.py' -v
+      - name: Run local media adapter safety tests on Windows
+        run: python -m unittest adapters.test_local_media scripts.test_import_local_media -v
 
   monitor-bridge:
     name: Monitor bridge tests
