@@ -87,7 +87,7 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          foreach ($script in @("scripts/Start-BeeKeeperCamera.ps1", "scripts/Test-BeeKeeperCamera.ps1", "scripts/Import-BeeKeeperMobileExport.ps1")) {
+          foreach ($script in @("scripts/Start-BeeKeeperCamera.ps1", "scripts/Test-BeeKeeperCamera.ps1", "scripts/Import-BeeKeeperMobileExport.ps1", "scripts/Set-VespaGuardBranchProtection.ps1")) {
             [System.Management.Automation.Language.Parser]::ParseFile(
               (Join-Path $PWD $script),
               [ref]$tokens,
