@@ -41,7 +41,7 @@ Der Standardlauf ist nur eine Vorschau und ändert nichts. Nach Prüfung der ang
 
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Set-VespaGuardBranchProtection.ps1 -Apply
 
-Das Skript liest die Einstellungen nach dem Schreiben erneut ein und prüft die erforderlichen Statuschecks, Admin-Durchsetzung, Fast-Forward-Schutz, Löschschutz und Conversation Resolution. Bei einem Fehler bleibt die Aufgabe offen; anschließend in GitHub Settings → Branches beide main-Branches kontrollieren.
+Das Skript liest die Einstellungen nach dem Schreiben erneut ein und prüft die erforderlichen Statuschecks, erzwungene Pull-Requests (0 Approvals), veraltete Review-Verwerfung, lineare Historie, Admin-Durchsetzung, Fast-Forward-Schutz, Löschschutz und Conversation Resolution. Bei einem Fehler bleibt die Aufgabe offen; anschließend in GitHub Settings → Branches beide main-Branches kontrollieren.
 
 ## Grenzen
 
