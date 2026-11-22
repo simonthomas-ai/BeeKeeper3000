@@ -2,6 +2,29 @@
 
 Stand: 20.11.2026
 
+## Aktualisierung – 22.11.2026
+
+Der aktuelle Hauptzweig enthält inzwischen eine experimentelle lokale Kamera-/ONNX-Strecke sowie eine persistente Offline-Warteschlange. Diese Komponenten sind softwareseitig geprüft, aber noch keine freigegebene automatische Hornissenerkennung.
+
+- [x] Lokales Kamera-Runtime-Modul in `camera/runtime.py`: USB-Gerät, lokale Videodatei oder RTSP-/HTTP-Stream; native lokale Kamera-Backends je Betriebssystem; begrenzte Open-/Read-Timeouts für Netzwerk-/Dateiquellen; Wiederverbindungsversuche mit begrenztem Backoff.
+- [x] ONNX-Detektor in `camera/onnx_detector.py` mit fail-closed Modellmanifest in `camera/model_manifest.py`: Prüfsumme, Modellquelle, Lizenzprüfung, Inferenz-/Weitergaberechte und expliziter Tensor-/Ausgabevertrag werden verlangt. Das Beispielmanifest ist absichtlich ungültig.
+- [x] Persistente Metadaten-Outbox in `camera/outbox.py`: SQLite, begrenzte Kapazität, eindeutige Ereignis-IDs, Kollisionsschutz, persistente Cooldowns und kontrollierter Fehler statt stiller Löschung bei voller Warteschlange.
+- [x] Offline-Recovery und Wiederanlauf einschließlich SQLite-Neustart, Retry und HTTP-Übertragung sind durch Kameratests und die repo-übergreifende Monitor-Integration geprüft.
+- [x] Letzter dokumentierter BeeKeeper3000-Hauptzweigstand: `8eba14db628a5b5d8672bcbab9b078f0e7977799`. Die zugehörigen Hauptzweigläufe waren erfolgreich: [Quality gates #44933015228](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44933015228), [CodeQL #44933015262](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44933015262), [Network reference tests #44933015273](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44933015273) und [Supply-chain audit/SBOM #44933015286](https://github.com/simonthomas-ai/BeeKeeper3000/actions/runs/44933015286).
+- [x] Der aktuelle Monitor-Gesamttest prüfte den festgelegten BeeKeeper3000-Commit inklusive Kamera-Outbox, Offline-HTTP-Recovery, Bridge und repo-übergreifendem Ereignisvertrag erfolgreich: [Monitor-Gesamttest #44994991995](https://github.com/simonthomas-ai/Beekeeper-Monitor/actions/runs/44994991995).
+
+**Weiterhin nicht freigegeben bzw. nicht nachgewiesen:**
+- [ ] Kein verifiziertes Modellgewicht und kein vollständiger rechtlich/fachlich freigegebener Trainings- und unabhängiger Testdatensatz im Repository.
+- [ ] Keine gemessene Precision, Recall, Konfusionsmatrix, Fehlalarmrate oder Feldgenauigkeit des Detektors.
+- [ ] Keine Abnahme mit einer realen Kamera, einem realen RTSP-Stream oder einem dauerhaft betriebenen Stationsrechner.
+- [ ] Keine physische MeshCore-/LoRa-Reichweitenmessung und keine Triangulationsvalidierung an vermessenen Zielpositionen.
+- [ ] Keine vollständige Produkt-SBOM und keine pauschale Repository-Lizenz. Die vorhandenen Supply-Chain-Prüfungen decken nur die dokumentierten Abhängigkeitsbereiche ab; die ursprüngliche C++-Quelle, Firmware, Modellgewichte und Datensätze bleiben separat zu klären.
+
+Ein erfolgreicher Softwarelauf belegt nur die darin ausgeführten Tests. Er ist weder KI-Modellfreigabe noch Hardware-/Feldabnahme, rechtliche Freigabe oder Erlaubnis zum produktiven Nestmanagement.
+
+
+Stand: 20.11.2026
+
 ## In GitHub veröffentlichte Komponenten
 
 Repository: https://github.com/simonthomas-ai/BeeKeeper3000
