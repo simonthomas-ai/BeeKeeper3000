@@ -1,0 +1,36 @@
+{
+  "adapter_id": "gnss.nmea0183",
+  "version": "1.0.0",
+  "class": "positioning",
+  "status": "software-tested",
+  "vendor": null,
+  "device_models": [],
+  "os_firmware": [],
+  "interfaces": ["uart", "gnss-nmea"],
+  "capabilities": ["bearing", "gnss"],
+  "permissions": [
+    "explicit operator approval for the selected local serial port",
+    "documented receiver heading calibration and uncertainty"
+  ],
+  "data_policy": {
+    "raw_media_default": "local-only",
+    "location_default": "none",
+    "credentials_in_logs": false
+  },
+  "calibration_required": true,
+  "acceptance": {
+    "automated_tests": true,
+    "hardware_evidence": false,
+    "field_evidence": false,
+    "tested_at": null,
+    "evidence_uri": null
+  },
+  "limitations": [
+    "Parser/serial adapter is software-tested only; no named GNSS receiver or compass has been accepted on physical hardware.",
+    "Supports checksum-verified NMEA GGA/RMC plus HDT, or HDM/HDG with explicit magnetic correction inputs.",
+    "Exact GNSS coordinates remain transient local parser state and are never part of the bearing event.",
+    "GGA/RMC pairing rejects stale, mismatched, low-quality, dead-reckoning, manual and simulated fixes.",
+    "Heading sigma must come from a device-specific calibration record; no generic accuracy claim is made.",
+    "Receiver-local station registry provisioning and surveyed reference-bearing validation are required before field use."
+  ]
+}
