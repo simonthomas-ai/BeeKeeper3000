@@ -238,13 +238,23 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_rejects_oversized_image_before_decode(self):
         path = self.root / "oversized.png"
-        path.write_bytes(PNG_HEADER + (b"x" * 100))
-        adapter = self.make_adapter("oversized.png", max_image_bytes=64)
+        path.write_bytes(PNG_HEADER + (b"x" * 2000))
+        adapter = self.make_adapter("oversized.png", max_image_bytes=1024)
         cv2 = FakeCV2()
         with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
             with self.assertRaisesRegex(AdapterConfigurationError, "size"):
                 await adapter.discover()
         self.assertEqual(cv2.decode_calls, 0)
+
+    async def test_rejects_excessive_detection_count_and_clears_image_snapshot(self):
+        many = [Detection(f"candidate-{index}", 0.5) for index in range(65)]
+        adapter = self.make_adapter(detector=FakeDetector(detections=many))
+        cv2 = FakeCV2()
+        with patch.dict("sys.modules", {"cv2": cv2, "numpy": FakeNumpy}):
+            await adapter.discover()
+            with self.assertRaisesRegex(AdapterConfigurationError, "detector_result_limit"):
+                await adapter.start()
+        self.assertIsNone(adapter._image_snapshot)
 
     async def test_rejects_excessive_image_dimensions_before_decode(self):
         payload = (
