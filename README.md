@@ -72,7 +72,7 @@ Die Referenzschaltbilder zeigen Smartphone-only, PoE-Kamera/Edge-Host, Solar-Nie
 Aus dem Repository-Hauptverzeichnis:
 
 ```sh
-python -m unittest network.test_triangulation tests.test_mobile_export_import -v
+python -m unittest adapters.test_lifecycle network.test_triangulation network.test_geojson tests.test_mobile_export_import -v
 ```
 
 Für den optionalen MeshCore-Adapter:
