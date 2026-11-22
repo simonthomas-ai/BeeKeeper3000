@@ -165,7 +165,7 @@ class Nmea0183Parser:
         self._rmc_time: float | None = None
         self._rmc_active = False
         self._rmc_position: tuple[float, float] | None = None
-        self._gga: tuple[float, float, float, int, int] | None = None
+        self._gga: tuple[float, float, float, float, int, int] | None = None
 
     @staticmethod
     def _pair_distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -228,7 +228,7 @@ class Nmea0183Parser:
         fields = body.split(",")
         identifier = fields[0]
         kind = identifier[-3:] if len(identifier) >= 5 else ""
-        if not identifier.startswith("$") or len(identifier) < 6:
+        if not re.fullmatch(r"[A-Z0-9]{5}", identifier):
             raise ValueError("nmea_talker_invalid")
 
         if kind == "RMC":
@@ -293,9 +293,11 @@ class Nmea0183Parser:
         if kind == "HDG":
             if len(fields) < 6:
                 raise ValueError("nmea_hdg_fields_missing")
+            if not fields[2] or not fields[3] or not fields[4] or not fields[5]:
+                raise ValueError("nmea_hdg_corrections_missing")
             magnetic = _angle(fields[1])
-            deviation = _signed_direction(fields[2], fields[3]) if fields[2] else 0.0
-            variation = _signed_direction(fields[4], fields[5]) if fields[4] else 0.0
+            deviation = _signed_direction(fields[2], fields[3])
+            variation = _signed_direction(fields[4], fields[5])
             self.heading = NmeaHeading(
                 (magnetic + deviation + variation) % 360.0,
                 "HDG_WITH_SENTENCE_CORRECTIONS",
