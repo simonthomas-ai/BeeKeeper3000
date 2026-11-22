@@ -29,6 +29,17 @@ _SOF_MARKERS = {
 }
 
 
+def _file_identity_from_stat(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
+    """Capture stable identity and change metadata for a local-file snapshot."""
+    return (
+        int(metadata.st_dev),
+        int(metadata.st_ino),
+        int(metadata.st_size),
+        int(metadata.st_mtime_ns),
+        int(getattr(metadata, "st_ctime_ns", int(metadata.st_ctime * 1_000_000_000))),
+    )
+
+
 def image_dimensions(payload: bytes) -> tuple[int, int]:
     """Read JPEG/PNG/WebP dimensions without decoding the image."""
     if not isinstance(payload, bytes) or len(payload) < 16:
@@ -173,7 +184,7 @@ class LocalMediaAdapter:
         self.max_detections_per_frame = max_detections_per_frame
 
         self._path: Path | None = None
-        self._file_identity: tuple[int, int, int, int] | None = None
+        self._file_identity: tuple[int, int, int, int, int] | None = None
         self._extension = ""
         self._image_snapshot: bytes | None = None
         self._capture = None
@@ -237,13 +248,13 @@ class LocalMediaAdapter:
                 metadata = os.fstat(stream.fileno())
                 if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > maximum:
                     raise AdapterConfigurationError("local_media_size_or_type_rejected")
-                identity = (
-                    int(metadata.st_dev), int(metadata.st_ino),
-                    int(metadata.st_size), int(metadata.st_mtime_ns),
-                )
+                identity = _file_identity_from_stat(metadata)
                 if self._file_identity is not None and identity != self._file_identity:
                     raise AdapterConfigurationError("local_media_source_changed")
                 payload = stream.read(maximum + 1)
+                after_read = _file_identity_from_stat(os.fstat(stream.fileno()))
+                if after_read != identity:
+                    raise AdapterConfigurationError("local_media_source_changed")
         except OSError:
             raise AdapterConfigurationError("local_media_read_failed") from None
         if len(payload) > maximum:
@@ -259,10 +270,7 @@ class LocalMediaAdapter:
             raise AdapterConfigurationError("local_media_stat_failed") from None
         if not stat.S_ISREG(metadata.st_mode):
             raise AdapterConfigurationError("local_media_not_regular_file")
-        self._file_identity = (
-            int(metadata.st_dev), int(metadata.st_ino),
-            int(metadata.st_size), int(metadata.st_mtime_ns),
-        )
+        self._file_identity = _file_identity_from_stat(metadata)
         if self._extension in _IMAGE_EXTENSIONS:
             if not 0 < metadata.st_size <= self.max_image_bytes:
                 raise AdapterConfigurationError("local_image_size_limit_exceeded")
@@ -281,10 +289,7 @@ class LocalMediaAdapter:
             metadata = current.stat()
         except (OSError, AdapterConfigurationError):
             raise AdapterConfigurationError("local_video_source_changed") from None
-        identity = (
-            int(metadata.st_dev), int(metadata.st_ino),
-            int(metadata.st_size), int(metadata.st_mtime_ns),
-        )
+        identity = _file_identity_from_stat(metadata)
         if identity != self._file_identity or current != self._path:
             raise AdapterConfigurationError("local_video_source_changed")
 
