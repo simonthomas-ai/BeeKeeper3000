@@ -12,8 +12,8 @@ import os
 import stat
 import struct
 import time
+import math
 from collections import deque
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -142,10 +142,19 @@ class LocalMediaAdapter:
         if not 0 <= float(cooldown_seconds) <= 86_400:
             raise ValueError("cooldown_seconds must be between 0 and 24 hours")
 
-        root_input = Path(allowed_root).expanduser()
-        if root_input.is_symlink() or not root_input.exists() or not root_input.is_dir():
-            raise AdapterConfigurationError("allowed_media_root_invalid")
-        self.allowed_root = root_input.resolve(strict=True)
+        root_input = Path(allowed_root).expanduser().absolute()
+        try:
+            root_parts = list(reversed([root_input] + list(root_input.parents)))
+            current_root = Path(root_input.anchor)
+            for part in root_parts[1:]:
+                current_root = current_root / part.name
+                if current_root.is_symlink():
+                    raise AdapterConfigurationError("allowed_media_root_symlink_not_allowed")
+            if not root_input.exists() or not root_input.is_dir():
+                raise AdapterConfigurationError("allowed_media_root_invalid")
+            self.allowed_root = root_input.resolve(strict=True)
+        except OSError:
+            raise AdapterConfigurationError("allowed_media_root_invalid") from None
         source = Path(source_path).expanduser()
         self.source_path = source if source.is_absolute() else self.allowed_root / source
         self.detector = detector
@@ -276,13 +285,15 @@ class LocalMediaAdapter:
             if open_timeout is None or read_timeout is None or ffmpeg is None:
                 raise AdapterConfigurationError("opencv_bounded_video_backend_unavailable")
             try:
-                self._capture = cv2.VideoCapture(
+                    self._capture = cv2.VideoCapture(
                     str(self._path), ffmpeg,
                     [open_timeout, 5_000, read_timeout, 5_000],
                 )
             except Exception:
+                self._release_capture()
                 raise AdapterTransientError("local_video_open_failed") from None
             if self._capture is None or not self._capture.isOpened():
+                self._release_capture()
                 raise AdapterTransientError("local_video_open_failed")
             width = int(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_WIDTH", 3)))
             height = int(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_HEIGHT", 4)))
@@ -290,6 +301,9 @@ class LocalMediaAdapter:
                 self._validate_image_dimensions(width, height)
             frame_count = float(self._capture.get(getattr(cv2, "CAP_PROP_FRAME_COUNT", 7)))
             fps = float(self._capture.get(getattr(cv2, "CAP_PROP_FPS", 5)))
+            if not math.isfinite(frame_count) or not math.isfinite(fps):
+                self._release_capture()
+                raise AdapterConfigurationError("local_video_metadata_invalid")
             if frame_count > self.max_video_frames:
                 self._release_capture()
                 raise AdapterConfigurationError("local_video_frame_limit_exceeded")
@@ -340,6 +354,11 @@ class LocalMediaAdapter:
                 return None
             self._frames_seen += 1
             processed += 1
+            media_position_ms = float(self._capture.get(getattr(self._cv2, "CAP_PROP_POS_MSEC", 0)))
+            if math.isfinite(media_position_ms) and media_position_ms > self.max_video_duration_seconds * 1000:
+                self._eof = True
+                self._release_capture()
+                return None
             height, width = frame.shape[:2]
             self._validate_image_dimensions(int(width), int(height))
             self._queue_detections(frame)
@@ -347,6 +366,14 @@ class LocalMediaAdapter:
             if self._pending:
                 return self._pending.popleft()
         return None
+
+    @property
+    def completed(self) -> bool:
+        """True only when the selected one-shot image/video input is exhausted."""
+        return self._started and not self._pending and (
+            (self._extension in _IMAGE_EXTENSIONS and self._image_processed) or
+            (self._extension in _VIDEO_EXTENSIONS and self._eof)
+        )
 
     async def health(self) -> Mapping[str, Any]:
         return {
