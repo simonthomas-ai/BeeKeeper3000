@@ -72,6 +72,7 @@ Existing camera/contracts.py and network/protocol-v1.schema.json remain authorit
 The client in `mobile-pwa/` is the first implemented multi-source participant endpoint. It stores reports and optional media/location/sensor values locally; there is no server upload, remote API key, auto-sync, background capture or radio pairing. The metadata export intentionally emits only the existing six-field source API v1 event contract. Device interfaces such as Web Bluetooth, WebUSB, Web Serial and NFC are feature-detected only; the browser capability list is not a connection test or compatibility guarantee. See [Mobile PWA acceptance plan](MOBILE-PWA-ACCEPTANCE.md).
 The shared lifecycle implementation in `adapters/lifecycle.py` adds asynchronous discovery, declared capabilities, permission checks, bounded calls, health, stop and reconnect policy for future adapters. It rejects event payloads containing raw media, credentials or precise location fields and emits only allowlisted diagnostics. Its state is software-tested only; no hardware adapter is thereby considered connected or field-validated.
 The new `adapters/local_media.py` consumes one explicitly selected local image/video file under an approved root. It rejects symlink/traversal paths and oversized sources; image dimensions are checked before decode, video reads have FFmpeg timeouts plus frame/duration ceilings, and only unverified metadata enters the local SQLite outbox. It is software-tested, not yet validated against every real codec, camera, model or workstation; see [local media import](LOCAL-MEDIA-IMPORT.md).
+The NMEA adapter in `adapters/nmea.py` parses checksum-verified GGA/RMC and HDT/HDM/HDG sentences. It requires paired active GNSS fixes, bounded sentence/fix age, adequate satellite count and HDOP, and an explicit calibrated heading sigma. Only the MeshCore-compatible unverified bearing event leaves the parser; the exact GNSS position remains local and is resolved on a receiver from its local station registry. See [NMEA GNSS/heading adapter](NMEA-GNSS-HEADING-ADAPTER.md). This is software-tested only; no physical receiver, antenna, compass calibration or survey bearing has been accepted.
 
 Triangulation estimates can be exported by `network/geojson.py` as a point plus a closed local linearized 95% uncertainty ellipse. Both GeoJSON features are marked `search_hypothesis` with an explicit approximation warning; the polygon is not a legal boundary or an instruction for intervention.
 
@@ -88,7 +89,7 @@ Triangulation estimates can be exported by `network/geojson.py` as a point plus 
 | thermal | Thermal sensor/frame analysis | Planned |
 | sensors-ble | BLE environmental/IMU sensors | Planned |
 | sensors-modbus | RS-485/Modbus gateway | Planned |
-| gnss-nmea | USB/UART GNSS | Planned |
+| gnss-nmea | USB/UART NMEA 0183 GNSS + true/magnetic heading | Software-tested parser/serial adapter; actual receiver, compass calibration and surveyed-bearing acceptance pending |
 | transport-mqtt | MQTT TLS bridge | Planned |
 | transport-meshcore | MeshCore companion transport | Separate existing work; hardware acceptance pending |
 | transport-meshtastic | Meshtastic transport | Planned; not MeshCore-compatible |
