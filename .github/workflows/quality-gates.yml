@@ -34,6 +34,8 @@ jobs:
         run: python -m unittest network.test_triangulation network.test_geojson tests.test_llm_council tests.test_mobile_export_import -v
       - name: Run shared adapter lifecycle and privacy contract tests
         run: python -m unittest adapters.test_lifecycle -v
+      - name: Run NMEA GNSS and true-heading parser/serial adapter tests
+        run: python -m unittest adapters.test_nmea -v
       - name: Run local image and video adapter safety tests
         run: python -m unittest adapters.test_local_media scripts.test_import_local_media -v
       - name: Install pinned optional MeshCore runtime
