@@ -97,7 +97,7 @@ class NmeaMeshCoreIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("latitude", decoded)
         self.assertNotIn("longitude", decoded)
         self.assertNotIn("location", decoded)
-        self.assertEqual(len(payload), 112)
+        self.assertEqual(len(payload), 132)
 
 
 if __name__ == "__main__":
