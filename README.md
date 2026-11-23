@@ -136,6 +136,7 @@ Der öffentliche Pilot- und Release-Status bleibt **BLOCKIERT**, bis die anwendb
 - [Verifizierte CI- und Lieferketten-Ergebnisse vom 20.11.2026](docs/CI-RESULTS-2026-11-20.md)
 - [Objektive Modellbewertung mit unabhängig annotierten Testdaten](docs/MODEL-EVALUATION.md)
 - [Prüfung externer Hornissenmodelle und Datensätze](docs/MODEL-PROVENANCE-REGISTER-2026-11-20.md)
+- [Datensatz- und Trainingspfad für die Insektenerkennung](docs/MODEL-TRAINING-DATA-PLAN.md)
 - [Geprüfte Herkunft der Hornet3000-Quellarchive und Lizenzgrenzen](docs/ARCHIVE-PROVENANCE-AUDIT-2026-11-20.md)
 - [Recht und Gemeinnützigkeit](docs/LEGAL-COMPLIANCE.md)
 - [Verbindliches Release-/Pilot-Gate](docs/RELEASE-LEGAL-GATE.md)
