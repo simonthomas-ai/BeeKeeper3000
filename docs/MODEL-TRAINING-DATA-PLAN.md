@@ -1,10 +1,10 @@
 # Datensatz- und Trainingspfad für die Insektenerkennung
 
-**Prüfstand: 23.11.2026 – kein Training durchgeführt.** In diesem Checkout gibt es keine Bilddaten, Annotationen oder Modellgewichte. Auch die aktuelle Trainingsdokumentation des Monitor-Repositories beschreibt keinen vollständigen freigegebenen Datensatz. Es wurden für diese Prüfung keine Bilder oder Gewichte heruntergeladen, gespeichert oder weitergegeben.
+**Prüfstand: 23.11.2026 – kein Training durchgeführt.** In diesem Checkout gibt es keine Bilddaten, Annotationen oder Modellgewichte. Die ursprüngliche Recherche unten bezog sich auf Objektdetektion mit Boxen. Die danach getroffene Arbeitsentscheidung ist stattdessen **Multilabel-Bildklassifikation** (mehrere Labels pro Bild, `[]` für geprüfte Negativbilder) mit dem lokalen JSONL-Vertrag. Der ausführbare Validator und Trainingspfad stehen in [MULTILABEL-CLASSIFICATION-TRAINING.md](MULTILABEL-CLASSIFICATION-TRAINING.md); sie ersetzen die nachfolgenden historischen Detektionsvoraussetzungen und Monitor-Trainingskommandos. Auch die aktuelle Trainingsdokumentation des Monitor-Repositories beschreibt keinen vollständigen freigegebenen Datensatz. Es wurden für diese Prüfung keine Bilder oder Gewichte heruntergeladen, gespeichert oder weitergegeben.
 
 ## Zielklassen und Aufgabe
 
-Der aktuelle experimentelle Monitor-Vertrag ist ein **einzelner Siebenklassen-Objektdetektor**, keine Sammlung unabhängig trainierter Modelle. Die Klassen stehen in `training/data.yaml` und `training/class_schema.py` des Monitor-Repositories:
+Die zuvor untersuchte Monitor-Revision spezifiziert einen **Siebenklassen-Objektdetektor**. Die aktuell vereinbarte BeeKeeper-Dataset-Taxonomie für Bildklassifikation nutzt dieselben Slugs, aber nicht das Box-/Detektormodell. Die Klassen standen in `training/data.yaml` und `training/class_schema.py` des Monitor-Repositories:
 
 | ID | Klasse |
 |---:|---|
@@ -43,46 +43,30 @@ Die externen Forschungsquellen und Modellkandidaten sind im [Provenienzregister]
 ## Voraussetzungen vor einem Training
 
 1. **Datenquelle und Rechte:** pro konkretem Bild unveränderliche Quell-URL/ID, Autor bzw. Rechteinhaber, exakter Medienlizenztext und -version, Attribution, Freigabe zur Nutzung für Training und Modellweitergabe, Abrufdatum sowie Hash der empfangenen Bytes. CC0/CC-BY-Metadaten allein beweisen nicht, dass der Uploadende die Rechte vergeben durfte. CC-BY-NC, CC-BY-ND, CC-BY-SA ohne gesonderte Prüfung, fehlende oder widersprüchliche Rechte bleiben ausgeschlossen.
-2. **Echte Detektionsannotation:** manuell fachlich geprüfte Boxen im vereinbarten YOLO-Format für alle sichtbaren relevanten Insekten. Eine iNaturalist-Artbestimmung ist kein Bounding-Box-Label; einfache Galerie-Rechtecke oder automatisch abgeleitete Labels sind keine Ground Truth. Auch negative Bilder müssen aktiv darauf geprüft werden, dass relevante Objekte nicht unannotiert bleiben.
+2. **Echte Bildlabels:** Für den nun vereinbarten Klassifikationspfad müssen alle Zielklassen eines Bildes manuell fachlich geprüft und als Slugs eingetragen sein. Ein iNaturalist-Artnachweis allein belegt nicht, dass die Art im konkreten Bild sichtbar ist. `labels: []` ist nur nach aktiver Prüfung zulässig, dass keine der sieben Zielklassen abgebildet ist. Es werden keine Bounding-Boxes verwendet.
 3. **Vollständige Zielabdeckung:** ausreichende und kamerarepräsentative Beispiele für alle sieben Klassen. Schwierige positive und negative Fälle, insbesondere *V. velutina* vs. *V. crabro*, andere Vespidae, Bienen, Hummeln, Schwebfliegen und sonstige Insekten, sind erforderlich. Unbestimmte Exemplare müssen nach einer dokumentierten Regel als ungeklärte Review-Fälle oder separate Out-of-Distribution-Testbeispiele behandelt werden.
 4. **Leckagefreie Aufteilung:** gesamte Beobachtung, Video/Track, Fotograf, Standort/Kamera und zusammengehörige Quellbilder in genau einem Split halten; Duplikate und nahe Duplikate zusätzlich visuell prüfen. Der finale Test muss aus zurückgehaltenen Standorten/Kameras stammen und bis zur einmaligen Endbewertung unangetastet bleiben.
 5. **Nachweisbarkeit:** getrennte SHA-256 für Bild und zugehörige Labeldatei, annotierende/reviewende Rollen, Taxonomieversion, Splitgruppe, Export-/Augmentationsprotokoll und Lösch-/Widerrufsverfahren dokumentieren. Private Originale, EXIF-GPS, genaue Bienenstandorte und personenbezogene Reviewdaten lokal und zugriffsgeschützt halten.
 
 ## Reproduzierbarer Weg nach Freigabe
 
-Der vorhandene, auf die sieben Zielklassen ausgerichtete Trainingspfad befindet sich im **Monitor-Repository**, nicht in BeeKeeper3000. Dort dokumentierte Werkzeuge erstellen zunächst Metadatenkandidaten und eine lokale Sicht-/Annotation-Queue; sie geben keine Bilder automatisch fürs Training frei. Die dokumentierte Folge lautet:
+Für den geänderten Klassifikationsauftrag enthält dieses Repository nun `training/multilabel_dataset.py` (fail-closed JSONL-Validierung und gruppierter Split) und `training/train_multilabel.py` (CPU-Training von Grund auf und ONNX-Export). Ausführbarer Exportvertrag, Windows-Kommandos, Dependency-Pins, Ausgabe/I-O-Form, Validierung und Integrationsgrenzen sind in [MULTILABEL-CLASSIFICATION-TRAINING.md](MULTILABEL-CLASSIFICATION-TRAINING.md) beschrieben. Die Tools laden keine Bilder oder Gewichte herunter.
 
-~~~sh
-# Im Beekeeper-Monitor-Checkout, erst nach Prüfung der aktuellen Revision:
-python training/discover_inaturalist_candidates.py --target 1000 --max-pages 12
-python training/screen_inaturalist_image_quality.py \
-  --input training/inaturalist-review-queue.csv \
-  --output training/inaturalist-quality-screen.csv
-~~~
-
-Nach individueller Rechte-/Identitätsprüfung werden nur ausdrücklich autorisierte Bilder lokal in die geschützte Staging-Queue importiert, fachkundig per lokaler Annotation (dort ist CVAT Community als Vorschlag dokumentiert) mit Boxen versehen und mit Bild-/Labelhashes sowie Standort-/Quellgruppen versehen. Dann erst Split- und Provenienzprüfungen und der dortige reine Datencheck:
-
-~~~sh
-python training/train.py --validate-only
-~~~
-
-Ein echtes Training ist **nicht** durch diese Kommandos freigegeben. Die Monitor-Dokumentation pinnt `ultralytics[export]==8.4.215` (SPDX `AGPL-3.0`) und verlangt dafür eine ausdrückliche Annahme/Prüfung; die angegebene Requirements-Datei enthält außerdem `PyYAML==6.0.3` (SPDX `MIT`) und `Pillow>=10,<13` (SPDX `HPND`). Trainer-, Checkpoint-, Daten- und Exportrechte müssen vor Installation bzw. Training separat geprüft werden. Der dokumentierte Beispielbefehl verwendet einen noch zu ersetzenden Gewichts-Hash und ist keine freigegebene Bezugsquelle. Kein Trainer oder Modellgewicht wurde hier installiert oder abgerufen.
-
-Erst nach erfolgreichem Training mit dokumentiertem Seed, festen Parametern, unverändertem Holdout und vollständiger Lizenzakte: ONNX exportieren, Hash/I-O/Shapes mit `python -m camera.model_inspector <lokales-modell.onnx>` prüfen, ein passendes lokales Manifest erstellen, den technischen CPU-Smoke-Test ausführen und einen experimentellen Kandidaten nur mit `--shadow` betreiben. Shadow-Ergebnisse bleiben unveröffentlicht und werden nicht an Source API/Monitor übertragen. Die getrennte BeeKeeper-Feldauswertung muss pro Klasse Precision/Recall/F1, Fehlalarme pro Kamerastunde, Konfusionsmatrix, Konfidenzintervalle, Latenz und Umgebungsstrata ausweisen; fremde README-Zahlen zählen nicht.
+Der zuvor untersuchte Monitor-Pfad und die Kandidaten-Skripte sind **kein Ersatz** für diesen Vertrag und ändern den Monitor nicht. Die remote geprüfte Monitor-Revision nutzt Boxen/Detektion; ein ONNX-Klassifikator mit sieben Logits ist nicht mit `camera/onnx_detector.py` kompatibel. Ein im Monitor abgestimmter Bildklassifikationsadapter bleibt vor realer Kamera-Inferenz erforderlich. Bis ein freigegebener echter Bestand bereitsteht, wird nicht trainiert.
 
 ## Abhängigkeiten, Datenfluss und Rückbau
 
-Für diese Prüfung wurden keine Software-Abhängigkeiten ergänzt und keine Bilder/Modelle geladen. Der bestehende BeeKeeper-Inferenzpfad pinnt `onnxruntime==1.32.0` (SPDX `MIT`) und `opencv-python-headless==4.14.0.94` (SPDX `Apache-2.0`); dies ist kein Trainingsstack. Die in der separaten Monitor-Trainingsdokumentation genannte Ultralytics-Abhängigkeit ist AGPL-3.0 und erfordert Lizenzprüfung. Diese Dokumentation ist keine Rechtsberatung.
+Für diese Prüfung wurden keine Trainings-Software-Abhängigkeiten installiert und keine Bilder/Modelle geladen. Der bestehende BeeKeeper-Inferenzpfad pinnt `onnxruntime==1.32.0` (SPDX `MIT`) und `opencv-python-headless==4.14.0.94` (SPDX `Apache-2.0`); dies ist kein Trainingsstack. Optionale direkte Trainingspins und ihre Lizenz-IDs sind in `training/requirements-training.txt` dokumentiert; transitive Lizenzen und die Datenrechte müssen vor Installation bzw. Einsatz weiterhin geprüft werden. Diese Dokumentation ist keine Rechtsberatung.
 
 Der derzeit sichere Datenfluss ist Metadatenrecherche → manuelle Prüfung → lokales, zugriffsgeschütztes Bild/Label-Staging → geprüfter Export; keine Medien- oder privaten Standortdaten werden standardmäßig an BeeKeeper oder Dritte übertragen. Öffentliche Bildquellen können Personen, Häuser oder Standortspuren enthalten; eine Trainingsfreigabe ersetzt keine Datenschutzprüfung. Da hier nur Dokumentation ergänzt wird, besteht kein Datenbank-/Service-Rollback: Änderung zurücknehmen und es werden weder Modelle noch lokale Daten entfernt.
 
 ## Verbleibende Blocker
 
-- Kein vollständiger, freigegebener Siebenklassen-Bildbestand; keine vollständigen menschlich geprüften Boxannotationen.
+- Kein vollständiger, freigegebener Siebenklassen-Bildbestand und noch keine menschlich geprüften Klassifikationslabels.
 - Quell-/Einzelbildrechte und Attributionen müssen je Datei geprüft werden; Kandidatenzahlen ersetzen keine Rechtekette.
 - Keine eindeutig definierte Freigaberegel für `unknown`/unbestimmte Tiere und keine Bestätigung der vorläufigen Zuordnung aller relevanten Wespen zu `other_vespidae`.
 - Kein Trainingslauf, kein aus BeeKeeper- oder Monitor-Daten trainiertes Gewicht, keine unabhängigen Feldmetriken und keine Modellfreigabe.
-- Annotation, fachliche Zweitprüfung, repräsentative Standortaufnahmen, GPU-/Compute-Bereitstellung sowie Lizenzentscheidung für Trainingsframework und etwaige Initialgewichte erfordern Betreiber-/Facharbeit.
+- Annotation, fachliche Zweitprüfung, repräsentative Standortaufnahmen, unabhängiger Holdout und ein Bildklassifikationsadapter im Monitor erfordern Betreiber-/Facharbeit.
 
 ## Quellen
 

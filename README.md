@@ -137,6 +137,7 @@ Der öffentliche Pilot- und Release-Status bleibt **BLOCKIERT**, bis die anwendb
 - [Objektive Modellbewertung mit unabhängig annotierten Testdaten](docs/MODEL-EVALUATION.md)
 - [Prüfung externer Hornissenmodelle und Datensätze](docs/MODEL-PROVENANCE-REGISTER-2026-11-20.md)
 - [Datensatz- und Trainingspfad für die Insektenerkennung](docs/MODEL-TRAINING-DATA-PLAN.md)
+- [Lokaler Multilabel-Datensatzvertrag und Trainingsablauf](docs/MULTILABEL-CLASSIFICATION-TRAINING.md)
 - [Geprüfte Herkunft der Hornet3000-Quellarchive und Lizenzgrenzen](docs/ARCHIVE-PROVENANCE-AUDIT-2026-11-20.md)
 - [Recht und Gemeinnützigkeit](docs/LEGAL-COMPLIANCE.md)
 - [Verbindliches Release-/Pilot-Gate](docs/RELEASE-LEGAL-GATE.md)
