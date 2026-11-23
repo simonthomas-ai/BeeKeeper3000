@@ -74,22 +74,34 @@ def _capture_source(value: str):
 class LocalCameraRuntime:
     def __init__(self, *, detector, outbox, client, station_id: str, source: str,
                  max_fps: float = 5.0, cooldown_seconds: float = 30.0,
-                 reconnect_max_seconds: float = 30.0):
+                 reconnect_max_seconds: float = 30.0, shadow_mode: bool = False):
         if not 0.1 <= float(max_fps) <= 15.0:
             raise ValueError("max_fps must be between 0.1 and 15")
         if not 0 <= float(cooldown_seconds) <= 86400:
             raise ValueError("cooldown_seconds must be between 0 and 86400")
         if not 1 <= float(reconnect_max_seconds) <= 120:
             raise ValueError("reconnect_max_seconds must be between 1 and 120")
+        if type(shadow_mode) is not bool:
+            raise ValueError("shadow_mode must be boolean")
+        manifest = getattr(detector, "manifest", None)
+        inference_status = getattr(manifest, "inference_status", None)
+        if inference_status == "experimental" and not shadow_mode:
+            raise CameraRuntimeError("experimental models require explicit --shadow mode")
+        if inference_status not in {None, "experimental", "independently_validated"}:
+            raise CameraRuntimeError("detector has an unsupported inference status")
         self.detector, self.outbox, self.client = detector, outbox, client
         self.station_id, self.source = station_id, source
         self.frame_interval = 1.0 / float(max_fps)
         self.cooldown_seconds = float(cooldown_seconds)
         self.reconnect_max_seconds = float(reconnect_max_seconds)
+        self.shadow_mode = shadow_mode
 
     def process_frame(self, frame, *, now_epoch: float | None = None) -> int:
+        detections = self.detector.detect(frame)
+        if self.shadow_mode:
+            return len(detections)
         queued = 0
-        for detection in self.detector.detect(frame):
+        for detection in detections:
             event = make_source_event(station_id=self.station_id, detection=detection)
             if self.outbox.enqueue_if_due(
                 event,
@@ -100,6 +112,8 @@ class LocalCameraRuntime:
         return queued
 
     def drain_outbox(self, limit: int = 50) -> int:
+        if self.shadow_mode:
+            return 0
         sent = 0
         for event in self.outbox.pending(limit):
             self.client.send_event(event)
@@ -109,7 +123,16 @@ class LocalCameraRuntime:
 
     def run_forever(self) -> None:
         backoff = 1.0
-        print("BeeKeeper camera inference active; CPU-only, local frames, metadata-only forwarding.", flush=True)
+        if self.shadow_mode:
+            print(
+                "UNVALIDATED SHADOW MODE active; detections are discarded and never sent to the source API.",
+                flush=True,
+            )
+        else:
+            print(
+                "BeeKeeper camera inference active; CPU-only, local frames, metadata-only forwarding.",
+                flush=True,
+            )
         while True:
             capture = None
             try:
@@ -162,6 +185,11 @@ def main() -> int:
     parser.add_argument("--max-fps", type=float, default=float(os.environ.get("BEEKEEPER_CAMERA_MAX_FPS", "5")))
     parser.add_argument("--cooldown", type=float, default=float(os.environ.get("BEEKEEPER_CAMERA_COOLDOWN_SECONDS", "30")))
     parser.add_argument("--threads", type=int, default=int(os.environ.get("BEEKEEPER_ONNX_THREADS", "2")))
+    parser.add_argument(
+        "--shadow",
+        action="store_true",
+        help="run inference locally but never queue or send detections",
+    )
     args = parser.parse_args()
     api_key = os.environ.get("HORNET3000_API_KEY", "")
     if not args.manifest or not args.source or not args.station_id or not api_key:
@@ -173,6 +201,7 @@ def main() -> int:
         runtime = LocalCameraRuntime(
             detector=detector, outbox=outbox, client=client, station_id=args.station_id,
             source=args.source, max_fps=args.max_fps, cooldown_seconds=args.cooldown,
+            shadow_mode=args.shadow,
         )
         runtime.run_forever()
         return 0

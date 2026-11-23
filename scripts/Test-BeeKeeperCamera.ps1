@@ -26,6 +26,7 @@ $pointer = [IntPtr]::Zero
 $source = $null
 $exitCode = 2
 $locationPushed = $false
+$previousManifest = [Environment]::GetEnvironmentVariable("BEEKEEPER_MODEL_MANIFEST", "Process")
 
 try {
     $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureSource)
@@ -35,6 +36,7 @@ try {
     }
 
     [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_SOURCE", $source, "Process")
+    [Environment]::SetEnvironmentVariable("BEEKEEPER_MODEL_MANIFEST", $null, "Process")
     Push-Location $repoRoot
     $locationPushed = $true
 
@@ -42,6 +44,7 @@ try {
     $exitCode = $LASTEXITCODE
 } finally {
     [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_SOURCE", $null, "Process")
+    [Environment]::SetEnvironmentVariable("BEEKEEPER_MODEL_MANIFEST", $previousManifest, "Process")
     $source = $null
     if ($pointer -ne [IntPtr]::Zero) {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer)

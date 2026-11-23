@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 from camera.contracts import Detection
 from camera.outbox import SQLiteOutbox
-from camera.runtime import LocalCameraRuntime, _capture_source
+from camera.runtime import CameraRuntimeError, LocalCameraRuntime, _capture_source
 from camera.source_client import SourceClientError
 
 
@@ -47,8 +47,14 @@ class FakeCV2:
 
 
 class FakeDetector:
+    manifest = type("Manifest", (), {"inference_status": "independently_validated"})()
+
     def detect(self, frame):
         return [Detection("vespa_velutina_candidate", 0.91)]
+
+
+class ExperimentalDetector(FakeDetector):
+    manifest = type("Manifest", (), {"inference_status": "experimental"})()
 
 
 class OfflineClient:
@@ -107,6 +113,35 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(box.count(), 1)
             with self.assertRaises(SourceClientError):
                 runtime.drain_outbox()
+            self.assertEqual(box.count(), 1)
+
+    def test_experimental_model_requires_explicit_shadow_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(CameraRuntimeError, "explicit --shadow"):
+                LocalCameraRuntime(
+                    detector=ExperimentalDetector(),
+                    outbox=SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3")),
+                    client=OfflineClient(), station_id="station-01", source="0",
+                )
+
+    def test_shadow_mode_discards_detections_without_queueing_events(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            box.enqueue({
+                "id": "pending-event",
+                "observed_at": "2026-11-20T00:00:00Z",
+                "station_id": "station-01",
+                "species": "previous_candidate",
+                "confidence": 0.8,
+                "prey_detected": False,
+            })
+            runtime = LocalCameraRuntime(
+                detector=ExperimentalDetector(), outbox=box, client=OfflineClient(),
+                station_id="station-01", source="0", shadow_mode=True,
+            )
+            self.assertEqual(runtime.process_frame(object(), now_epoch=1000), 1)
+            self.assertEqual(box.count(), 1)
+            self.assertEqual(runtime.drain_outbox(), 0)
             self.assertEqual(box.count(), 1)
 
     def test_cooldown_survives_runtime_restart(self):

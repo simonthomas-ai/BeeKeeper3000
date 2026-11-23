@@ -235,7 +235,25 @@ def check_model(report: Report, root: Path, manifest_arg: str | None) -> None:
                        "CPUExecutionProvider available" if available else "CPUExecutionProvider missing")
         except ImportError:
             report.add("ONNX Runtime CPU", "FAIL", "onnxruntime is not installed in this Python environment")
-        _ = manifest
+            return
+        if not available:
+            return
+        try:
+            import numpy as np
+            from camera.onnx_detector import OnnxDetector
+            detector = OnnxDetector(manifest, intra_op_threads=2)
+            detector.detect(np.zeros((manifest.height, manifest.width, 3), dtype=np.uint8))
+            report.add(
+                "ONNX CPU inference smoke test",
+                "PASS",
+                f"synthetic {manifest.width}x{manifest.height} frame processed; outputs discarded locally",
+            )
+        except Exception as exc:
+            report.add(
+                "ONNX CPU inference smoke test",
+                "FAIL",
+                f"synthetic inference failed ({type(exc).__name__}); frame and model outputs were not printed or sent",
+            )
     except Exception as exc:
         report.add("Camera model manifest", "FAIL", f"model manifest validation failed ({type(exc).__name__}); details omitted to avoid leaking local paths")
 
