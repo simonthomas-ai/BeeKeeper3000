@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+from .model_artifacts import MAX_MODEL_BYTES
+
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _SPDX = re.compile(r"^[A-Za-z0-9.+-]{2,80}$")
 
@@ -86,6 +88,15 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         raise ModelManifestError("model_file must stay inside the manifest directory") from exc
     if not model_path.is_file():
         raise ModelManifestError("model_file is missing or is not a regular file")
+
+    try:
+        model_size = model_path.stat().st_size
+    except OSError as exc:
+        raise ModelManifestError("cannot stat model file") from exc
+    if model_size > MAX_MODEL_BYTES:
+        raise ModelManifestError(
+            f"ONNX model exceeds maximum supported size of {MAX_MODEL_BYTES} bytes"
+        )
 
     digest = raw.get("model_sha256")
     if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
