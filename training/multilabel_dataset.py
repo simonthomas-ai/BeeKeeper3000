@@ -156,6 +156,7 @@ def _validate_rights(rights: object, row_number: int) -> str | None:
         and parsed.netloc
         and not parsed.username
         and not parsed.password
+        and not parsed.query
         and not parsed.fragment
     ):
         return source
