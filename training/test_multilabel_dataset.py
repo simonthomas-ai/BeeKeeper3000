@@ -28,16 +28,16 @@ def rights(*, basis="CC0-1.0", **changes):
         "basis": basis,
         "status": "training_approved",
         "publication_allowed": True,
-        "evidence_url": (
+    }
+    if basis in {"CC0-1.0", "CC-BY-4.0"}:
+        result["evidence_url"] = (
             "https://creativecommons.org/publicdomain/zero/1.0/"
             if basis == "CC0-1.0"
             else "https://creativecommons.org/licenses/by/4.0/"
-        ),
-    }
+        )
     if basis == "CC-BY-4.0":
         result["attribution"] = "Example creator (CC BY 4.0)"
     if basis == "LicenseRef-ExplicitPermission":
-        result["evidence_url"] = "https://example.org/permissions/item"
         result["permission_ref"] = "permission-record-1"
     result.update(changes)
     return result
@@ -163,6 +163,8 @@ class MultiLabelDatasetTests(unittest.TestCase):
             ({"review_status": "pending"}, "review_status must be approved"),
             ({"rights": rights(status="pending")}, "rights.status must be training_approved"),
             ({"rights": rights(basis=[])}, "rights.basis must be a non-empty bounded value"),
+            ({"rights": rights(basis="Nutzerangabe")}, "basis must be CC0-1.0"),
+            ({"rights": rights(source="http://example.org/photo")}, "credential-free HTTPS URL"),
             (
                 {"rights": rights(publication_allowed=False)},
                 "publication_allowed must be true",
@@ -178,29 +180,43 @@ class MultiLabelDatasetTests(unittest.TestCase):
                 with self.assertRaisesRegex(DatasetValidationError, message):
                     validate_dataset(tmp)
 
-    def test_accepts_exact_shared_rights_object_and_requires_explicit_permission_evidence(self):
+    def test_requires_license_evidence_attribution_and_explicit_permission_reference(self):
         with tempfile.TemporaryDirectory() as tmp:
             data = DatasetFixture(tmp)
             row = data.add(
                 "shared", b"shared image",
-                photo_rights={
-                    "source": "https://example.org/photos/shared",
-                    "basis": "CC-BY-4.0",
-                    "status": "training_approved",
-                },
+                photo_rights=rights(basis="CC-BY-4.0", source="https://example.org/photos/shared"),
             )
             data.write([row])
             rows = validate_dataset(tmp)
             self.assertEqual(rows[0]["source"], "https://example.org/photos/shared")
+
+        invalid_rights = [
+            (rights(basis="CC0-1.0", evidence_url=None), "evidence_url is required"),
+            (rights(basis="CC-BY-4.0", attribution=""), "attribution is required"),
+            (rights(basis="LicenseRef-ExplicitPermission", permission_ref=""), "permission_ref is required"),
+        ]
+        for index, (photo_rights, message) in enumerate(invalid_rights):
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as tmp:
+                data = DatasetFixture(tmp)
+                row = data.add(f"invalid-{index}", f"fixture {index}".encode(), photo_rights=photo_rights)
+                data.write([row])
+                with self.assertRaisesRegex(DatasetValidationError, message):
+                    validate_dataset(tmp)
+
         with tempfile.TemporaryDirectory() as tmp:
             data = DatasetFixture(tmp)
             row = data.add(
                 "permission", b"permission image",
-                photo_rights=rights(basis="LicenseRef-ExplicitPermission", permission_ref=""),
+                photo_rights=rights(
+                    basis="LicenseRef-ExplicitPermission",
+                    source="Eigene Feldaufnahme",
+                    permission_ref="owner-consent-record-2026-001",
+                ),
             )
             data.write([row])
-            with self.assertRaisesRegex(DatasetValidationError, "permission_ref is required"):
-                validate_dataset(tmp)
+            rows = validate_dataset(tmp)
+            self.assertIsNone(rows[0]["source"])
 
     def test_rejects_manifest_duplicate_keys_and_missing_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -288,9 +304,9 @@ class MultiLabelDatasetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / "field.zip"
             rows = [
-                {"image":"images/a.jpg","labels":[CLASS_NAMES[0]],"captured_at":"2026-11-20T12:00:00Z","capture_session_id":"session-a","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"Eigene Erlaubnis","status":"training_approved"}},
-                {"image":"images/b.jpg","labels":[],"captured_at":"2026-11-20T13:00:00Z","capture_session_id":"session-b","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"Eigene Erlaubnis","status":"training_approved"}},
-                {"image":"images/c.jpg","labels":[CLASS_NAMES[1]],"captured_at":"2026-11-20T14:00:00Z","capture_session_id":"session-c","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"Eigene Erlaubnis","status":"training_approved"}},
+                {"image":"images/a.jpg","labels":[CLASS_NAMES[0]],"captured_at":"2026-11-20T12:00:00Z","capture_session_id":"session-a","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-a"}},
+                {"image":"images/b.jpg","labels":[],"captured_at":"2026-11-20T13:00:00Z","capture_session_id":"session-b","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-b"}},
+                {"image":"images/c.jpg","labels":[CLASS_NAMES[1]],"captured_at":"2026-11-20T14:00:00Z","capture_session_id":"session-c","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-c"}},
             ]
             with zipfile.ZipFile(archive, "w") as output:
                 output.writestr("annotations.jsonl", "".join(json.dumps(row) + "\n" for row in rows))
