@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .contracts import Detection
 from .model_manifest import ModelManifest, load_manifest
+from .model_artifacts import ModelArtifactError, read_model_artifact
 
 
 class DetectorError(RuntimeError):
@@ -32,10 +33,16 @@ class OnnxDetector:
         options.inter_op_num_threads = 1
         options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         try:
-            self.session = ort.InferenceSession(
-                str(manifest.model_path), sess_options=options,
-                providers=["CPUExecutionProvider"],
+            _, model_bytes, _ = read_model_artifact(
+                manifest.model_path, expected_sha256=manifest.model_sha256
             )
+            self.session = ort.InferenceSession(
+                model_bytes, sess_options=options, providers=["CPUExecutionProvider"]
+            )
+        except ModelArtifactError as exc:
+            raise DetectorError(
+                "ONNX model failed bounded size or load-time SHA-256 validation"
+            ) from exc
         except Exception as exc:
             raise DetectorError("ONNX model could not be loaded by the CPU runtime") from exc
         inputs = {item.name for item in self.session.get_inputs()}

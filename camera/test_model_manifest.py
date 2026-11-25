@@ -2,6 +2,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from camera.model_manifest import load_manifest, ModelManifestError
 
@@ -77,6 +78,13 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaises(ModelManifestError):
                 load_manifest(path)
 
+
+    def test_rejects_oversized_model_before_hash_verification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            with patch("camera.model_manifest.MAX_MODEL_BYTES", 4):
+                with self.assertRaisesRegex(ModelManifestError, "maximum supported size"):
+                    load_manifest(path)
 
     def test_rejects_non_integer_manifest_version(self):
         for version in (True, 1.0):
