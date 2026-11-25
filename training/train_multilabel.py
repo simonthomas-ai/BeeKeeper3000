@@ -9,22 +9,13 @@ import random
 import sys
 from pathlib import Path
 
-try:
-    from .multilabel_dataset import (
-        CLASS_NAMES,
-        DatasetValidationError,
-        create_split_plan,
-        prepared_dataset,
-        validate_dataset,
-    )
-except ImportError:
-    from multilabel_dataset import (
-        CLASS_NAMES,
-        DatasetValidationError,
-        create_split_plan,
-        prepared_dataset,
-        validate_dataset,
-    )
+from training.multilabel_dataset import (
+    CLASS_NAMES,
+    DatasetValidationError,
+    create_split_plan,
+    prepared_dataset,
+    validate_dataset,
+)
 
 IMAGE_SIZE = 224
 TASKS = ("seven_multilabel", "vespa_velutina_binary")
