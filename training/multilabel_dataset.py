@@ -59,9 +59,12 @@ def _https_url(value: object, field: str) -> str:
         or not parsed.netloc
         or parsed.username
         or parsed.password
+        or parsed.query
         or parsed.fragment
     ):
-        raise DatasetValidationError(f"{field} must be a credential-free HTTPS URL")
+        raise DatasetValidationError(
+            f"{field} must be a credential-free HTTPS URL without query or fragment"
+        )
     return value
 
 
@@ -99,6 +102,12 @@ def _validate_rights(rights: object, row_number: int) -> str | None:
     prefix = f"line {row_number} rights"
     if not isinstance(rights, dict):
         raise DatasetValidationError(f"{prefix} must be an object")
+    allowed_rights_fields = {
+        "source", "basis", "status", "publication_allowed",
+        "evidence_url", "attribution", "permission_ref",
+    }
+    if set(rights) - allowed_rights_fields:
+        raise DatasetValidationError(f"{prefix} contains unsupported fields")
     source = rights.get("source")
     if not isinstance(source, str) or not source.strip() or len(source.strip()) > 200:
         raise DatasetValidationError(f"{prefix}.source must be a non-empty bounded value")
