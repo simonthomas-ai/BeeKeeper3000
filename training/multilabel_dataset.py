@@ -106,26 +106,53 @@ def _validate_rights(rights: object, row_number: int) -> str | None:
     basis = rights.get("basis")
     if not isinstance(basis, str) or not basis.strip() or len(basis.strip()) > 120:
         raise DatasetValidationError(f"{prefix}.basis must be a non-empty bounded value")
+    basis = basis.strip()
+    if basis not in RIGHTS_BASES:
+        raise DatasetValidationError(
+            f"{prefix}.basis must be CC0-1.0, CC-BY-4.0, or LicenseRef-ExplicitPermission"
+        )
     if rights.get("status") != "training_approved":
         raise DatasetValidationError(f"{prefix}.status must be training_approved")
     if "publication_allowed" in rights:
         if type(rights["publication_allowed"]) is not bool or not rights["publication_allowed"]:
             raise DatasetValidationError(f"{prefix}.publication_allowed must be true")
-    if "evidence_url" in rights:
+    if basis in LICENSE_URLS:
+        if "evidence_url" not in rights:
+            raise DatasetValidationError(f"{prefix}.evidence_url is required for the selected license")
         evidence_url = _https_url(rights["evidence_url"], f"{prefix}.evidence_url")
-        if basis in LICENSE_URLS and evidence_url.rstrip("/") != LICENSE_URLS[basis].rstrip("/"):
+        if evidence_url.rstrip("/") != LICENSE_URLS[basis].rstrip("/"):
             raise DatasetValidationError(f"{prefix}.evidence_url does not match its license basis")
+    elif "evidence_url" in rights:
+        _https_url(rights["evidence_url"], f"{prefix}.evidence_url")
+
+    if basis == "CC-BY-4.0":
+        attribution = rights.get("attribution")
+        if not isinstance(attribution, str) or not attribution.strip() or len(attribution.strip()) > 500:
+            raise DatasetValidationError(f"{prefix}.attribution is required for CC-BY-4.0")
     if basis == "LicenseRef-ExplicitPermission":
         permission_ref = rights.get("permission_ref")
-        if not isinstance(permission_ref, str) or not permission_ref.strip():
-            raise DatasetValidationError(f"{prefix}.permission_ref is required")
+        if (
+            not isinstance(permission_ref, str)
+            or not permission_ref.strip()
+            or len(permission_ref.strip()) > 200
+        ):
+            raise DatasetValidationError(f"{prefix}.permission_ref is required and must be bounded")
+
     generic_sources = {"eigene feldaufnahme", "own field capture"}
     if source.casefold() in generic_sources:
         return None
     parsed = urlparse(source)
-    if parsed.scheme == "https" and parsed.netloc and not parsed.username and not parsed.password and not parsed.fragment:
+    if (
+        parsed.scheme == "https"
+        and parsed.netloc
+        and not parsed.username
+        and not parsed.password
+        and not parsed.fragment
+    ):
         return source
-    return None
+    raise DatasetValidationError(
+        f"{prefix}.source must be a credential-free HTTPS URL or explicit local-capture label"
+    )
 
 
 def _safe_file(root: Path, relative: PurePosixPath) -> Path:
