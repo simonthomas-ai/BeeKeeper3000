@@ -191,8 +191,10 @@ class MultiLabelDatasetTests(unittest.TestCase):
             rows = validate_dataset(tmp)
             self.assertEqual(rows[0]["source"], "https://example.org/photos/shared")
 
+        missing_cc0_evidence = rights(basis="CC0-1.0")
+        missing_cc0_evidence.pop("evidence_url")
         invalid_rights = [
-            (rights(basis="CC0-1.0", evidence_url=None), "evidence_url is required"),
+            (missing_cc0_evidence, "evidence_url is required"),
             (rights(basis="CC-BY-4.0", attribution=""), "attribution is required"),
             (rights(basis="LicenseRef-ExplicitPermission", permission_ref=""), "permission_ref is required"),
         ]
