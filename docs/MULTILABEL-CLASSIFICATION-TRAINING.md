@@ -19,8 +19,8 @@ Der lokale Datensatz kann als Verzeichnis oder ZIP mit den Root-Einträgen `imag
 Die Werkzeuge verwenden nur die übergebenen lokalen Dateien; sie laden weder Daten noch vortrainierte Gewichte und senden nichts an einen Dienst. Vorher Dataset-Rechte, Datenschutz und Weitergabeberechtigung manuell prüfen. Dann im Repository-Root:
 
 ```powershell
-python training\multilabel_dataset.py --dataset "D:\field-data\approved-dataset" --seed 42 --output "D:\field-data\split-plan.json"
-python training\train_multilabel.py --dataset "D:\field-data\approved-dataset" --output-dir "D:\field-data\model-run-001" --epochs 20 --batch-size 16 --learning-rate 0.001 --seed 42
+python -m training.multilabel_dataset --dataset "D:\field-data\approved-dataset" --seed 42 --output "D:\field-data\split-plan.json"
+python -m training.train_multilabel --dataset "D:\field-data\approved-dataset" --output-dir "D:\field-data\model-run-001" --epochs 20 --batch-size 16 --learning-rate 0.001 --seed 42
 python -m unittest training.test_multilabel_dataset -v
 ```
 
@@ -60,13 +60,13 @@ Die auf dem Monitor-`main` nachweisbare Spezifikation enthält noch das alte Box
 Aus dem BeeKeeper3000-Repository-Root:
 
 ```powershell
-python training\multilabel_dataset.py --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --seed 42 --output "$env:LOCALAPPDATA\BeeKeeper3000\field-split-plan.json"
+python -m training.multilabel_dataset --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --seed 42 --output "$env:LOCALAPPDATA\BeeKeeper3000\field-split-plan.json"
 ```
 
 Der erfolgreiche Exitcode `0` beweist nur einen gültigen, freigegebenen Dateivertrag und einen deterministischen Split. Er belegt keine Modellgenauigkeit. Bei Exitcode `2` ist der Export abzulehnen und die Fehlzeile zu korrigieren. Für einen Trainingsversuch erst nach Prüfung der Ausgabegründe:
 
 ```powershell
-python training\train_multilabel.py --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --output-dir "$env:LOCALAPPDATA\BeeKeeper3000\model-run-01" --epochs 20 --batch-size 16 --learning-rate 0.001 --seed 42
+python -m training.train_multilabel --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --output-dir "$env:LOCALAPPDATA\BeeKeeper3000\model-run-01" --epochs 20 --batch-size 16 --learning-rate 0.001 --seed 42
 ```
 
 Dieser Lauf startet nur mit drei unabhängigen, leakfreien Gruppen und positiven Beispielen für alle sieben Klassen. Die asiatische Hornisse `vespa_velutina` ist als eine der sieben unterstützten Slugs und als menschlich prüfbares Klassifikationslabel vollständig benannt. Das bedeutet weder eine vorhandene Gewichtedatei noch eine validierte Detektion oder Alarmfreigabe. Bis echtes unabhängiges Feld-Holdout und freigegebene Daten vorliegen, bleibt jeder spätere Gewichtsbestand `experimental_unvalidated`.
@@ -74,13 +74,13 @@ Dieser Lauf startet nur mit drei unabhängigen, leakfreien Gruppen und positiven
 Für die ausdrücklich vorgesehene erste binäre Stufe denselben Export mit `--task vespa_velutina_binary` verwenden:
 
 ```powershell
-python training\train_multilabel.py --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --output-dir "$env:LOCALAPPDATA\BeeKeeper3000\vespa-velutina-run-01" --task vespa_velutina_binary --epochs 20 --seed 42
+python -m training.train_multilabel --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --output-dir "$env:LOCALAPPDATA\BeeKeeper3000\vespa-velutina-run-01" --task vespa_velutina_binary --epochs 20 --seed 42
 ```
 
 Die kurze Klassen-Variante ist ebenfalls verfügbar:
 
 ```powershell
-python training\train_multilabel.py --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --output-dir "$env:LOCALAPPDATA\BeeKeeper3000\vespa-velutina-run-01" --classes vespa_velutina --epochs 20 --seed 42
+python -m training.train_multilabel --dataset "$env:USERPROFILE\Downloads\field-dataset.zip" --output-dir "$env:LOCALAPPDATA\BeeKeeper3000\vespa-velutina-run-01" --classes vespa_velutina --epochs 20 --seed 42
 ```
 
 Der Binary-Lauf erfordert im Trainingssplit mindestens ein positives und ein negatives Beispiel, aber keine positiven Beispiele der sechs weiteren Slugs. Negative Bilder können dennoch `apis_mellifera`, `bombus_spp` oder andere freigegebene Nicht-Hornissen-Labels tragen. Das ONNX-Ausgabeformat wird als `[1,1]`-Logit und genau eine Klasse `vespa_velutina` dokumentiert. Es werden weiterhin keine Gewichte trainiert oder ausgeliefert, wenn der reale freigegebene Datenbestand fehlt; keine Produktivalarme oder Qualitätskennzahlen werden aus Fixtures abgeleitet.
