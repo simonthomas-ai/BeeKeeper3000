@@ -165,6 +165,10 @@ class MultiLabelDatasetTests(unittest.TestCase):
             ({"rights": rights(basis=[])}, "rights.basis must be a non-empty bounded value"),
             ({"rights": rights(basis="Nutzerangabe")}, "basis must be CC0-1.0"),
             ({"rights": rights(source="http://example.org/photo")}, "credential-free HTTPS URL"),
+            ({"rights": rights(source="https://example.org/photo?token=example")}, "credential-free HTTPS URL"),
+            ({"rights": rights(source="https://user:password@example.org/photo")}, "credential-free HTTPS URL"),
+            ({"rights": rights(source="https://example.org/photo#private")}, "credential-free HTTPS URL"),
+            ({"rights": rights(private_note="must not be exported")}, "unsupported fields"),
             (
                 {"rights": rights(publication_allowed=False)},
                 "publication_allowed must be true",
@@ -196,6 +200,13 @@ class MultiLabelDatasetTests(unittest.TestCase):
         invalid_rights = [
             (missing_cc0_evidence, "evidence_url is required"),
             (rights(basis="CC-BY-4.0", attribution=""), "attribution is required"),
+            (
+                rights(
+                    basis="CC0-1.0",
+                    evidence_url="https://creativecommons.org/publicdomain/zero/1.0/?token=example",
+                ),
+                "credential-free HTTPS URL",
+            ),
             (rights(basis="LicenseRef-ExplicitPermission", permission_ref=""), "permission_ref is required"),
         ]
         for index, (photo_rights, message) in enumerate(invalid_rights):
