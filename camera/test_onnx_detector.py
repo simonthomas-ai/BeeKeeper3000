@@ -33,15 +33,25 @@ class FakeSession:
 class OnnxDetectorTests(unittest.TestCase):
     def make_detector(self, outputs, *, matrix=False, input_names=("images",), output_names=None):
         session = FakeSession(outputs, input_names=input_names, output_names=output_names)
+        model_bytes = b"verified model snapshot"
+        model_sha256 = "a" * 64
+        captured = {}
+
+        def create_session(*args, **kwargs):
+            captured["args"] = args
+            captured["kwargs"] = kwargs
+            return session
+
         ort = types.SimpleNamespace(
             SessionOptions=lambda: SimpleNamespace(
                 intra_op_num_threads=0, inter_op_num_threads=0, execution_mode=None
             ),
             ExecutionMode=SimpleNamespace(ORT_SEQUENTIAL=1),
-            InferenceSession=lambda *args, **kwargs: session,
+            InferenceSession=create_session,
         )
         manifest = SimpleNamespace(
             model_path=Path("fake.onnx"),
+            model_sha256=model_sha256,
             input_name="images",
             detections_output="output0" if matrix else None,
             boxes_output=None if matrix else "boxes",
@@ -55,7 +65,15 @@ class OnnxDetectorTests(unittest.TestCase):
             },
         )
         with patch.dict(sys.modules, {"onnxruntime": ort}):
-            detector = OnnxDetector(manifest)
+            with patch(
+                "camera.onnx_detector.read_model_artifact",
+                return_value=(Path("fake.onnx"), model_bytes, model_sha256),
+            ) as read_artifact:
+                detector = OnnxDetector(manifest)
+        read_artifact.assert_called_once_with(
+            manifest.model_path, expected_sha256=manifest.model_sha256
+        )
+        self.assertEqual(captured["args"][0], model_bytes)
         return detector, session
 
     def test_normalized_outputs_filter_unknown_low_score_and_invalid_boxes(self):
