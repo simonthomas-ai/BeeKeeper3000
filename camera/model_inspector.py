@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from pathlib import Path
+
+from .model_artifacts import read_model_artifact
 
 
 def _shape_value(value):
@@ -23,14 +24,7 @@ def _node_info(node) -> dict:
 
 
 def inspect_model(path: str | Path) -> dict:
-    model_path = Path(path).expanduser().resolve(strict=True)
-    if not model_path.is_file() or model_path.suffix.lower() != ".onnx":
-        raise ValueError("model path must be a regular .onnx file")
-
-    digest = hashlib.sha256()
-    with model_path.open("rb") as model_file:
-        for chunk in iter(lambda: model_file.read(1024 * 1024), b""):
-            digest.update(chunk)
+    model_path, model_bytes, digest = read_model_artifact(path)
 
     try:
         import onnxruntime as ort
@@ -40,7 +34,7 @@ def inspect_model(path: str | Path) -> dict:
     if "CPUExecutionProvider" not in ort.get_available_providers():
         raise RuntimeError("ONNX Runtime does not provide CPUExecutionProvider")
     session = ort.InferenceSession(
-        str(model_path),
+        model_bytes,
         providers=["CPUExecutionProvider"],
     )
     providers = session.get_providers()
@@ -50,8 +44,8 @@ def inspect_model(path: str | Path) -> dict:
     return {
         "inspection_version": 1,
         "file_name": model_path.name,
-        "size_bytes": model_path.stat().st_size,
-        "sha256": digest.hexdigest(),
+        "size_bytes": len(model_bytes),
+        "sha256": digest,
         "runtime": {
             "name": "onnxruntime",
             "version": ort.__version__,
