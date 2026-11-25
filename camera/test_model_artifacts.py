@@ -1,4 +1,5 @@
 import hashlib
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -48,6 +49,51 @@ class ModelArtifactTests(unittest.TestCase):
                 self.skipTest(f"symbolic links are unavailable: {exc}")
             with self.assertRaisesRegex(ModelArtifactError, "symbolic link"):
                 read_model_artifact(alias)
+
+    @unittest.skipUnless(getattr(os, "O_NOFOLLOW", 0), "O_NOFOLLOW is unavailable")
+    def test_rejects_symlink_swapped_in_after_initial_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target.onnx"
+            alias = Path(tmp) / "alias.onnx"
+            target.write_bytes(b"model bytes")
+            alias.write_bytes(b"initial regular file")
+            original_is_symlink = Path.is_symlink
+
+            def swap_after_check(candidate):
+                if candidate == alias:
+                    alias.unlink()
+                    alias.symlink_to(target)
+                    return False
+                return original_is_symlink(candidate)
+
+            with patch.object(Path, "is_symlink", swap_after_check):
+                with self.assertRaisesRegex(ModelArtifactError, "symbolic link"):
+                    read_model_artifact(alias)
+
+    @unittest.skipIf(os.name == "nt", "open-file replacement semantics differ on Windows")
+    def test_reads_the_open_descriptor_snapshot_after_path_replacement(self):
+        original = b"approved model bytes"
+        replacement = b"different model bytes"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "candidate.onnx"
+            replacement_path = Path(tmp) / "replacement.onnx"
+            path.write_bytes(original)
+            replacement_path.write_bytes(replacement)
+            real_open = os.open
+
+            def open_then_replace(candidate, flags):
+                descriptor = real_open(candidate, flags)
+                if Path(candidate) == path:
+                    os.replace(replacement_path, path)
+                return descriptor
+
+            with patch("camera.model_artifacts.os.open", side_effect=open_then_replace):
+                _, payload, digest = read_model_artifact(
+                    path, expected_sha256=hashlib.sha256(original).hexdigest()
+                )
+
+        self.assertEqual(payload, original)
+        self.assertEqual(digest, hashlib.sha256(original).hexdigest())
 
     def test_rejects_non_onnx_path(self):
         with tempfile.TemporaryDirectory() as tmp:
