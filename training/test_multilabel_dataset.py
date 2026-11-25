@@ -29,7 +29,7 @@ def rights(*, basis="CC0-1.0", **changes):
         "status": "training_approved",
         "publication_allowed": True,
     }
-    if basis in {"CC0-1.0", "CC-BY-4.0"}:
+    if basis in ("CC0-1.0", "CC-BY-4.0"):
         result["evidence_url"] = (
             "https://creativecommons.org/publicdomain/zero/1.0/"
             if basis == "CC0-1.0"
