@@ -370,6 +370,51 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelManifestError, "supported reviewed-license allowlist"):
                 load_manifest(path)
 
+
+    def test_rejects_unhashable_provenance_and_manifest_status_values(self):
+        malformed_rows = [
+            ({"source_url": []}, "source_url, revision and license must be strings"),
+            ({"revision": []}, "source_url, revision and license must be strings"),
+            ({"license": []}, "source_url, revision and license must be strings"),
+        ]
+        for index, (change, message) in enumerate(malformed_rows):
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp)
+                row = self.default_provenance_row()
+                row.update(change)
+                payload = (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+                self.rewrite_provenance(path, payload)
+                with self.assertRaisesRegex(ModelManifestError, message):
+                    load_manifest(path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, license_review_status=[])
+            with self.assertRaisesRegex(ModelManifestError, "model license must be explicitly reviewed"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, inference_status=[])
+            with self.assertRaisesRegex(ModelManifestError, "inference_status must be experimental"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, input={"name":"images","width":640,"height":640,"color":"RGB","layout":"NCHW","scale":"0..1","resize_mode":[]})
+            with self.assertRaisesRegex(ModelManifestError, "resize_mode must be stretch"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "https://example.org/dataset",
+                "revision": "a" * 40,
+                "license": "CC-BY-4.0",
+                "license_review_status": [],
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "training dataset license must be explicitly reviewed"):
+                load_manifest(path)
+
     def test_rejects_oversized_model_before_hash_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp)
