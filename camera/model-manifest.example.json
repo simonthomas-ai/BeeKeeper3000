@@ -1,5 +1,5 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "model_file": "models/your-model.onnx",
   "model_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_SHA256",
   "model_version": "unreviewed-placeholder",
@@ -27,8 +27,38 @@
     "box_format": "xyxy_normalized_post_nms"
   },
   "classes": [
-    { "id": 0, "label": "vespa_velutina_candidate", "threshold": 0.80, "prey_detected": false },
-    { "id": 1, "label": "vespa_crabro_candidate", "threshold": 0.80, "prey_detected": false },
-    { "id": 2, "label": "other_insect_candidate", "threshold": 0.80, "prey_detected": false }
+    {
+      "id": 0,
+      "label": "vespa_velutina_candidate",
+      "threshold": 0.8,
+      "prey_detected": false
+    },
+    {
+      "id": 1,
+      "label": "vespa_crabro_candidate",
+      "threshold": 0.8,
+      "prey_detected": false
+    },
+    {
+      "id": 2,
+      "label": "other_insect_candidate",
+      "threshold": 0.8,
+      "prey_detected": false
+    }
+  ],
+  "dataset_manifest_file": "provenance.jsonl",
+  "dataset_manifest_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_SHA256",
+  "training_data_sources": [
+    {
+      "source_url": "https://example.org/replace-with-dataset-source",
+      "revision": "REPLACE_WITH_IMMUTABLE_DATASET_REVISION",
+      "license": "LicenseRef-UNREVIEWED",
+      "license_review_status": "not-reviewed",
+      "license_evidence_url": "https://example.org/replace-with-dataset-license-evidence",
+      "training_use_allowed": false,
+      "redistribution_allowed": false,
+      "reviewed_by": "NOT_REVIEWED",
+      "reviewed_at": "NOT_REVIEWED"
+    }
   ]
 }
