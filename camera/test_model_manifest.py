@@ -557,7 +557,7 @@ class ManifestTests(unittest.TestCase):
                 path = self.make(tmp)
                 row = self.default_provenance_row()
                 row["reviewed_by"] = reviewer_id
-                payload = (json.dumps(row, sort_keys=True) + "\\n").encode("utf-8")
+                payload = (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
                 self.rewrite_provenance(path, payload)
                 with self.assertRaisesRegex(ModelManifestError, "reviewer:<opaque-id>"):
                     load_manifest(path)
@@ -588,7 +588,7 @@ class ManifestTests(unittest.TestCase):
                     "reviewed_at": "2026-11-20T12:30:00Z",
                     "permission_ref": permission_ref,
                 }
-                payload = (json.dumps(provenance_row, sort_keys=True) + "\\n").encode("utf-8")
+                payload = (json.dumps(provenance_row, sort_keys=True) + "\n").encode("utf-8")
                 (Path(tmp) / "provenance.jsonl").write_bytes(payload)
                 data["dataset_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
                 data["training_data_sources"] = [{
