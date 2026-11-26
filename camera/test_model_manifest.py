@@ -311,6 +311,59 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelManifestError, "duplicates image bytes"):
                 load_manifest(path)
 
+
+    def test_accepts_local_field_capture_with_archive_digest_and_opaque_permission(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            source_url = "local-capture://batch-2026-11-26-a1"
+            revision = "sha256:" + "c" * 64
+            data["training_data_sources"] = [{
+                "source_url": source_url,
+                "revision": revision,
+                "license": "LicenseRef-ExplicitPermission",
+                "license_review_status": "approved",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "reviewer-01",
+                "reviewed_at": "2026-11-26T03:00:00Z",
+            }]
+            row = self.default_provenance_row()
+            row.update({
+                "source_url": source_url,
+                "revision": revision,
+                "license": "LicenseRef-ExplicitPermission",
+                "license_review_status": "approved",
+                "reviewed_by": "reviewer-01",
+                "reviewed_at": "2026-11-26T03:00:00Z",
+                "permission_ref": "consent-record-opaque-001",
+            })
+            row.pop("attribution")
+            payload = (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+            (Path(tmp) / "provenance.jsonl").write_bytes(payload)
+            data["dataset_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
+            path.write_text(json.dumps(data), encoding="utf-8")
+            manifest = load_manifest(path)
+            self.assertEqual(manifest.training_data_sources[0].source_url, source_url)
+            self.assertIsNone(manifest.training_data_sources[0].license_evidence_url)
+
+    def test_rejects_local_capture_source_for_public_license(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "local-capture://batch-2026-11-26-a1",
+                "revision": "sha256:" + "c" * 64,
+                "license": "CC-BY-4.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "local-capture source must use"):
+                load_manifest(path)
+
     def test_requires_explicit_permission_reference_for_per_image_license_ref(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp)
