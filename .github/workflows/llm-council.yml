@@ -12,7 +12,7 @@ permissions:
 # The runner owner is responsible for keeping the host powered and secured.
 jobs:
   council:
-    if: github.repository == 'simonthomas-ai/BeeKeeper3000'
+    if: github.repository == 'simonthomas-ai/BeeKeeper3000' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, windows, x64, llm-council]
     timeout-minutes: 20
     steps:
