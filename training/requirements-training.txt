@@ -1,5 +1,5 @@
 # Optional local classifier training only; never install on a camera station.
 # SPDX: torch BSD-3-Clause; Pillow MIT-CMU; onnx Apache-2.0.
-torch==2.9.1
-Pillow==12.0.0
-onnx==1.20.1
+torch==2.15.0
+Pillow==13.0.0
+onnx==1.23.2
