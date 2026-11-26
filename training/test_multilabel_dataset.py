@@ -119,6 +119,29 @@ class MultiLabelDatasetTests(unittest.TestCase):
             self.assertEqual(rows[0]["labels"], [CLASS_NAMES[0], CLASS_NAMES[3]])
             self.assertEqual(rows[1]["labels"], [])
 
+    def test_labeler_id_must_be_an_opaque_pseudonymous_identifier(self):
+        invalid_ids = (
+            "Simon Thomas",
+            "simon@example.org",
+            "https://example.org/reviewer",
+            "reviewer:short",
+        )
+        for labeler_id in invalid_ids:
+            with self.subTest(labeler_id=labeler_id), tempfile.TemporaryDirectory() as tmp:
+                data = DatasetFixture(tmp)
+                row = data.add("labeler", b"synthetic labeler fixture")
+                row["labeler_id"] = labeler_id
+                data.write([row])
+                with self.assertRaisesRegex(DatasetValidationError, "reviewer:<opaque-id>"):
+                    validate_dataset(tmp)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = DatasetFixture(tmp)
+            row = data.add("valid-labeler", b"synthetic valid labeler fixture")
+            row["labeler_id"] = "reviewer:field-0001"
+            data.write([row])
+            self.assertEqual(len(validate_dataset(tmp)), 1)
+
     def test_requires_exact_manifest_to_image_inventory(self):
         with tempfile.TemporaryDirectory() as tmp:
             data = DatasetFixture(tmp)
