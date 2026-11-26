@@ -40,6 +40,35 @@ def _require_pseudonymous_reviewer(value: object, field: str) -> str:
         )
     return value.strip()
 
+def _require_public_https_url(value: object, field: str) -> str:
+    """Accept public provenance URLs only; never persist query/fragment tokens."""
+    message = f"{field} must be a credential-free HTTPS URL without query or fragment"
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > 2048
+        or value != value.strip()
+        or any(ord(char) <= 0x20 or ord(char) == 0x7F for char in value)
+        or "?" in value
+        or "#" in value
+    ):
+        raise ModelManifestError(message)
+    try:
+        parsed = urlparse(value)
+        parsed.port  # Validate malformed ports instead of retaining ambiguous URLs.
+    except ValueError as exc:
+        raise ModelManifestError(message) from exc
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ModelManifestError(message)
+    return value
+
 
 def _unique_object(pairs):
     result = {}
@@ -324,20 +353,15 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     license_review = raw.get("license_review_status")
     if not isinstance(version, str) or not version.strip() or len(version) > 100:
         raise ModelManifestError("model_version is required")
-    parsed_source = urlparse(source) if isinstance(source, str) else None
-    if (parsed_source is None or parsed_source.scheme != "https" or not parsed_source.netloc
-            or parsed_source.username or parsed_source.password):
-        raise ModelManifestError("model_source_url must be a credential-free HTTPS provenance URL")
+    source = _require_public_https_url(source, "model_source_url")
     if not isinstance(license_id, str) or not _SPDX.fullmatch(license_id):
         raise ModelManifestError("model_license must be an SPDX-like identifier")
     if not isinstance(license_review, str) or license_review not in {"approved", "public-domain"}:
         raise ModelManifestError("model license must be explicitly reviewed before inference")
 
-    evidence_url = raw.get("license_evidence_url")
-    evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
-    if (evidence is None or evidence.scheme != "https" or not evidence.netloc
-            or evidence.username or evidence.password):
-        raise ModelManifestError("license_evidence_url must be a credential-free HTTPS source")
+    evidence_url = _require_public_https_url(
+        raw.get("license_evidence_url"), "license_evidence_url"
+    )
     reviewer = _require_pseudonymous_reviewer(
         raw.get("license_reviewed_by"), "license_reviewed_by"
     )
@@ -360,9 +384,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if not isinstance(inference_status, str) or inference_status not in {"experimental", "independently_validated"}:
         raise ModelManifestError("inference_status must be experimental or independently_validated")
     if inference_status == "independently_validated":
-        report = raw.get("validation_report_url")
-        if not isinstance(report, str) or not report.startswith("https://"):
-            raise ModelManifestError("independent validation requires a public validation_report_url")
+        _require_public_https_url(raw.get("validation_report_url"), "validation_report_url")
 
     dataset_manifest_file = raw.get("dataset_manifest_file")
     dataset_manifest_digest = raw.get("dataset_manifest_sha256")
