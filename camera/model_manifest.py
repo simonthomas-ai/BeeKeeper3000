@@ -53,7 +53,7 @@ class TrainingDataSource:
     revision: str
     license_id: str
     license_review_status: str
-    license_evidence_url: str
+    license_evidence_url: str | None
     training_use_allowed: bool
     redistribution_allowed: bool
     reviewed_by: str
@@ -406,38 +406,71 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     for row in raw_sources:
         if not isinstance(row, dict):
             raise ModelManifestError("each training_data_sources entry must be an object")
-        source_url = row.get("source_url")
-        parsed_dataset_source = urlparse(source_url) if isinstance(source_url, str) else None
-        if (parsed_dataset_source is None or parsed_dataset_source.scheme != "https"
-                or not parsed_dataset_source.netloc or parsed_dataset_source.username
-                or parsed_dataset_source.password or parsed_dataset_source.query
-                or parsed_dataset_source.fragment):
-            raise ModelManifestError("dataset source_url must be credential-free HTTPS without query or fragment")
-        revision = row.get("revision")
-        if not isinstance(revision, str) or not _DATASET_REVISION.fullmatch(revision.strip()):
-            raise ModelManifestError("dataset revision must be a full Git commit SHA or SHA-256 archive digest")
-        revision = revision.strip()
-        source_key = (source_url, revision, row.get("license"))
-        if source_key in seen_sources:
-            raise ModelManifestError("duplicate training dataset source and revision")
-        seen_sources.add(source_key)
         dataset_license = row.get("license")
         if not isinstance(dataset_license, str) or not _SPDX.fullmatch(dataset_license):
             raise ModelManifestError("training dataset license must be an SPDX-like identifier")
         if dataset_license not in _DATASET_LICENSES:
             raise ModelManifestError("training dataset license is not in the supported reviewed-license allowlist")
+
+        source_url = row.get("source_url")
+        parsed_dataset_source = urlparse(source_url) if isinstance(source_url, str) else None
+        local_capture = False
+        if parsed_dataset_source is not None and parsed_dataset_source.scheme == "local-capture":
+            local_capture = (
+                dataset_license == "LicenseRef-ExplicitPermission"
+                and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,79}", parsed_dataset_source.netloc))
+                and not parsed_dataset_source.path
+                and not parsed_dataset_source.params
+                and not parsed_dataset_source.query
+                and not parsed_dataset_source.fragment
+                and not parsed_dataset_source.username
+                and not parsed_dataset_source.password
+            )
+            if not local_capture:
+                raise ModelManifestError(
+                    "local-capture source must use an opaque ID and LicenseRef-ExplicitPermission"
+                )
+        elif (
+            parsed_dataset_source is None
+            or parsed_dataset_source.scheme != "https"
+            or not parsed_dataset_source.netloc
+            or parsed_dataset_source.username
+            or parsed_dataset_source.password
+            or parsed_dataset_source.query
+            or parsed_dataset_source.fragment
+        ):
+            raise ModelManifestError(
+                "dataset source_url must be credential-free HTTPS or an opaque local-capture source with explicit permission"
+            )
+
+        revision = row.get("revision")
+        if not isinstance(revision, str) or not _DATASET_REVISION.fullmatch(revision.strip()):
+            raise ModelManifestError("dataset revision must be a full Git commit SHA or SHA-256 archive digest")
+        revision = revision.strip()
+        if local_capture and not revision.startswith("sha256:"):
+            raise ModelManifestError("local-capture dataset revision must be a SHA-256 archive digest")
+        source_key = (source_url, revision, dataset_license)
+        if source_key in seen_sources:
+            raise ModelManifestError("duplicate training dataset source and revision")
+        seen_sources.add(source_key)
+
         dataset_review = row.get("license_review_status")
         if not isinstance(dataset_review, str) or dataset_review not in {"approved", "public-domain"}:
             raise ModelManifestError("training dataset license must be explicitly reviewed before inference")
         evidence_url = row.get("license_evidence_url")
-        parsed_evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
-        if (parsed_evidence is None or parsed_evidence.scheme != "https"
-                or not parsed_evidence.netloc or parsed_evidence.username
-                or parsed_evidence.password or parsed_evidence.query
-                or parsed_evidence.fragment):
-            raise ModelManifestError("dataset license_evidence_url must be credential-free HTTPS without query or fragment")
+        if evidence_url is None and dataset_license == "LicenseRef-ExplicitPermission":
+            parsed_evidence = None
+        else:
+            parsed_evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
+            if (parsed_evidence is None or parsed_evidence.scheme != "https"
+                    or not parsed_evidence.netloc or parsed_evidence.username
+                    or parsed_evidence.password or parsed_evidence.query
+                    or parsed_evidence.fragment):
+                raise ModelManifestError("dataset license_evidence_url must be credential-free HTTPS without query or fragment")
         canonical_evidence = _DATASET_LICENSE_EVIDENCE.get(dataset_license)
-        if canonical_evidence and evidence_url.rstrip("/") != canonical_evidence.rstrip("/"):
+        if canonical_evidence and (
+            evidence_url is None or evidence_url.rstrip("/") != canonical_evidence.rstrip("/")
+        ):
             raise ModelManifestError("dataset license_evidence_url does not match the supported license")
         training_allowed = row.get("training_use_allowed")
         redistribution_allowed_dataset = row.get("redistribution_allowed")
