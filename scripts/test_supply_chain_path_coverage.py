@@ -35,7 +35,7 @@ class SupplyChainPathCoverageTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn(path, text)
         self.assertIn("not a complete resolved environment inventory", text)
-        self.assertIn("no provenance attestation", text.lower())
+        self.assertIn("did not show a provenance attestation", text.lower())
 
 
 if __name__ == "__main__":
