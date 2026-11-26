@@ -366,7 +366,7 @@ def _train_prepared(args, dataset_root: Path) -> dict:
         },
         "training": {
             "torch": torch.__version__,
-            "onnx": "1.20.1",
+            "onnx": "1.23.2",
             "device": "cpu",
             "seed": args.seed,
             "deterministic_algorithms": True,
