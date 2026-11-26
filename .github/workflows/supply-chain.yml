@@ -76,6 +76,8 @@ jobs:
 
       - name: Audit optional NMEA serial dependency
         run: pip-audit --requirement adapters/nmea-requirements.lock --no-deps --strict --format json --output reports/nmea-serial-audit.json
+      - name: Audit pinned training runtime and resolved dependencies
+        run: pip-audit --requirement training/requirements.txt --strict --format json --output reports/training-runtime-audit.json
 
       - name: Upload vulnerability report
         if: always()
@@ -85,6 +87,7 @@ jobs:
           path: |
             reports/pip-audit.json
             reports/nmea-serial-audit.json
+            reports/training-runtime-audit.json
           if-no-files-found: ignore
           retention-days: 30
 
@@ -109,11 +112,23 @@ jobs:
         run: |
           cyclonedx-py requirements adapters/nmea-requirements.lock --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/nmea-serial.cdx.json
           python -m json.tool reports/nmea-serial.cdx.json >/dev/null
+      - name: Generate CycloneDX SBOM for declared training runtime dependencies
+        run: |
+          cyclonedx-py requirements training/requirements.txt --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/training-declared-requirements.cdx.json
+          python -m json.tool reports/training-declared-requirements.cdx.json >/dev/null
+
       - name: Upload NMEA serial SBOM
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nmea-serial-cyclonedx-sbom
           path: reports/nmea-serial.cdx.json
+          retention-days: 90
+
+      - name: Upload declared training dependency SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: training-declared-requirements-cyclonedx-sbom
+          path: reports/training-declared-requirements.cdx.json
           retention-days: 90
 
       - name: Upload SBOM
