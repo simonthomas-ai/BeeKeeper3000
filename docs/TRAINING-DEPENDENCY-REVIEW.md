@@ -9,7 +9,10 @@ versions before training:
 
 The direct pins are declared in `training/requirements-training.txt`. The supply-chain
 workflow runs `pip-audit` against that file with dependency resolution and
-emits a CycloneDX artifact for the declared requirements. The audit is a
+emits a CycloneDX artifact for the declared requirements. The previous pins
+(Pillow 12.0.0, ONNX 1.20.1 and PyTorch 2.9.1) produced 103 advisory findings
+in the initial audit; the current pins were selected from patched releases and
+must pass the rerun before merge. The audit is a
 dependency-vulnerability check, not a model, dataset or license approval.
 
 The declared-requirements SBOM is not a complete installed-environment SBOM.
