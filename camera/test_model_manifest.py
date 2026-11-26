@@ -644,5 +644,23 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelManifestError, "only valid for CC0-1.0"):
                 load_manifest(path)
 
+    def test_rejects_query_or_fragment_in_public_model_provenance_urls(self):
+        cases = (
+            ({"model_source_url": "https://example.org/model?token=secret"}, "model_source_url"),
+            ({"license_evidence_url": "https://example.org/LICENSE#private"}, "license_evidence_url"),
+            (
+                {
+                    "inference_status": "independently_validated",
+                    "validation_report_url": "https://example.org/report?share=secret",
+                },
+                "validation_report_url",
+            ),
+        )
+        for changes, field in cases:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp, **changes)
+                with self.assertRaisesRegex(ModelManifestError, field):
+                    load_manifest(path)
+
 if __name__ == "__main__":
     unittest.main()
