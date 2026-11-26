@@ -80,11 +80,11 @@ def _load_runtime():
             "Install the reviewed optional dependencies from training/requirements-training.txt"
         ) from exc
     if (
-        torch.__version__.split("+", 1)[0] != "2.9.1"
-        or PIL.__version__ != "12.0.0"
-        or onnx.__version__ != "1.20.1"
+        torch.__version__.split("+", 1)[0] != "2.15.0"
+        or PIL.__version__ != "13.0.0"
+        or onnx.__version__ != "1.23.2"
     ):
-        raise RuntimeError("Training requires torch==2.9.1, Pillow==12.0.0 and onnx==1.20.1")
+        raise RuntimeError("Training requires torch==2.15.0, Pillow==13.0.0 and onnx==1.23.2")
     ImageFile.LOAD_TRUNCATED_IMAGES = False
     return torch, Image, onnx
 
@@ -366,7 +366,7 @@ def _train_prepared(args, dataset_root: Path) -> dict:
         },
         "training": {
             "torch": torch.__version__,
-            "onnx": "1.20.1",
+            "onnx": "1.23.2",
             "device": "cpu",
             "seed": args.seed,
             "deterministic_algorithms": True,
