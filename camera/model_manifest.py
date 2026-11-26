@@ -16,6 +16,7 @@ _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _SPDX = re.compile(r"^[A-Za-z0-9.+-]{2,80}$")
 
 MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_DATASET_PROVENANCE_BYTES = 16 * 1024 * 1024
 
 
 class ModelManifestError(ValueError):
@@ -39,6 +40,19 @@ class ModelClass:
 
 
 @dataclass(frozen=True)
+class TrainingDataSource:
+    source_url: str
+    revision: str
+    license_id: str
+    license_review_status: str
+    license_evidence_url: str
+    training_use_allowed: bool
+    redistribution_allowed: bool
+    reviewed_by: str
+    reviewed_at: str
+
+
+@dataclass(frozen=True)
 class ModelManifest:
     path: Path
     model_path: Path
@@ -52,6 +66,9 @@ class ModelManifest:
     license_reviewed_at: str
     inference_use_allowed: bool
     redistribution_allowed: bool
+    dataset_manifest_path: Path
+    dataset_manifest_sha256: str
+    training_data_sources: tuple[TrainingDataSource, ...]
     inference_status: str
     input_name: str
     width: int
@@ -81,7 +98,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         raise
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ModelManifestError("cannot read bounded UTF-8 JSON model manifest") from exc
-    if not isinstance(raw, dict) or type(raw.get("manifest_version")) is not int or raw.get("manifest_version") != 1:
+    if not isinstance(raw, dict) or type(raw.get("manifest_version")) is not int or raw.get("manifest_version") != 2:
         raise ModelManifestError("unsupported model manifest version")
     model_file = raw.get("model_file")
     if not isinstance(model_file, str) or not model_file or Path(model_file).is_absolute():
@@ -167,6 +184,107 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         if not isinstance(report, str) or not report.startswith("https://"):
             raise ModelManifestError("independent validation requires a public validation_report_url")
 
+    inference_status = raw["inference_status"]
+    if inference_status == "independently_validated":
+        report = raw.get("validation_report_url")
+        if not isinstance(report, str) or not report.startswith("https://"):
+            raise ModelManifestError("independent validation requires a public validation_report_url")
+
+    dataset_manifest_file = raw.get("dataset_manifest_file")
+    dataset_manifest_digest = raw.get("dataset_manifest_sha256")
+    if not isinstance(dataset_manifest_file, str) or not dataset_manifest_file or Path(dataset_manifest_file).is_absolute():
+        raise ModelManifestError("dataset_manifest_file must be a non-empty relative path")
+    if not isinstance(dataset_manifest_digest, str) or not _SHA256.fullmatch(dataset_manifest_digest):
+        raise ModelManifestError("dataset_manifest_sha256 must be 64 lowercase hexadecimal characters")
+    dataset_cursor = model_root
+    for part in Path(dataset_manifest_file).parts:
+        dataset_cursor = dataset_cursor / part
+        if dataset_cursor.is_symlink():
+            raise ModelManifestError("dataset provenance manifest must not traverse symbolic links")
+    try:
+        dataset_manifest_path = (model_root / dataset_manifest_file).resolve()
+        dataset_manifest_path.relative_to(model_root)
+    except (OSError, ValueError) as exc:
+        raise ModelManifestError("dataset provenance manifest must stay inside the model directory") from exc
+    if not dataset_manifest_path.is_file():
+        raise ModelManifestError("dataset provenance manifest is missing or is not a regular file")
+    try:
+        with dataset_manifest_path.open("rb") as handle:
+            dataset_manifest_bytes = handle.read(MAX_DATASET_PROVENANCE_BYTES + 1)
+    except OSError as exc:
+        raise ModelManifestError("cannot read bounded dataset provenance manifest") from exc
+    if len(dataset_manifest_bytes) > MAX_DATASET_PROVENANCE_BYTES:
+        raise ModelManifestError(
+            f"dataset provenance manifest exceeds maximum supported size of {MAX_DATASET_PROVENANCE_BYTES} bytes"
+        )
+    if hashlib.sha256(dataset_manifest_bytes).hexdigest() != dataset_manifest_digest:
+        raise ModelManifestError("dataset provenance manifest SHA-256 mismatch")
+
+    raw_sources = raw.get("training_data_sources")
+    if not isinstance(raw_sources, list) or not raw_sources or len(raw_sources) > 256:
+        raise ModelManifestError("training_data_sources must contain 1 to 256 reviewed dataset sources")
+    training_data_sources = []
+    seen_sources = set()
+    for row in raw_sources:
+        if not isinstance(row, dict):
+            raise ModelManifestError("each training_data_sources entry must be an object")
+        source_url = row.get("source_url")
+        parsed_dataset_source = urlparse(source_url) if isinstance(source_url, str) else None
+        if (parsed_dataset_source is None or parsed_dataset_source.scheme != "https"
+                or not parsed_dataset_source.netloc or parsed_dataset_source.username
+                or parsed_dataset_source.password or parsed_dataset_source.query
+                or parsed_dataset_source.fragment):
+            raise ModelManifestError("dataset source_url must be credential-free HTTPS without query or fragment")
+        revision = row.get("revision")
+        if not isinstance(revision, str) or not revision.strip() or len(revision) > 160:
+            raise ModelManifestError("dataset revision must be a non-empty immutable version or commit")
+        source_key = (source_url, revision)
+        if source_key in seen_sources:
+            raise ModelManifestError("duplicate training dataset source and revision")
+        seen_sources.add(source_key)
+        dataset_license = row.get("license")
+        if not isinstance(dataset_license, str) or not _SPDX.fullmatch(dataset_license):
+            raise ModelManifestError("training dataset license must be an SPDX-like identifier")
+        dataset_review = row.get("license_review_status")
+        if dataset_review not in {"approved", "public-domain"}:
+            raise ModelManifestError("training dataset license must be explicitly reviewed before inference")
+        evidence_url = row.get("license_evidence_url")
+        parsed_evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
+        if (parsed_evidence is None or parsed_evidence.scheme != "https"
+                or not parsed_evidence.netloc or parsed_evidence.username
+                or parsed_evidence.password or parsed_evidence.query
+                or parsed_evidence.fragment):
+            raise ModelManifestError("dataset license_evidence_url must be credential-free HTTPS without query or fragment")
+        training_allowed = row.get("training_use_allowed")
+        redistribution_allowed_dataset = row.get("redistribution_allowed")
+        if type(training_allowed) is not bool or type(redistribution_allowed_dataset) is not bool:
+            raise ModelManifestError("dataset training_use_allowed and redistribution_allowed must be explicit booleans")
+        if not training_allowed:
+            raise ModelManifestError("training dataset license review does not permit training use")
+        dataset_reviewer = row.get("reviewed_by")
+        if not isinstance(dataset_reviewer, str) or not dataset_reviewer.strip() or len(dataset_reviewer) > 160:
+            raise ModelManifestError("dataset reviewed_by must identify the responsible reviewer")
+        dataset_reviewed_at = row.get("reviewed_at")
+        if not isinstance(dataset_reviewed_at, str):
+            raise ModelManifestError("dataset reviewed_at must be an ISO-8601 timestamp")
+        try:
+            dataset_reviewed_stamp = datetime.fromisoformat(dataset_reviewed_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ModelManifestError("dataset reviewed_at must be an ISO-8601 timestamp") from exc
+        if dataset_reviewed_stamp.tzinfo is None or dataset_reviewed_stamp.utcoffset() is None:
+            raise ModelManifestError("dataset reviewed_at must include a timezone")
+        training_data_sources.append(TrainingDataSource(
+            source_url=source_url,
+            revision=revision.strip(),
+            license_id=dataset_license,
+            license_review_status=dataset_review,
+            license_evidence_url=evidence_url,
+            training_use_allowed=training_allowed,
+            redistribution_allowed=redistribution_allowed_dataset,
+            reviewed_by=dataset_reviewer.strip(),
+            reviewed_at=dataset_reviewed_at,
+        ))
+
     input_spec = raw.get("input")
     outputs = raw.get("outputs")
     if not isinstance(input_spec, dict) or not isinstance(outputs, dict):
@@ -236,6 +354,9 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         license_reviewed_at=reviewed_at,
         inference_use_allowed=inference_use_allowed,
         redistribution_allowed=redistribution_allowed,
+        dataset_manifest_path=dataset_manifest_path,
+        dataset_manifest_sha256=dataset_manifest_digest,
+        training_data_sources=tuple(training_data_sources),
         inference_status=inference_status,
         input_name=input_name.strip(),
         width=width,
