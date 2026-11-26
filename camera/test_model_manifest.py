@@ -12,7 +12,20 @@ class ManifestTests(unittest.TestCase):
         model = Path(tmp) / "detector.onnx"
         model.write_bytes(b"synthetic model file for hash checks")
         provenance = Path(tmp) / "provenance.jsonl"
-        provenance_bytes = b'{"image":"sample.jpg","source_url":"https://example.org/image/1","license":"CC-BY-4.0"}\\n'
+        provenance_row = {
+            "image": "images/sample.jpg",
+            "image_sha256": "a" * 64,
+            "source_url": "https://example.org/dataset",
+            "revision": "a" * 40,
+            "license": "CC-BY-4.0",
+            "license_review_status": "approved",
+            "training_use_allowed": True,
+            "redistribution_allowed": False,
+            "reviewed_by": "test reviewer",
+            "reviewed_at": "2026-11-20T12:00:00Z",
+            "attribution": "Example creator (CC BY 4.0)",
+        }
+        provenance_bytes = (json.dumps(provenance_row, sort_keys=True) + "\n").encode("utf-8")
         provenance.write_bytes(provenance_bytes)
         data = {
             "manifest_version": 2, "model_file": "detector.onnx",
@@ -21,10 +34,10 @@ class ManifestTests(unittest.TestCase):
             "dataset_manifest_sha256": hashlib.sha256(provenance_bytes).hexdigest(),
             "training_data_sources": [{
                 "source_url": "https://example.org/dataset",
-                "revision": "dataset-v1",
+                "revision": "a" * 40,
                 "license": "CC-BY-4.0",
                 "license_review_status": "approved",
-                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
                 "reviewed_by": "test reviewer",
@@ -40,6 +53,30 @@ class ManifestTests(unittest.TestCase):
         target = Path(tmp) / "manifest.json"
         target.write_text(json.dumps(data), encoding="utf-8")
         return target
+
+
+    def default_provenance_row(self):
+        return {
+            "image": "images/sample.jpg",
+            "image_sha256": "a" * 64,
+            "source_url": "https://example.org/dataset",
+            "revision": "a" * 40,
+            "license": "CC-BY-4.0",
+            "license_review_status": "approved",
+            "training_use_allowed": True,
+            "redistribution_allowed": False,
+            "reviewed_by": "image reviewer",
+            "reviewed_at": "2026-11-20T12:30:00Z",
+            "attribution": "Example creator (CC BY 4.0)",
+        }
+
+    def rewrite_provenance(self, manifest_path, payload):
+        provenance = manifest_path.parent / "provenance.jsonl"
+        provenance.write_bytes(payload)
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        data["dataset_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
+        manifest_path.write_text(json.dumps(data), encoding="utf-8")
+        return manifest_path
 
     def test_valid_manifest_and_hash(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -106,10 +143,10 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp, training_data_sources=[{
                 "source_url": "https://example.org/dataset",
-                "revision": "dataset-v1",
+                "revision": "a" * 40,
                 "license": "CC-BY-4.0",
                 "license_review_status": "not-reviewed",
-                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
                 "reviewed_by": "test reviewer",
@@ -120,10 +157,10 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp, training_data_sources=[{
                 "source_url": "https://example.org/dataset",
-                "revision": "dataset-v1",
+                "revision": "a" * 40,
                 "license": "CC-BY-4.0",
                 "license_review_status": "approved",
-                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": False,
                 "redistribution_allowed": False,
                 "reviewed_by": "test reviewer",
@@ -146,7 +183,7 @@ class ManifestTests(unittest.TestCase):
             outside = parent / "outside.jsonl"
             outside.write_text('{"image":"outside.jpg"}\\n', encoding="utf-8")
             path = self.make(tmp, dataset_manifest_file="../outside.jsonl")
-            with self.assertRaisesRegex(ModelManifestError, "stay inside"):
+            with self.assertRaisesRegex(ModelManifestError, "relative POSIX path"):
                 load_manifest(path)
 
     def test_rejects_dataset_source_query_credentials_and_duplicate_revision(self):
@@ -154,10 +191,10 @@ class ManifestTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmp:
                 path = self.make(tmp, training_data_sources=[{
                     "source_url": source_url,
-                    "revision": "dataset-v1",
+                    "revision": "a" * 40,
                     "license": "CC-BY-4.0",
                     "license_review_status": "approved",
-                    "license_evidence_url": "https://example.org/dataset/LICENSE",
+                    "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                     "training_use_allowed": True,
                     "redistribution_allowed": False,
                     "reviewed_by": "test reviewer",
@@ -168,10 +205,10 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             source = {
                 "source_url": "https://example.org/dataset",
-                "revision": "dataset-v1",
+                "revision": "a" * 40,
                 "license": "CC-BY-4.0",
                 "license_review_status": "approved",
-                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
                 "reviewed_by": "test reviewer",
@@ -186,14 +223,14 @@ class ManifestTests(unittest.TestCase):
                 "revision": "main",
                 "license": "CC-BY-4.0",
                 "license_review_status": "approved",
-                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
                 "reviewed_by": "test reviewer",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source])
-            with self.assertRaisesRegex(ModelManifestError, "moving branch alias"):
+            with self.assertRaisesRegex(ModelManifestError, "full Git commit SHA"):
                 load_manifest(path)
 
     def test_rejects_dataset_provenance_symlink_and_oversized_file(self):
@@ -221,6 +258,117 @@ class ManifestTests(unittest.TestCase):
             with patch("camera.model_manifest.MAX_DATASET_PROVENANCE_BYTES", 4):
                 with self.assertRaisesRegex(ModelManifestError, "maximum supported size"):
                     load_manifest(path)
+
+
+    def test_rejects_malformed_empty_and_duplicate_key_dataset_provenance(self):
+        cases = [
+            (b"", "must contain 1 to"),
+            (b"not-json\n", "line 1 is not valid unique-key JSON"),
+            (b'{"image":"images/a.jpg","image":"images/b.jpg"}\n', "line 1 is not valid unique-key JSON"),
+        ]
+        for payload, message in cases:
+            with tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp)
+                self.rewrite_provenance(path, payload)
+                with self.assertRaisesRegex(ModelManifestError, message):
+                    load_manifest(path)
+
+    def test_rejects_unlinked_or_unreviewed_per_image_provenance(self):
+        cases = [
+            ({"source_url": "https://other.example/dataset"}, "approved training_data_sources"),
+            ({"training_use_allowed": False}, "does not explicitly permit training use"),
+            ({"license_review_status": "not-reviewed"}, "review status does not match"),
+            ({"image_sha256": "bad"}, "image_sha256 must be 64"),
+            ({"image": "images/../private.jpg"}, "clean relative POSIX path"),
+            ({"image": r"images\\private.jpg"}, "clean relative POSIX path"),
+            ({"gps": "52.0,8.0"}, "unknown or missing fields"),
+            ({"attribution": ""}, "requires CC-BY attribution"),
+        ]
+        for index, (change, message) in enumerate(cases):
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp)
+                row = self.default_provenance_row()
+                row.update(change)
+                payload = (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+                self.rewrite_provenance(path, payload)
+                with self.assertRaisesRegex(ModelManifestError, message):
+                    load_manifest(path)
+
+    def test_rejects_duplicate_image_paths_and_duplicate_image_hashes(self):
+        first = self.default_provenance_row()
+        second = {**first, "image_sha256": "b" * 64}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            payload = "".join(json.dumps(row, sort_keys=True) + "\n" for row in (first, second)).encode("utf-8")
+            self.rewrite_provenance(path, payload)
+            with self.assertRaisesRegex(ModelManifestError, "duplicates an image path"):
+                load_manifest(path)
+        second = {**first, "image": "images/second.jpg"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            payload = "".join(json.dumps(row, sort_keys=True) + "\n" for row in (first, second)).encode("utf-8")
+            self.rewrite_provenance(path, payload)
+            with self.assertRaisesRegex(ModelManifestError, "duplicates image bytes"):
+                load_manifest(path)
+
+    def test_requires_explicit_permission_reference_for_per_image_license_ref(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["training_data_sources"] = [{
+                "source_url": "https://example.org/dataset",
+                "revision": "a" * 40,
+                "license": "LicenseRef-ExplicitPermission",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://example.org/permission-record",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }]
+            row = self.default_provenance_row()
+            row["license"] = "LicenseRef-ExplicitPermission"
+            row["license_review_status"] = "approved"
+            row.pop("attribution")
+            payload = (json.dumps(row, sort_keys=True) + "\n").encode("utf-8")
+            provenance = Path(tmp) / "provenance.jsonl"
+            provenance.write_bytes(payload)
+            data["dataset_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ModelManifestError, "requires a bounded permission_ref"):
+                load_manifest(path)
+
+    def test_requires_full_immutable_dataset_revision_and_supported_license(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "https://example.org/dataset",
+                "revision": "dataset-v1",
+                "license": "CC-BY-4.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "full Git commit SHA"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "https://example.org/dataset",
+                "revision": "a" * 40,
+                "license": "GPL-3.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://example.org/license",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "supported reviewed-license allowlist"):
+                load_manifest(path)
 
     def test_rejects_oversized_model_before_hash_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
