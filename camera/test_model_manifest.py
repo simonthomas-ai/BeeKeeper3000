@@ -126,5 +126,13 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(ModelManifestError, "symbolic links"):
                 load_manifest(path)
 
+    def test_rejects_oversized_manifest_with_bounded_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            path.write_bytes(b" " * 5)
+            with patch("camera.model_manifest.MAX_MANIFEST_BYTES", 4):
+                with self.assertRaisesRegex(ModelManifestError, "maximum supported size"):
+                    load_manifest(path)
+
 if __name__ == "__main__":
     unittest.main()
