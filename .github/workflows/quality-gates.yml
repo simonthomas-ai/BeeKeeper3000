@@ -32,6 +32,7 @@ jobs:
         run: |
           python -m unittest scripts.test_audit_workflow_action_pins -v
           python scripts/audit_workflow_action_pins.py
+          python -m unittest scripts.test_supply_chain_path_coverage -v
       - name: Run dependency-free core and LLM safety tests
         run: python -m unittest network.test_triangulation network.test_geojson tests.test_llm_council tests.test_mobile_export_import -v
       - name: Check training CLIs as package modules (no dataset or weights)
