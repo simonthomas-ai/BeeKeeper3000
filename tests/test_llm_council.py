@@ -1,5 +1,6 @@
 import datetime as dt
 import unittest
+from pathlib import Path
 
 from tools.llm_council import CouncilError, scrub_prompt, validate_external_provider, validate_local_url
 
@@ -53,6 +54,21 @@ class CouncilSafetyTests(unittest.TestCase):
     def test_prompt_size_is_bounded(self):
         with self.assertRaises(CouncilError):
             scrub_prompt("x" * 100_001)
+
+
+
+
+class CouncilWorkflowIsolationTests(unittest.TestCase):
+    def test_self_hosted_council_only_runs_from_main(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / ".github" / "workflows" / "llm-council.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "if: github.repository == 'simonthomas-ai/BeeKeeper3000' && github.ref == 'refs/heads/main'",
+            workflow,
+        )
+        self.assertIn("runs-on: [self-hosted, windows, x64, llm-council]", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+        self.assertNotIn("pull_request:", workflow)
 
 
 if __name__ == "__main__":
