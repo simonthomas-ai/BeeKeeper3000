@@ -180,6 +180,47 @@ class ManifestTests(unittest.TestCase):
             path = self.make(tmp, training_data_sources=[source, source])
             with self.assertRaisesRegex(ModelManifestError, "duplicate training dataset"):
                 load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "https://example.org/dataset",
+                "revision": "main",
+                "license": "CC-BY-4.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "moving branch alias"):
+                load_manifest(path)
+
+    def test_rejects_dataset_provenance_symlink_and_oversized_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            provenance = Path(tmp) / "provenance.jsonl"
+            alias = Path(tmp) / "alias.jsonl"
+            try:
+                alias.symlink_to(provenance)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symbolic links are unavailable: {exc}")
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["dataset_manifest_file"] = "alias.jsonl"
+            data["dataset_manifest_sha256"] = hashlib.sha256(provenance.read_bytes()).hexdigest()
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with self.assertRaisesRegex(ModelManifestError, "symbolic links"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp)
+            provenance = Path(tmp) / "provenance.jsonl"
+            provenance.write_bytes(b"x" * 5)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["dataset_manifest_sha256"] = hashlib.sha256(provenance.read_bytes()).hexdigest()
+            path.write_text(json.dumps(data), encoding="utf-8")
+            with patch("camera.model_manifest.MAX_DATASET_PROVENANCE_BYTES", 4):
+                with self.assertRaisesRegex(ModelManifestError, "maximum supported size"):
+                    load_manifest(path)
 
     def test_rejects_oversized_model_before_hash_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
