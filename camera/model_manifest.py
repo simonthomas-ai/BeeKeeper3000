@@ -176,6 +176,10 @@ def _validate_dataset_provenance(
         source_url = row["source_url"]
         revision = row["revision"]
         license_id = row["license"]
+        if not all(isinstance(value, str) for value in (source_url, revision, license_id)):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} source_url, revision and license must be strings"
+            )
         source_key = (source_url, revision, license_id)
         source = source_by_key.get(source_key)
         if source is None:
@@ -318,7 +322,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         raise ModelManifestError("model_source_url must be a credential-free HTTPS provenance URL")
     if not isinstance(license_id, str) or not _SPDX.fullmatch(license_id):
         raise ModelManifestError("model_license must be an SPDX-like identifier")
-    if license_review not in {"approved", "public-domain"}:
+    if not isinstance(license_review, str) or license_review not in {"approved", "public-domain"}:
         raise ModelManifestError("model license must be explicitly reviewed before inference")
 
     evidence_url = raw.get("license_evidence_url")
@@ -344,9 +348,9 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         raise ModelManifestError("inference_use_allowed and redistribution_allowed must be explicit booleans")
     if not inference_use_allowed:
         raise ModelManifestError("model license review does not permit inference use")
-    if raw.get("inference_status") not in {"experimental", "independently_validated"}:
+    inference_status = raw.get("inference_status")
+    if not isinstance(inference_status, str) or inference_status not in {"experimental", "independently_validated"}:
         raise ModelManifestError("inference_status must be experimental or independently_validated")
-    inference_status = raw["inference_status"]
     if inference_status == "independently_validated":
         report = raw.get("validation_report_url")
         if not isinstance(report, str) or not report.startswith("https://"):
@@ -423,7 +427,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         if dataset_license not in _DATASET_LICENSES:
             raise ModelManifestError("training dataset license is not in the supported reviewed-license allowlist")
         dataset_review = row.get("license_review_status")
-        if dataset_review not in {"approved", "public-domain"}:
+        if not isinstance(dataset_review, str) or dataset_review not in {"approved", "public-domain"}:
             raise ModelManifestError("training dataset license must be explicitly reviewed before inference")
         evidence_url = row.get("license_evidence_url")
         parsed_evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
@@ -480,7 +484,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if not isinstance(input_name, str) or not input_name.strip():
         raise ModelManifestError("ONNX input name is required")
     resize_mode = input_spec.get("resize_mode", "stretch")
-    if resize_mode not in {"stretch", "letterbox"}:
+    if not isinstance(resize_mode, str) or resize_mode not in {"stretch", "letterbox"}:
         raise ModelManifestError("resize_mode must be stretch or letterbox")
     box_format = outputs.get("box_format")
     boxes_output = scores_output = class_ids_output = detections_output = None
