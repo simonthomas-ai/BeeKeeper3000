@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import random
+import re
 import sys
 import tempfile
 import zipfile
@@ -25,6 +26,7 @@ CLASS_NAMES = (
     "syrphidae",
     "other_insect",
 )
+_PSEUDONYMOUS_LABELER_ID = re.compile(r"^reviewer:[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$")
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 RIGHTS_BASES = {"CC0-1.0", "CC-BY-4.0", "LicenseRef-ExplicitPermission"}
 LICENSE_URLS = {
@@ -251,9 +253,11 @@ def validate_dataset(dataset_root: str | Path) -> list[dict]:
             raise DatasetValidationError(f"line {row_number} capture_session_id is required")
         labeler_id = row.get("labeler_id")
         if labeler_id is not None and (
-            not isinstance(labeler_id, str) or not labeler_id.strip() or len(labeler_id) > 160
+            not isinstance(labeler_id, str) or not _PSEUDONYMOUS_LABELER_ID.fullmatch(labeler_id)
         ):
-            raise DatasetValidationError(f"line {row_number} labeler_id must be a pseudonymous ID")
+            raise DatasetValidationError(
+                f"line {row_number} labeler_id must use reviewer:<opaque-id>; names, emails and URLs are not allowed"
+            )
         if row["review_status"] != "approved":
             raise DatasetValidationError(f"line {row_number} review_status must be approved")
         source = _validate_rights(row["rights"], row_number)
