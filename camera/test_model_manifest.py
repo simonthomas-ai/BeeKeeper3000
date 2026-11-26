@@ -368,18 +368,22 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp)
             data = json.loads(path.read_text(encoding="utf-8"))
+            source_url = "local-capture://batch-opaque-0001"
+            revision = "sha256:" + "c" * 64
             data["training_data_sources"] = [{
-                "source_url": "https://example.org/dataset",
-                "revision": "a" * 40,
+                "source_url": source_url,
+                "revision": revision,
                 "license": "LicenseRef-ExplicitPermission",
                 "license_review_status": "approved",
-                "license_evidence_url": "https://example.org/permission-record",
+                "license_evidence_url": None,
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "reviewer:test-0001",
+                "reviewed_by": "reviewer:rights-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }]
             row = self.default_provenance_row()
+            row["source_url"] = source_url
+            row["revision"] = revision
             row["license"] = "LicenseRef-ExplicitPermission"
             row["license_review_status"] = "approved"
             row.pop("attribution")
@@ -388,7 +392,7 @@ class ManifestTests(unittest.TestCase):
             provenance.write_bytes(payload)
             data["dataset_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
             path.write_text(json.dumps(data), encoding="utf-8")
-            with self.assertRaisesRegex(ModelManifestError, "requires a bounded permission_ref"):
+            with self.assertRaisesRegex(ModelManifestError, "opaque permission_ref"):
                 load_manifest(path)
 
     def test_requires_full_immutable_dataset_revision_and_supported_license(self):
