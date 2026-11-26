@@ -15,6 +15,8 @@ from .model_artifacts import MAX_MODEL_BYTES
 _SHA256 = re.compile(r"^[a-f0-9]{64}$")
 _SPDX = re.compile(r"^[A-Za-z0-9.+-]{2,80}$")
 
+MAX_MANIFEST_BYTES = 1024 * 1024
+
 
 class ModelManifestError(ValueError):
     pass
@@ -66,9 +68,19 @@ class ModelManifest:
 def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManifest:
     manifest_path = Path(path).expanduser().resolve(strict=True)
     try:
-        raw = json.loads(manifest_path.read_text(encoding="utf-8"), object_pairs_hook=_unique_object)
+        # Read at most one byte beyond the limit so a malformed or hostile
+        # local manifest cannot trigger an unbounded allocation.
+        with manifest_path.open("rb") as handle:
+            raw_bytes = handle.read(MAX_MANIFEST_BYTES + 1)
+        if len(raw_bytes) > MAX_MANIFEST_BYTES:
+            raise ModelManifestError(
+                f"model manifest exceeds maximum supported size of {MAX_MANIFEST_BYTES} bytes"
+            )
+        raw = json.loads(raw_bytes.decode("utf-8"), object_pairs_hook=_unique_object)
+    except ModelManifestError:
+        raise
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ModelManifestError("cannot read UTF-8 JSON model manifest") from exc
+        raise ModelManifestError("cannot read bounded UTF-8 JSON model manifest") from exc
     if not isinstance(raw, dict) or type(raw.get("manifest_version")) is not int or raw.get("manifest_version") != 1:
         raise ModelManifestError("unsupported model manifest version")
     model_file = raw.get("model_file")
