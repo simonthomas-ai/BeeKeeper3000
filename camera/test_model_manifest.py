@@ -21,7 +21,7 @@ class ManifestTests(unittest.TestCase):
             "license_review_status": "approved",
             "training_use_allowed": True,
             "redistribution_allowed": False,
-            "reviewed_by": "test reviewer",
+            "reviewed_by": "reviewer:test-0001",
             "reviewed_at": "2026-11-20T12:00:00Z",
             "attribution": "Example creator (CC BY 4.0)",
         }
@@ -40,11 +40,11 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }],
             "model_version": "0.0-test", "model_source_url": "https://example.org/model",
-            "model_license": "MIT", "license_review_status": "approved", "license_evidence_url": "https://example.org/LICENSE", "license_reviewed_by": "test reviewer", "license_reviewed_at": "2026-11-20T12:00:00Z", "inference_use_allowed": True, "redistribution_allowed": False, "inference_status": "experimental",
+            "model_license": "MIT", "license_review_status": "approved", "license_evidence_url": "https://example.org/LICENSE", "license_reviewed_by": "reviewer:test-0001", "license_reviewed_at": "2026-11-20T12:00:00Z", "inference_use_allowed": True, "redistribution_allowed": False, "inference_status": "experimental",
             "input": {"name": "images", "width": 640, "height": 640, "color": "RGB", "layout": "NCHW", "scale": "0..1"},
             "outputs": {"boxes": "boxes", "scores": "scores", "class_ids": "classes", "box_format": "xyxy_normalized_post_nms"},
             "classes": [{"id": 0, "label": "vespa_velutina_candidate", "threshold": 0.8, "prey_detected": False}],
@@ -65,7 +65,7 @@ class ManifestTests(unittest.TestCase):
             "license_review_status": "approved",
             "training_use_allowed": True,
             "redistribution_allowed": False,
-            "reviewed_by": "image reviewer",
+            "reviewed_by": "reviewer:image-0001",
             "reviewed_at": "2026-11-20T12:30:00Z",
             "attribution": "Example creator (CC BY 4.0)",
         }
@@ -149,7 +149,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }])
             with self.assertRaisesRegex(ModelManifestError, "explicitly reviewed"):
@@ -163,7 +163,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": False,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }])
             with self.assertRaisesRegex(ModelManifestError, "does not permit training"):
@@ -197,7 +197,7 @@ class ManifestTests(unittest.TestCase):
                     "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                     "training_use_allowed": True,
                     "redistribution_allowed": False,
-                    "reviewed_by": "test reviewer",
+                    "reviewed_by": "reviewer:test-0001",
                     "reviewed_at": "2026-11-20T12:00:00Z",
                 }])
                 with self.assertRaisesRegex(ModelManifestError, "credential-free HTTPS"):
@@ -211,7 +211,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source, source])
@@ -226,7 +226,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source])
@@ -325,7 +325,7 @@ class ManifestTests(unittest.TestCase):
                 "license_review_status": "approved",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "reviewer-01",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-26T03:00:00Z",
             }]
             row = self.default_provenance_row()
@@ -334,7 +334,7 @@ class ManifestTests(unittest.TestCase):
                 "revision": revision,
                 "license": "LicenseRef-ExplicitPermission",
                 "license_review_status": "approved",
-                "reviewed_by": "reviewer-01",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-26T03:00:00Z",
                 "permission_ref": "consent-record-opaque-001",
             })
@@ -357,7 +357,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source])
@@ -376,7 +376,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://example.org/permission-record",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }]
             row = self.default_provenance_row()
@@ -401,7 +401,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source])
@@ -416,7 +416,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://example.org/license",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source])
@@ -461,7 +461,7 @@ class ManifestTests(unittest.TestCase):
                 "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
                 "training_use_allowed": True,
                 "redistribution_allowed": False,
-                "reviewed_by": "test reviewer",
+                "reviewed_by": "reviewer:test-0001",
                 "reviewed_at": "2026-11-20T12:00:00Z",
             }
             path = self.make(tmp, training_data_sources=[source])
@@ -522,6 +522,123 @@ class ManifestTests(unittest.TestCase):
             with patch("camera.model_manifest.MAX_MANIFEST_BYTES", 4):
                 with self.assertRaisesRegex(ModelManifestError, "maximum supported size"):
                     load_manifest(path)
+
+
+    def test_requires_pseudonymous_reviewer_ids(self):
+        invalid_ids = (
+            "Simon Thomas",
+            "simon@example.org",
+            "https://example.org/reviewer",
+            "reviewer:short",
+        )
+        for reviewer_id in invalid_ids:
+            with self.subTest(field="model", reviewer_id=reviewer_id), tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp, license_reviewed_by=reviewer_id)
+                with self.assertRaisesRegex(ModelManifestError, "reviewer:<opaque-id>"):
+                    load_manifest(path)
+
+            with self.subTest(field="dataset-source", reviewer_id=reviewer_id), tempfile.TemporaryDirectory() as tmp:
+                source = {
+                    "source_url": "https://example.org/dataset",
+                    "revision": "a" * 40,
+                    "license": "CC-BY-4.0",
+                    "license_review_status": "approved",
+                    "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
+                    "training_use_allowed": True,
+                    "redistribution_allowed": False,
+                    "reviewed_by": reviewer_id,
+                    "reviewed_at": "2026-11-20T12:00:00Z",
+                }
+                path = self.make(tmp, training_data_sources=[source])
+                with self.assertRaisesRegex(ModelManifestError, "reviewer:<opaque-id>"):
+                    load_manifest(path)
+
+            with self.subTest(field="image", reviewer_id=reviewer_id), tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp)
+                row = self.default_provenance_row()
+                row["reviewed_by"] = reviewer_id
+                payload = (json.dumps(row, sort_keys=True) + "\\n").encode("utf-8")
+                self.rewrite_provenance(path, payload)
+                with self.assertRaisesRegex(ModelManifestError, "reviewer:<opaque-id>"):
+                    load_manifest(path)
+
+    def test_rejects_non_opaque_permission_reference(self):
+        invalid_refs = (
+            "person@example.org",
+            "https://private.example/consent/123",
+            "consent record with name",
+            "../private-consent",
+        )
+        for permission_ref in invalid_refs:
+            with self.subTest(permission_ref=permission_ref), tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp)
+                data = json.loads(path.read_text(encoding="utf-8"))
+                revision = "sha256:" + "c" * 64
+                source_url = "local-capture://batch-opaque-0001"
+                provenance_row = {
+                    "image": "images/sample.jpg",
+                    "image_sha256": "a" * 64,
+                    "source_url": source_url,
+                    "revision": revision,
+                    "license": "LicenseRef-ExplicitPermission",
+                    "license_review_status": "approved",
+                    "training_use_allowed": True,
+                    "redistribution_allowed": False,
+                    "reviewed_by": "reviewer:image-0001",
+                    "reviewed_at": "2026-11-20T12:30:00Z",
+                    "permission_ref": permission_ref,
+                }
+                payload = (json.dumps(provenance_row, sort_keys=True) + "\\n").encode("utf-8")
+                (Path(tmp) / "provenance.jsonl").write_bytes(payload)
+                data["dataset_manifest_sha256"] = hashlib.sha256(payload).hexdigest()
+                data["training_data_sources"] = [{
+                    "source_url": source_url,
+                    "revision": revision,
+                    "license": "LicenseRef-ExplicitPermission",
+                    "license_review_status": "approved",
+                    "license_evidence_url": None,
+                    "training_use_allowed": True,
+                    "redistribution_allowed": False,
+                    "reviewed_by": "reviewer:rights-0001",
+                    "reviewed_at": "2026-11-20T12:00:00Z",
+                }]
+                path.write_text(json.dumps(data), encoding="utf-8")
+                with self.assertRaisesRegex(ModelManifestError, "opaque permission_ref"):
+                    load_manifest(path)
+
+    def test_rejects_private_consent_evidence_url_for_explicit_permission(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "local-capture://batch-opaque-0001",
+                "revision": "sha256:" + "c" * 64,
+                "license": "LicenseRef-ExplicitPermission",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://private.example/consent/person-123",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "reviewer:rights-0001",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "consent URLs or documents"):
+                load_manifest(path)
+
+    def test_public_domain_dataset_status_is_reserved_for_cc0(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "https://example.org/dataset",
+                "revision": "a" * 40,
+                "license": "CC-BY-4.0",
+                "license_review_status": "public-domain",
+                "license_evidence_url": "https://creativecommons.org/licenses/by/4.0/",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "reviewer:rights-0001",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source])
+            with self.assertRaisesRegex(ModelManifestError, "only valid for CC0-1.0"):
+                load_manifest(path)
 
 if __name__ == "__main__":
     unittest.main()
