@@ -11,9 +11,25 @@ class ManifestTests(unittest.TestCase):
     def make(self, tmp, **changes):
         model = Path(tmp) / "detector.onnx"
         model.write_bytes(b"synthetic model file for hash checks")
+        provenance = Path(tmp) / "provenance.jsonl"
+        provenance_bytes = b'{"image":"sample.jpg","source_url":"https://example.org/image/1","license":"CC-BY-4.0"}\\n'
+        provenance.write_bytes(provenance_bytes)
         data = {
-            "manifest_version": 1, "model_file": "detector.onnx",
+            "manifest_version": 2, "model_file": "detector.onnx",
             "model_sha256": hashlib.sha256(model.read_bytes()).hexdigest(),
+            "dataset_manifest_file": "provenance.jsonl",
+            "dataset_manifest_sha256": hashlib.sha256(provenance_bytes).hexdigest(),
+            "training_data_sources": [{
+                "source_url": "https://example.org/dataset",
+                "revision": "dataset-v1",
+                "license": "CC-BY-4.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }],
             "model_version": "0.0-test", "model_source_url": "https://example.org/model",
             "model_license": "MIT", "license_review_status": "approved", "license_evidence_url": "https://example.org/LICENSE", "license_reviewed_by": "test reviewer", "license_reviewed_at": "2026-11-20T12:00:00Z", "inference_use_allowed": True, "redistribution_allowed": False, "inference_status": "experimental",
             "input": {"name": "images", "width": 640, "height": 640, "color": "RGB", "layout": "NCHW", "scale": "0..1"},
@@ -29,6 +45,8 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             manifest = load_manifest(self.make(tmp))
             self.assertEqual(manifest.classes[0].label, "vespa_velutina_candidate")
+            self.assertEqual(manifest.dataset_manifest_path.name, "provenance.jsonl")
+            self.assertEqual(manifest.training_data_sources[0].license_id, "CC-BY-4.0")
 
     def test_rejects_unreviewed_license_and_hash_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -79,6 +97,90 @@ class ManifestTests(unittest.TestCase):
                 load_manifest(path)
 
 
+
+    def test_rejects_missing_or_unreviewed_training_dataset_rights(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, training_data_sources=[])
+            with self.assertRaisesRegex(ModelManifestError, "training_data_sources"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, training_data_sources=[{
+                "source_url": "https://example.org/dataset",
+                "revision": "dataset-v1",
+                "license": "CC-BY-4.0",
+                "license_review_status": "not-reviewed",
+                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }])
+            with self.assertRaisesRegex(ModelManifestError, "explicitly reviewed"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, training_data_sources=[{
+                "source_url": "https://example.org/dataset",
+                "revision": "dataset-v1",
+                "license": "CC-BY-4.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "training_use_allowed": False,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }])
+            with self.assertRaisesRegex(ModelManifestError, "does not permit training"):
+                load_manifest(path)
+
+    def test_rejects_dataset_provenance_manifest_missing_mismatch_and_traversal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, dataset_manifest_file="missing.jsonl")
+            with self.assertRaisesRegex(ModelManifestError, "missing"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(tmp, dataset_manifest_sha256="0" * 64)
+            with self.assertRaisesRegex(ModelManifestError, "SHA-256 mismatch"):
+                load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            parent = Path(tmp)
+            outside = parent / "outside.jsonl"
+            outside.write_text('{"image":"outside.jpg"}\\n', encoding="utf-8")
+            path = self.make(tmp, dataset_manifest_file="../outside.jsonl")
+            with self.assertRaisesRegex(ModelManifestError, "stay inside"):
+                load_manifest(path)
+
+    def test_rejects_dataset_source_query_credentials_and_duplicate_revision(self):
+        for source_url in ("https://example.org/dataset?token=secret", "https://user:pass@example.org/dataset"):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = self.make(tmp, training_data_sources=[{
+                    "source_url": source_url,
+                    "revision": "dataset-v1",
+                    "license": "CC-BY-4.0",
+                    "license_review_status": "approved",
+                    "license_evidence_url": "https://example.org/dataset/LICENSE",
+                    "training_use_allowed": True,
+                    "redistribution_allowed": False,
+                    "reviewed_by": "test reviewer",
+                    "reviewed_at": "2026-11-20T12:00:00Z",
+                }])
+                with self.assertRaisesRegex(ModelManifestError, "credential-free HTTPS"):
+                    load_manifest(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            source = {
+                "source_url": "https://example.org/dataset",
+                "revision": "dataset-v1",
+                "license": "CC-BY-4.0",
+                "license_review_status": "approved",
+                "license_evidence_url": "https://example.org/dataset/LICENSE",
+                "training_use_allowed": True,
+                "redistribution_allowed": False,
+                "reviewed_by": "test reviewer",
+                "reviewed_at": "2026-11-20T12:00:00Z",
+            }
+            path = self.make(tmp, training_data_sources=[source, source])
+            with self.assertRaisesRegex(ModelManifestError, "duplicate training dataset"):
+                load_manifest(path)
+
     def test_rejects_oversized_model_before_hash_verification(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = self.make(tmp)
@@ -87,7 +189,7 @@ class ManifestTests(unittest.TestCase):
                     load_manifest(path)
 
     def test_rejects_non_integer_manifest_version(self):
-        for version in (True, 1.0):
+        for version in (True, 1.0, 1):
             with tempfile.TemporaryDirectory() as tmp:
                 path = self.make(tmp, manifest_version=version)
                 with self.subTest(version=version), self.assertRaises(ModelManifestError):
