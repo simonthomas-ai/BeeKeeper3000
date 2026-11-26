@@ -25,10 +25,20 @@ _DATASET_LICENSE_EVIDENCE = {
     "CC0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
     "CC-BY-4.0": "https://creativecommons.org/licenses/by/4.0/",
 }
+_PSEUDONYMOUS_REVIEWER = re.compile(r"^reviewer:[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$")
+_OPAQUE_PERMISSION_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$")
 
 
 class ModelManifestError(ValueError):
     pass
+
+
+def _require_pseudonymous_reviewer(value: object, field: str) -> str:
+    if not isinstance(value, str) or not _PSEUDONYMOUS_REVIEWER.fullmatch(value.strip()):
+        raise ModelManifestError(
+            f"{field} must use reviewer:<opaque-id>; names, emails and URLs are not allowed"
+        )
+    return value.strip()
 
 
 def _unique_object(pairs):
@@ -205,11 +215,9 @@ def _validate_dataset_provenance(
             raise ModelManifestError(
                 f"dataset provenance line {line_number} redistribution status does not match its source"
             )
-        reviewer = row["reviewed_by"]
-        if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer.strip()) > 160:
-            raise ModelManifestError(
-                f"dataset provenance line {line_number} reviewed_by must be a bounded reviewer identifier"
-            )
+        reviewer = _require_pseudonymous_reviewer(
+            row["reviewed_by"], f"dataset provenance line {line_number} reviewed_by"
+        )
         reviewed_at = row["reviewed_at"]
         if not isinstance(reviewed_at, str):
             raise ModelManifestError(
@@ -240,9 +248,9 @@ def _validate_dataset_provenance(
             )
         if license_id == "LicenseRef-ExplicitPermission":
             permission_ref = row.get("permission_ref")
-            if not isinstance(permission_ref, str) or not permission_ref.strip() or len(permission_ref.strip()) > 200:
+            if not isinstance(permission_ref, str) or not _OPAQUE_PERMISSION_REF.fullmatch(permission_ref.strip()):
                 raise ModelManifestError(
-                    f"dataset provenance line {line_number} requires a bounded permission_ref"
+                    f"dataset provenance line {line_number} requires an opaque permission_ref without names, emails or URLs"
                 )
         elif "permission_ref" in row:
             raise ModelManifestError(
@@ -330,9 +338,9 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if (evidence is None or evidence.scheme != "https" or not evidence.netloc
             or evidence.username or evidence.password):
         raise ModelManifestError("license_evidence_url must be a credential-free HTTPS source")
-    reviewer = raw.get("license_reviewed_by")
-    if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 160:
-        raise ModelManifestError("license_reviewed_by must identify the responsible reviewer")
+    reviewer = _require_pseudonymous_reviewer(
+        raw.get("license_reviewed_by"), "license_reviewed_by"
+    )
     reviewed_at = raw.get("license_reviewed_at")
     if not isinstance(reviewed_at, str):
         raise ModelManifestError("license_reviewed_at must be an ISO-8601 timestamp")
@@ -457,8 +465,14 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         dataset_review = row.get("license_review_status")
         if not isinstance(dataset_review, str) or dataset_review not in {"approved", "public-domain"}:
             raise ModelManifestError("training dataset license must be explicitly reviewed before inference")
+        if dataset_review == "public-domain" and dataset_license != "CC0-1.0":
+            raise ModelManifestError("public-domain review status is only valid for CC0-1.0 datasets")
         evidence_url = row.get("license_evidence_url")
-        if evidence_url is None and dataset_license == "LicenseRef-ExplicitPermission":
+        if dataset_license == "LicenseRef-ExplicitPermission":
+            if evidence_url is not None:
+                raise ModelManifestError(
+                    "explicit permission must use an opaque permission_ref; consent URLs or documents must not be embedded"
+                )
             parsed_evidence = None
         else:
             parsed_evidence = urlparse(evidence_url) if isinstance(evidence_url, str) else None
@@ -478,9 +492,9 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
             raise ModelManifestError("dataset training_use_allowed and redistribution_allowed must be explicit booleans")
         if not training_allowed:
             raise ModelManifestError("training dataset license review does not permit training use")
-        dataset_reviewer = row.get("reviewed_by")
-        if not isinstance(dataset_reviewer, str) or not dataset_reviewer.strip() or len(dataset_reviewer) > 160:
-            raise ModelManifestError("dataset reviewed_by must identify the responsible reviewer")
+        dataset_reviewer = _require_pseudonymous_reviewer(
+            row.get("reviewed_by"), "dataset reviewed_by"
+        )
         dataset_reviewed_at = row.get("reviewed_at")
         if not isinstance(dataset_reviewed_at, str):
             raise ModelManifestError("dataset reviewed_at must be an ISO-8601 timestamp")
