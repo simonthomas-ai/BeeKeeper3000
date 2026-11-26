@@ -1,7 +1,11 @@
-"""Regression tests for immutable GitHub Actions and container image pins."""
+"""Regression tests for immutable Actions pins, image digests and checkout credentials."""
 import unittest
 
-from scripts.audit_workflow_action_pins import find_unpinned_actions, find_unpinned_images
+from scripts.audit_workflow_action_pins import (
+    find_checkout_steps_without_persist_credentials,
+    find_unpinned_actions,
+    find_unpinned_images,
+)
 
 
 class ActionPinTests(unittest.TestCase):
@@ -46,6 +50,46 @@ class ActionPinTests(unittest.TestCase):
     def test_ignores_image_comments_and_run_lines(self):
         text = "# image: ubuntu:latest\n      - run: echo done"
         self.assertEqual(find_unpinned_images(text), [])
+
+
+class CheckoutCredentialTests(unittest.TestCase):
+    def test_accepts_named_checkout_with_persist_credentials_false(self):
+        text = (
+            "    steps:\n"
+            "      - name: Checkout\n"
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+            "        with:\n"
+            "          persist-credentials: false\n"
+            "          repository: owner/repo\n"
+        )
+        self.assertEqual(find_checkout_steps_without_persist_credentials(text), [])
+
+    def test_rejects_checkout_without_explicit_false(self):
+        text = (
+            "    steps:\n"
+            "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+        )
+        problems = find_checkout_steps_without_persist_credentials(text, "fixture.yml")
+        self.assertEqual(len(problems), 1)
+        self.assertIn("persist-credentials: false", problems[0])
+
+    def test_rejects_checkout_when_persist_credentials_is_true(self):
+        text = (
+            "    steps:\n"
+            "      - name: Checkout\n"
+            "        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n"
+            "        with:\n"
+            "          persist-credentials: true\n"
+        )
+        self.assertEqual(len(find_checkout_steps_without_persist_credentials(text)), 1)
+
+    def test_ignores_non_checkout_steps(self):
+        text = (
+            "    steps:\n"
+            "      - name: Setup\n"
+            "        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0\n"
+        )
+        self.assertEqual(find_checkout_steps_without_persist_credentials(text), [])
 
 
 if __name__ == "__main__":

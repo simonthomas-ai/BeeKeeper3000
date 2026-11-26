@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when workflow Actions or container images use mutable references."""
+"""Fail closed on mutable Actions pins and persisted checkout credentials."""
 from __future__ import annotations
 
 import re
@@ -13,6 +13,9 @@ ACTION_SHA_RE = re.compile(
 )
 DOCKER_DIGEST_RE = re.compile(r"^docker://\S+@sha256:[0-9a-fA-F]{64}$")
 OCI_DIGEST_RE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
+STEP_START_RE = re.compile(r"^(\s*)-\s*(?:name:|uses:)")
+CHECKOUT_USE_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*actions/checkout@")
+PERSIST_RE = re.compile(r"^\s*persist-credentials:\s*(\S+)\s*(?:#.*)?$")
 
 
 def find_unpinned_actions(text: str, filename: str = "<memory>") -> list[str]:
@@ -57,6 +60,47 @@ def find_unpinned_images(text: str, filename: str = "<memory>") -> list[str]:
     return problems
 
 
+def find_checkout_steps_without_persist_credentials(
+    text: str, filename: str = "<memory>"
+) -> list[str]:
+    """Require every actions/checkout step to opt out of storing the token in git config."""
+    lines = text.splitlines()
+    starts = [
+        index for index, line in enumerate(lines)
+        if STEP_START_RE.match(line)
+    ]
+    problems: list[str] = []
+
+    for start in starts:
+        start_match = STEP_START_RE.match(lines[start])
+        assert start_match is not None
+        step_indent = len(start_match.group(1))
+        end = len(lines)
+        for index in range(start + 1, len(lines)):
+            candidate = lines[index]
+            if not candidate.strip() or candidate.lstrip().startswith("#"):
+                continue
+            indent = len(candidate) - len(candidate.lstrip())
+            if indent == step_indent and candidate.lstrip().startswith("- "):
+                end = index
+                break
+
+        block = lines[start:end]
+        if not any(CHECKOUT_USE_RE.match(line) for line in block):
+            continue
+
+        persist = next(
+            (match for line in block if (match := PERSIST_RE.match(line))),
+            None,
+        )
+        if persist is None or persist.group(1).strip("'\"").lower() != "false":
+            line_number = start + 1
+            problems.append(
+                f"{filename}:{line_number}: actions/checkout must set persist-credentials: false"
+            )
+    return problems
+
+
 def audit_workflows(workflow_root: Path) -> list[str]:
     files = sorted(
         path for path in workflow_root.rglob("*")
@@ -74,6 +118,7 @@ def audit_workflows(workflow_root: Path) -> list[str]:
             continue
         problems.extend(find_unpinned_actions(content, str(path)))
         problems.extend(find_unpinned_images(content, str(path)))
+        problems.extend(find_checkout_steps_without_persist_credentials(content, str(path)))
     return problems
 
 
@@ -82,7 +127,7 @@ def main() -> int:
     workflow_root = repository_root / ".github" / "workflows"
     problems = audit_workflows(workflow_root)
     if problems:
-        print("Mutable GitHub Actions or container image references detected:", file=sys.stderr)
+        print("Workflow security policy violations detected:", file=sys.stderr)
         for problem in problems:
             print(f"- {problem}", file=sys.stderr)
         return 1
@@ -92,7 +137,7 @@ def main() -> int:
         if path.is_file() and path.suffix.lower() in {".yml", ".yaml"}
     )
     print(
-        f"PASS: external Actions and container images in {count} workflow files are SHA/digest pinned."
+        f"PASS: Actions pins, container digests and checkout credential hygiene verified in {count} workflow files."
     )
     return 0
 
