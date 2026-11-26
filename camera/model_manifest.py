@@ -7,7 +7,7 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 
 from .model_artifacts import MAX_MODEL_BYTES
@@ -17,6 +17,14 @@ _SPDX = re.compile(r"^[A-Za-z0-9.+-]{2,80}$")
 
 MAX_MANIFEST_BYTES = 1024 * 1024
 MAX_DATASET_PROVENANCE_BYTES = 16 * 1024 * 1024
+MAX_DATASET_PROVENANCE_ROWS = 100_000
+MAX_DATASET_PROVENANCE_LINE_BYTES = 64 * 1024
+_DATASET_REVISION = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64}|sha256:[0-9a-f]{64})$")
+_DATASET_LICENSES = {"CC0-1.0", "CC-BY-4.0", "LicenseRef-ExplicitPermission"}
+_DATASET_LICENSE_EVIDENCE = {
+    "CC0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "CC-BY-4.0": "https://creativecommons.org/licenses/by/4.0/",
+}
 
 
 class ModelManifestError(ValueError):
@@ -80,6 +88,166 @@ class ModelManifest:
     class_ids_output: str | None
     detections_output: str | None
     classes: dict[int, ModelClass]
+
+
+
+def _unique_dataset_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ModelManifestError("duplicate JSON key in dataset provenance")
+        result[key] = value
+    return result
+
+
+def _validate_dataset_provenance(
+    payload: bytes, sources: tuple[TrainingDataSource, ...]
+) -> None:
+    """Validate every per-image provenance row and bind it to a reviewed source."""
+    try:
+        lines = payload.decode("utf-8").splitlines()
+    except UnicodeDecodeError as exc:
+        raise ModelManifestError("dataset provenance must be UTF-8 JSONL") from exc
+    if not lines or len(lines) > MAX_DATASET_PROVENANCE_ROWS:
+        raise ModelManifestError(
+            f"dataset provenance must contain 1 to {MAX_DATASET_PROVENANCE_ROWS} image rows"
+        )
+
+    source_by_key = {
+        (source.source_url, source.revision, source.license_id): source
+        for source in sources
+    }
+    used_sources = set()
+    seen_images = set()
+    seen_digests = set()
+    required = {
+        "image", "image_sha256", "source_url", "revision", "license",
+        "license_review_status", "training_use_allowed", "redistribution_allowed",
+        "reviewed_by", "reviewed_at",
+    }
+    optional = {"attribution", "permission_ref"}
+
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip() or len(line.encode("utf-8")) > MAX_DATASET_PROVENANCE_LINE_BYTES:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} is blank or exceeds the line-size limit"
+            )
+        try:
+            row = json.loads(line, object_pairs_hook=_unique_dataset_object)
+        except (json.JSONDecodeError, ModelManifestError, RecursionError) as exc:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} is not valid unique-key JSON"
+            ) from exc
+        if not isinstance(row, dict) or not required.issubset(row) or set(row) - required - optional:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} has unknown or missing fields"
+            )
+
+        image = row["image"]
+        if not isinstance(image, str) or not image or "\\" in image:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} image must be a clean relative POSIX path under images/"
+            )
+        image_path = PurePosixPath(image)
+        if (
+            image_path.is_absolute()
+            or image_path.as_posix() != image
+            or len(image_path.parts) < 2
+            or image_path.parts[0] != "images"
+            or any(part in {"", ".", ".."} for part in image_path.parts)
+            or re.match(r"^[A-Za-z]:", image)
+        ):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} image must be a clean relative POSIX path under images/"
+            )
+        if image in seen_images:
+            raise ModelManifestError(f"dataset provenance line {line_number} duplicates an image path")
+        seen_images.add(image)
+
+        image_digest = row["image_sha256"]
+        if not isinstance(image_digest, str) or not _SHA256.fullmatch(image_digest):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} image_sha256 must be 64 lowercase hexadecimal characters"
+            )
+        if image_digest in seen_digests:
+            raise ModelManifestError(f"dataset provenance line {line_number} duplicates image bytes")
+        seen_digests.add(image_digest)
+
+        source_url = row["source_url"]
+        revision = row["revision"]
+        license_id = row["license"]
+        source_key = (source_url, revision, license_id)
+        source = source_by_key.get(source_key)
+        if source is None:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} does not reference an approved training_data_sources entry"
+            )
+        if row["license_review_status"] != source.license_review_status:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} license review status does not match its source"
+            )
+        if (
+            type(row["training_use_allowed"]) is not bool
+            or not row["training_use_allowed"]
+            or row["training_use_allowed"] != source.training_use_allowed
+        ):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} does not explicitly permit training use"
+            )
+        if (
+            type(row["redistribution_allowed"]) is not bool
+            or row["redistribution_allowed"] != source.redistribution_allowed
+        ):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} redistribution status does not match its source"
+            )
+        reviewer = row["reviewed_by"]
+        if not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer.strip()) > 160:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} reviewed_by must be a bounded reviewer identifier"
+            )
+        reviewed_at = row["reviewed_at"]
+        if not isinstance(reviewed_at, str):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} reviewed_at must be a timezone-aware ISO-8601 timestamp"
+            )
+        try:
+            reviewed_stamp = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} reviewed_at must be a timezone-aware ISO-8601 timestamp"
+            ) from exc
+        if reviewed_stamp.tzinfo is None or reviewed_stamp.utcoffset() is None:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} reviewed_at must include a timezone"
+            )
+
+        if license_id == "CC-BY-4.0":
+            attribution = row.get("attribution")
+            if not isinstance(attribution, str) or not attribution.strip() or len(attribution.strip()) > 500:
+                raise ModelManifestError(
+                    f"dataset provenance line {line_number} requires CC-BY attribution"
+                )
+        elif "attribution" in row and (
+            not isinstance(row["attribution"], str) or len(row["attribution"]) > 500
+        ):
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} attribution must be a bounded string"
+            )
+        if license_id == "LicenseRef-ExplicitPermission":
+            permission_ref = row.get("permission_ref")
+            if not isinstance(permission_ref, str) or not permission_ref.strip() or len(permission_ref.strip()) > 200:
+                raise ModelManifestError(
+                    f"dataset provenance line {line_number} requires a bounded permission_ref"
+                )
+        elif "permission_ref" in row:
+            raise ModelManifestError(
+                f"dataset provenance line {line_number} permission_ref is only valid for explicit permission"
+            )
+        used_sources.add(source_key)
+
+    if used_sources != set(source_by_key):
+        raise ModelManifestError("training_data_sources contains entries not referenced by per-image provenance")
 
 
 def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManifest:
@@ -186,17 +354,29 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
 
     dataset_manifest_file = raw.get("dataset_manifest_file")
     dataset_manifest_digest = raw.get("dataset_manifest_sha256")
-    if not isinstance(dataset_manifest_file, str) or not dataset_manifest_file or Path(dataset_manifest_file).is_absolute():
-        raise ModelManifestError("dataset_manifest_file must be a non-empty relative path")
+    if (
+        not isinstance(dataset_manifest_file, str)
+        or not dataset_manifest_file
+        or "\\" in dataset_manifest_file
+    ):
+        raise ModelManifestError("dataset_manifest_file must be a clean relative POSIX path")
+    dataset_relative_path = PurePosixPath(dataset_manifest_file)
+    if (
+        dataset_relative_path.is_absolute()
+        or dataset_relative_path.as_posix() != dataset_manifest_file
+        or any(part in {"", ".", ".."} for part in dataset_relative_path.parts)
+        or re.match(r"^[A-Za-z]:", dataset_manifest_file)
+    ):
+        raise ModelManifestError("dataset_manifest_file must be a clean relative POSIX path")
     if not isinstance(dataset_manifest_digest, str) or not _SHA256.fullmatch(dataset_manifest_digest):
         raise ModelManifestError("dataset_manifest_sha256 must be 64 lowercase hexadecimal characters")
     dataset_cursor = model_root
-    for part in Path(dataset_manifest_file).parts:
+    for part in dataset_relative_path.parts:
         dataset_cursor = dataset_cursor / part
         if dataset_cursor.is_symlink():
             raise ModelManifestError("dataset provenance manifest must not traverse symbolic links")
     try:
-        dataset_manifest_path = (model_root / dataset_manifest_file).resolve()
+        dataset_manifest_path = model_root.joinpath(*dataset_relative_path.parts).resolve()
         dataset_manifest_path.relative_to(model_root)
     except (OSError, ValueError) as exc:
         raise ModelManifestError("dataset provenance manifest must stay inside the model directory") from exc
@@ -230,16 +410,18 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
                 or parsed_dataset_source.fragment):
             raise ModelManifestError("dataset source_url must be credential-free HTTPS without query or fragment")
         revision = row.get("revision")
-        if (not isinstance(revision, str) or not revision.strip() or len(revision) > 160
-                or revision.strip().lower() in {"main", "master", "latest", "head", "develop", "development", "dev"}):
-            raise ModelManifestError("dataset revision must be an immutable version or commit, not a moving branch alias")
-        source_key = (source_url, revision)
+        if not isinstance(revision, str) or not _DATASET_REVISION.fullmatch(revision.strip()):
+            raise ModelManifestError("dataset revision must be a full Git commit SHA or SHA-256 archive digest")
+        revision = revision.strip()
+        source_key = (source_url, revision, row.get("license"))
         if source_key in seen_sources:
             raise ModelManifestError("duplicate training dataset source and revision")
         seen_sources.add(source_key)
         dataset_license = row.get("license")
         if not isinstance(dataset_license, str) or not _SPDX.fullmatch(dataset_license):
             raise ModelManifestError("training dataset license must be an SPDX-like identifier")
+        if dataset_license not in _DATASET_LICENSES:
+            raise ModelManifestError("training dataset license is not in the supported reviewed-license allowlist")
         dataset_review = row.get("license_review_status")
         if dataset_review not in {"approved", "public-domain"}:
             raise ModelManifestError("training dataset license must be explicitly reviewed before inference")
@@ -250,6 +432,9 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
                 or parsed_evidence.password or parsed_evidence.query
                 or parsed_evidence.fragment):
             raise ModelManifestError("dataset license_evidence_url must be credential-free HTTPS without query or fragment")
+        canonical_evidence = _DATASET_LICENSE_EVIDENCE.get(dataset_license)
+        if canonical_evidence and evidence_url.rstrip("/") != canonical_evidence.rstrip("/"):
+            raise ModelManifestError("dataset license_evidence_url does not match the supported license")
         training_allowed = row.get("training_use_allowed")
         redistribution_allowed_dataset = row.get("redistribution_allowed")
         if type(training_allowed) is not bool or type(redistribution_allowed_dataset) is not bool:
@@ -270,7 +455,7 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
             raise ModelManifestError("dataset reviewed_at must include a timezone")
         training_data_sources.append(TrainingDataSource(
             source_url=source_url,
-            revision=revision.strip(),
+            revision=revision,
             license_id=dataset_license,
             license_review_status=dataset_review,
             license_evidence_url=evidence_url,
@@ -279,6 +464,8 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
             reviewed_by=dataset_reviewer.strip(),
             reviewed_at=dataset_reviewed_at,
         ))
+
+    _validate_dataset_provenance(dataset_manifest_bytes, tuple(training_data_sources))
 
     input_spec = raw.get("input")
     outputs = raw.get("outputs")
