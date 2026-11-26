@@ -51,7 +51,7 @@
   "training_data_sources": [
     {
       "source_url": "https://example.org/replace-with-dataset-source",
-      "revision": "REPLACE_WITH_IMMUTABLE_DATASET_REVISION",
+      "revision": "REPLACE_WITH_40_HEX_GIT_COMMIT_OR_SHA256",
       "license": "LicenseRef-UNREVIEWED",
       "license_review_status": "not-reviewed",
       "license_evidence_url": "https://example.org/replace-with-dataset-license-evidence",
