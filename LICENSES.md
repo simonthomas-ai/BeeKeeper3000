@@ -15,3 +15,20 @@ This is a preliminary engineering inventory, not legal advice and not a complete
 The dated upstream license/security review is maintained in [docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md](docs/UPSTREAM-SECURITY-LICENSE-REGISTER-2026-11-20.md). It records optional upstream projects and their advisory status as reviewed on that date; it does not grant permission to bundle their code, firmware, models or datasets.
 
 Before a release, produce an SPDX or CycloneDX SBOM for every runtime/build, include authoritative full license texts and notices, verify all transitive dependencies, and have the inherited source/license chain reviewed.
+
+
+## External Waspinator candidate – checksum-only, not integrated
+
+The optional Waspinator review is limited to the following immutable upstream snapshot:
+
+- Repository: [gitDew/waspinator](https://github.com/gitDew/waspinator)
+- Reviewed source revision: `7251be99a69dfc38f82abb062e22a0062ff5c58c`
+- Repository licence: the GitHub repository metadata identifies `AGPL-3.0`; the pinned snapshot contains `LICENSE.txt` with the GNU Affero General Public License v3 text.
+- Candidate weight: `models/yolo26n-waspinator-chamber_ncnn_model/model.ncnn.bin`; its adjacent `metadata.yaml` declares `AGPL-3.0 License` for the YOLO26n model.
+- The upstream `models/attributions.txt` file exists (4,040,560 bytes), but this project has not reviewed it row-by-row or verified it as a complete per-image dataset rights/provenance manifest. The reviewed upstream README does not provide a machine-readable per-image dataset licence and redistribution record.
+
+The repository-level AGPL declaration and model metadata are useful source evidence, **not a complete clearance of the model's training images, embedded attributions, weights, or intended downstream use**. AGPL-3.0 obligations require a separate legal review before incorporation or distribution. Do not treat this candidate as MIT/Apache or as automatically redistributable.
+
+The workflow `.github/workflows/waspinator-weight-sha256.yml` is a checksum-only audit: it pins the upstream commit, path, byte count and Git blob before reading the exact weight bytes to calculate SHA-256. It does not import, load, execute, convert, train, install, activate or redistribute the model. The candidate is not in the production camera manifest and remains unavailable to the runtime. A checksum proves byte identity only; it does not prove licensing, training-data provenance, class semantics, accuracy or field suitability.
+
+**Status: rights and dataset provenance pending; no runtime approval; no field use.** Keep the model out of production manifests until the complete model and training-data rights chain, technical output contract, and independent field evaluation are separately reviewed.
