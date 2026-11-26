@@ -15,8 +15,9 @@ This register documents what automated checks actually cover. It is not a statem
 | Dependency update process | Dependabot | Weekly checks for npm, Python and GitHub Actions manifests |
 | External GitHub Actions references | `scripts/audit_workflow_action_pins.py` | Quality-gates CI scans all 10 workflow YAML files; external actions require full 40-character commit SHAs, local actions are allowed, Docker actions require SHA-256 digests |
 | Workflow container images | `scripts/audit_workflow_action_pins.py` | Every YAML `image:` reference must use an immutable OCI SHA-256 digest; mutable tags block Quality-gates CI |
+| Checkout credentials | `scripts/audit_workflow_action_pins.py` | Every `actions/checkout` step in all workflow YAML files must set `persist-credentials: false`; missing or true values block Quality-gates CI |
 
-The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. The generated SBOM is a CI artifact, not yet a complete release SBOM for the inherited Hornet3000 product.
+The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. All workflow checkout steps disable persisted Git credentials; this removes the read-only `GITHUB_TOKEN` from the local Git configuration after checkout. The generated SBOM is a CI artifact, not yet a complete release SBOM for the inherited Hornet3000 product.
 
 ## Scope limitations that remain release blockers
 
