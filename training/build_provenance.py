@@ -237,7 +237,7 @@ def _load_source_reviews(path: str | Path) -> dict[tuple[str, str], dict]:
             source_url = _public_https(source_url, f"source-rights review entry {index} source_url")
 
         license_id = entry.get("license")
-        if license_id not in _ALLOWED_LICENSES:
+        if not isinstance(license_id, str) or license_id not in _ALLOWED_LICENSES:
             raise ProvenanceBuildError(f"source-rights review entry {index} uses an unsupported license")
         if is_local != (license_id == "LicenseRef-ExplicitPermission"):
             raise ProvenanceBuildError(
@@ -253,7 +253,7 @@ def _load_source_reviews(path: str | Path) -> dict[tuple[str, str], dict]:
                 )
 
         status = entry.get("license_review_status")
-        if status not in {"approved", "public-domain"}:
+        if not isinstance(status, str) or status not in {"approved", "public-domain"}:
             raise ProvenanceBuildError(f"source-rights review entry {index} is not explicitly reviewed")
         if status == "public-domain" and license_id != "CC0-1.0":
             raise ProvenanceBuildError("public-domain status is only valid for CC0-1.0")
