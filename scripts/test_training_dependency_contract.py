@@ -5,14 +5,14 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 TRAINER = ROOT / "training" / "train_multilabel.py"
-REQUIREMENTS = ROOT / "training" / "requirements.txt"
+REQUIREMENTS = ROOT / "training" / "requirements-training.txt"
 SUPPLY_CHAIN = ROOT / ".github" / "workflows" / "supply-chain.yml"
 QUALITY_GATES = ROOT / ".github" / "workflows" / "quality-gates.yml"
 
 REQUIRED = {
-    "Pillow": "12.0.0",
-    "onnx": "1.20.1",
-    "torch": "2.9.1",
+    "Pillow": "13.0.0",
+    "onnx": "1.23.2",
+    "torch": "2.15.0",
 }
 
 
@@ -28,7 +28,7 @@ class TrainingDependencyContractTests(unittest.TestCase):
     def test_supply_chain_audits_and_emits_training_dependency_evidence(self):
         workflow = SUPPLY_CHAIN.read_text(encoding="utf-8")
         self.assertIn(
-            "pip-audit --requirement training/requirements.txt --strict",
+            "pip-audit --requirement training/requirements-training.txt --strict",
             workflow,
         )
         self.assertIn(
