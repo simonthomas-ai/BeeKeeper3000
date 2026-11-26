@@ -300,7 +300,8 @@ class ProvenanceConverterTests(unittest.TestCase):
         self.write_review([
             source_review(
                 "https://example.org/photos/item-001",
-                "LicenseRef-ExplicitPermission",
+                "CC-BY-4.0",
+                revision="a" * 40,
             )
         ])
         with self.assertRaisesRegex(ProvenanceBuildError, "reserved for opaque local"):
@@ -315,7 +316,7 @@ class ProvenanceConverterTests(unittest.TestCase):
         ]
         self.write_archive(rows)
         self.write_review([
-            source_review("local-capture://session-0001", "CC0-1.0", revision="a" * 40)
+            source_review("local-capture://session-0001", "LicenseRef-ExplicitPermission")
         ])
         with self.assertRaisesRegex(ProvenanceBuildError, "local field captures require"):
             build_provenance(self.archive, self.review)
@@ -349,7 +350,7 @@ class ProvenanceConverterTests(unittest.TestCase):
         ]
         self.write_archive(rows)
         self.write_review([
-            source_review("local-capture://short", "LicenseRef-ExplicitPermission")
+            source_review("local-capture://session-0001", "LicenseRef-ExplicitPermission")
         ])
         with self.assertRaisesRegex(ProvenanceBuildError, "safe opaque identifier"):
             build_provenance(self.archive, self.review)
