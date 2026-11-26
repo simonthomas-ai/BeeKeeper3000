@@ -215,11 +215,13 @@ def validate_dataset(dataset_root: str | Path) -> list[dict]:
             raise DatasetValidationError(f"line {row_number} must be a JSON object")
         allowed_fields = {
             "image", "labels", "captured_at", "capture_session_id",
-            "labeler_id", "review_status", "rights",
+            "labeler_id", "review_status", "reviewed_by", "reviewed_at", "rights",
         }
-        if set(row) - allowed_fields or not {"image", "labels", "captured_at",
-                                             "capture_session_id", "review_status",
-                                             "rights"}.issubset(row):
+        required_fields = {
+            "image", "labels", "captured_at", "capture_session_id",
+            "review_status", "reviewed_by", "reviewed_at", "rights",
+        }
+        if set(row) - allowed_fields or not required_fields.issubset(row):
             raise DatasetValidationError(f"line {row_number} has missing or unknown fields")
 
         image_path = _relative_image_path(row["image"]).as_posix()
@@ -247,7 +249,22 @@ def validate_dataset(dataset_root: str | Path) -> list[dict]:
             raise DatasetValidationError(
                 f"line {row_number} labels must be unique known class slugs; [] is valid"
             )
-        _parse_timestamp(row["captured_at"], f"line {row_number} captured_at")
+        captured_at = _parse_timestamp(row["captured_at"], f"line {row_number} captured_at")
+        reviewed_by = row["reviewed_by"]
+        if (
+            not isinstance(reviewed_by, str)
+            or not _PSEUDONYMOUS_LABELER_ID.fullmatch(reviewed_by)
+        ):
+            raise DatasetValidationError(
+                f"line {row_number} reviewed_by must use reviewer:<opaque-id>; names, emails and URLs are not allowed"
+            )
+        reviewed_at = _parse_timestamp(row["reviewed_at"], f"line {row_number} reviewed_at")
+        captured_stamp = datetime.fromisoformat(captured_at.replace("Z", "+00:00"))
+        reviewed_stamp = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
+        if reviewed_stamp < captured_stamp:
+            raise DatasetValidationError(
+                f"line {row_number} reviewed_at must not precede captured_at"
+            )
         session_id = row["capture_session_id"]
         if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 160:
             raise DatasetValidationError(f"line {row_number} capture_session_id is required")
@@ -263,8 +280,15 @@ def validate_dataset(dataset_root: str | Path) -> list[dict]:
         source = _validate_rights(row["rights"], row_number)
         rows.append({
             "image": image_path,
+            "image_sha256": digest,
             "labels": list(labels),
+            "captured_at": captured_at,
             "capture_session_id": session_id,
+            "labeler_id": labeler_id,
+            "review_status": row["review_status"],
+            "reviewed_by": reviewed_by,
+            "reviewed_at": reviewed_at,
+            "rights": dict(row["rights"]),
             "source": source,
         })
 
