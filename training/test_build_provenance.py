@@ -185,6 +185,7 @@ class ProvenanceConverterTests(unittest.TestCase):
         self.assertEqual(row["source_url"], "local-capture://session-0001")
         self.assertEqual(row["revision"], "sha256:" + hashlib.sha256(self.archive.read_bytes()).hexdigest())
         self.assertEqual(row["permission_ref"], "permission-opaque-0001")
+        self.assertEqual(row["image_sha256"], hashlib.sha256(b"synthetic image bytes one").hexdigest())
         self.assertNotIn("captured_at", row)
         self.assertNotIn("capture_session_id", row)
         self.assertNotIn("labeler_id", row)
@@ -275,6 +276,23 @@ class ProvenanceConverterTests(unittest.TestCase):
         self.write_review(entries)
         with self.assertRaisesRegex(ProvenanceBuildError, "not explicitly reviewed"):
             build_provenance(self.archive, self.review)
+
+    def test_rejects_non_string_source_review_enums_without_type_errors(self):
+        self.public_fixture()
+        for field, value, message in (
+            ("license", [], "unsupported license"),
+            ("license_review_status", [], "not explicitly reviewed"),
+        ):
+            with self.subTest(field=field):
+                entry = source_review(
+                    "https://example.org/photos/item-001",
+                    "CC-BY-4.0",
+                    revision="a" * 40,
+                )
+                entry[field] = value
+                self.write_review([entry])
+                with self.assertRaisesRegex(ProvenanceBuildError, message):
+                    build_provenance(self.archive, self.review)
 
     def test_rejects_public_source_without_immutable_revision(self):
         self.public_fixture()
