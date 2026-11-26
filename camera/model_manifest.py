@@ -184,12 +184,6 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
         if not isinstance(report, str) or not report.startswith("https://"):
             raise ModelManifestError("independent validation requires a public validation_report_url")
 
-    inference_status = raw["inference_status"]
-    if inference_status == "independently_validated":
-        report = raw.get("validation_report_url")
-        if not isinstance(report, str) or not report.startswith("https://"):
-            raise ModelManifestError("independent validation requires a public validation_report_url")
-
     dataset_manifest_file = raw.get("dataset_manifest_file")
     dataset_manifest_digest = raw.get("dataset_manifest_sha256")
     if not isinstance(dataset_manifest_file, str) or not dataset_manifest_file or Path(dataset_manifest_file).is_absolute():
@@ -236,8 +230,9 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
                 or parsed_dataset_source.fragment):
             raise ModelManifestError("dataset source_url must be credential-free HTTPS without query or fragment")
         revision = row.get("revision")
-        if not isinstance(revision, str) or not revision.strip() or len(revision) > 160:
-            raise ModelManifestError("dataset revision must be a non-empty immutable version or commit")
+        if (not isinstance(revision, str) or not revision.strip() or len(revision) > 160
+                or revision.strip().lower() in {"main", "master", "latest", "head", "develop", "development", "dev"}):
+            raise ModelManifestError("dataset revision must be an immutable version or commit, not a moving branch alias")
         source_key = (source_url, revision)
         if source_key in seen_sources:
             raise ModelManifestError("duplicate training dataset source and revision")
