@@ -77,7 +77,7 @@ jobs:
       - name: Audit optional NMEA serial dependency
         run: pip-audit --requirement adapters/nmea-requirements.lock --no-deps --strict --format json --output reports/nmea-serial-audit.json
       - name: Audit pinned training runtime and resolved dependencies
-        run: pip-audit --requirement training/requirements.txt --strict --format json --output reports/training-runtime-audit.json
+        run: pip-audit --requirement training/requirements-training.txt --strict --format json --output reports/training-runtime-audit.json
 
       - name: Upload vulnerability report
         if: always()
@@ -114,7 +114,7 @@ jobs:
           python -m json.tool reports/nmea-serial.cdx.json >/dev/null
       - name: Generate CycloneDX SBOM for declared training runtime dependencies
         run: |
-          cyclonedx-py requirements training/requirements.txt --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/training-declared-requirements.cdx.json
+          cyclonedx-py requirements training/requirements-training.txt --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/training-declared-requirements.cdx.json
           python -m json.tool reports/training-declared-requirements.cdx.json >/dev/null
 
       - name: Upload NMEA serial SBOM
