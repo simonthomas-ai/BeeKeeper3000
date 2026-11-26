@@ -450,6 +450,10 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
             raise ModelManifestError(
                 "dataset source_url must be credential-free HTTPS or an opaque local-capture source with explicit permission"
             )
+        if dataset_license == "LicenseRef-ExplicitPermission" and not local_capture:
+            raise ModelManifestError(
+                "explicit permission is reserved for opaque local-capture sources; public datasets must use a reviewed public license"
+            )
 
         revision = row.get("revision")
         if not isinstance(revision, str) or not _DATASET_REVISION.fullmatch(revision.strip()):
