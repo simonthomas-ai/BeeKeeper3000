@@ -71,6 +71,8 @@ class DatasetFixture:
             "captured_at": captured_at,
             "capture_session_id": session or f"session-{name}",
             "review_status": review_status,
+            "reviewed_by": "reviewer:field-reviewer-0001",
+            "reviewed_at": "2026-11-20T12:30:00Z",
             "rights": item_rights,
         }
 
@@ -141,6 +143,31 @@ class MultiLabelDatasetTests(unittest.TestCase):
             row["labeler_id"] = "reviewer:field-0001"
             data.write([row])
             self.assertEqual(len(validate_dataset(tmp)), 1)
+
+    def test_requires_pseudonymous_review_metadata_after_capture(self):
+        invalid_rows = [
+            ({"reviewed_by": "Simon Thomas"}, "reviewed_by must use reviewer:<opaque-id>"),
+            ({"reviewed_by": "reviewer:short"}, "reviewed_by must use reviewer:<opaque-id>"),
+            ({"reviewed_by": "reviewer:field-reviewer-0001", "reviewed_at": "2026-11-20T12:30:00"}, "reviewed_at must include a timezone"),
+            ({"reviewed_by": "reviewer:field-reviewer-0001", "reviewed_at": "2026-11-20T11:59:59Z"}, "reviewed_at must not precede captured_at"),
+        ]
+        for index, (changes, message) in enumerate(invalid_rows):
+            with self.subTest(index=index), tempfile.TemporaryDirectory() as tmp:
+                data = DatasetFixture(tmp)
+                row = data.add(f"review-{index}", f"review fixture {index}".encode())
+                row.update(changes)
+                data.write([row])
+                with self.assertRaisesRegex(DatasetValidationError, message):
+                    validate_dataset(tmp)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            data = DatasetFixture(tmp)
+            row = data.add("review-valid", b"valid review fixture")
+            data.write([row])
+            validated = validate_dataset(tmp)
+            self.assertEqual(validated[0]["reviewed_by"], "reviewer:field-reviewer-0001")
+            self.assertEqual(validated[0]["reviewed_at"], "2026-11-20T12:30:00Z")
+            self.assertEqual(len(validated[0]["image_sha256"]), 64)
 
     def test_requires_exact_manifest_to_image_inventory(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -340,9 +367,9 @@ class MultiLabelDatasetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / "field.zip"
             rows = [
-                {"image":"images/a.jpg","labels":[CLASS_NAMES[0]],"captured_at":"2026-11-20T12:00:00Z","capture_session_id":"session-a","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-a"}},
-                {"image":"images/b.jpg","labels":[],"captured_at":"2026-11-20T13:00:00Z","capture_session_id":"session-b","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-b"}},
-                {"image":"images/c.jpg","labels":[CLASS_NAMES[1]],"captured_at":"2026-11-20T14:00:00Z","capture_session_id":"session-c","review_status":"approved","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-c"}},
+                {"image":"images/a.jpg","labels":[CLASS_NAMES[0]],"captured_at":"2026-11-20T12:00:00Z","capture_session_id":"session-a","review_status":"approved","reviewed_by":"reviewer:field-reviewer-0001","reviewed_at":"2026-11-20T12:30:00Z","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-a"}},
+                {"image":"images/b.jpg","labels":[],"captured_at":"2026-11-20T13:00:00Z","capture_session_id":"session-b","review_status":"approved","reviewed_by":"reviewer:field-reviewer-0001","reviewed_at":"2026-11-20T13:30:00Z","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-b"}},
+                {"image":"images/c.jpg","labels":[CLASS_NAMES[1]],"captured_at":"2026-11-20T14:00:00Z","capture_session_id":"session-c","review_status":"approved","reviewed_by":"reviewer:field-reviewer-0001","reviewed_at":"2026-11-20T14:30:00Z","rights":{"source":"Eigene Feldaufnahme","basis":"LicenseRef-ExplicitPermission","status":"training_approved","permission_ref":"owner-consent-c"}},
             ]
             with zipfile.ZipFile(archive, "w") as output:
                 output.writestr("annotations.jsonl", "".join(json.dumps(row) + "\n" for row in rows))
