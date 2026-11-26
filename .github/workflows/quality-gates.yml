@@ -38,6 +38,8 @@ jobs:
         run: python -m unittest training.test_train_multilabel_cli -v
       - name: Run fail-closed multi-label dataset and rights validation tests
         run: python -m unittest training.test_multilabel_dataset -v
+      - name: Run model-manifest v2 provenance converter tests (synthetic fixtures only)
+        run: python -m unittest training.test_build_provenance -v
       - name: Run shared adapter lifecycle and privacy contract tests
         run: python -m unittest adapters.test_lifecycle -v
       - name: Run NMEA GNSS and true-heading parser/serial adapter tests
