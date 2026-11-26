@@ -4,7 +4,7 @@
 
 ## Implementierungsstatus
 
-Der ZIP/JSONL-Validator, der gruppierte Splitter und der reproduzierbare Siebenklassen-Trainer samt optionalem binärem `vespa_velutina`-Task sind im Prüfbranch vorbereitet. Ein ZIP-Export-Roundtrip mit einer Monitor-Session wurde erfolgreich geprüft; das bestätigt nur die Import-/Vertragskompatibilität, nicht Bildqualität, Modelltraining oder Erkennungsleistung. Diese Werkzeuge sind noch nicht in `main`. Es gibt weiterhin keinen freigegebenen Realbild-Datensatz, kein trainiertes oder integriertes Modell, keinen unabhängigen Feld-Holdout und keine Alarmfreigabe. Der Kamera-/KI-Pfad bleibt deaktiviert.
+Der ZIP/JSONL-Validator, der gruppierte Splitter und der reproduzierbare Siebenklassen-Trainer samt optionalem binärem `vespa_velutina`-Task sind inzwischen in `main` vorhanden. Der Monitor-ZIP-Export wurde gegen den gepinnten BeeKeeper3000-Validator und per Fixture-Roundtrip geprüft; das bestätigt nur die Import-/Vertragskompatibilität, nicht Bildqualität, Modelltraining oder Erkennungsleistung. Für ein echtes Training fehlen weiterhin `datasets/beekeeper/` mit vollständig geprüften Bild-/Label-/Provenienzdaten und `training/reviewed-annotations.json`. Es gibt weiterhin keinen freigegebenen Realbild-Datensatz, kein trainiertes oder integriertes Modell, keinen unabhängigen Feld-Holdout und keine Alarmfreigabe. Der Kamera-/KI-Pfad bleibt deaktiviert.
 
 ## Modellbestand: lokaler Checkout und externer Kandidat
 
