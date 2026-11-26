@@ -32,7 +32,7 @@ class TrainingDependencyContractTests(unittest.TestCase):
             workflow,
         )
         self.assertIn(
-            "cyclonedx-py requirements training/requirements.txt",
+            "cyclonedx-py requirements training/requirements-training.txt",
             workflow,
         )
         self.assertIn("training-runtime-audit.json", workflow)
