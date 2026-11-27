@@ -4,6 +4,7 @@ import io
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from adapters.lifecycle import AdapterConfigurationError
@@ -24,6 +25,14 @@ class FakeOutbox:
 
 
 class FakeDetector:
+    manifest = SimpleNamespace(inference_status="independently_validated")
+
+
+class ExperimentalDetector:
+    manifest = SimpleNamespace(inference_status="experimental")
+
+
+class UnmanifestedDetector:
     pass
 
 
@@ -61,6 +70,7 @@ class LocalMediaCliTests(unittest.TestCase):
             max_video_frames=10_000,
             max_video_duration=3_600,
             confirm_local_file_access=confirmed,
+            shadow=False,
         )
 
     def test_requires_explicit_local_file_access_confirmation(self):
@@ -69,6 +79,45 @@ class LocalMediaCliTests(unittest.TestCase):
             with self.assertRaisesRegex(AdapterConfigurationError, "confirmation"):
                 asyncio.run(importer.import_media(args))
         detector.assert_not_called()
+
+    def test_rejects_experimental_model_without_shadow_before_outbox_creation(self):
+        args = self.make_args()
+        with (
+            patch.object(importer.OnnxDetector, "from_manifest", return_value=ExperimentalDetector()),
+            patch.object(importer, "SQLiteOutbox") as outbox,
+            patch.object(importer, "LocalMediaAdapter") as adapter,
+        ):
+            with self.assertRaisesRegex(AdapterConfigurationError, "experimental_model_requires_explicit_shadow_mode"):
+                asyncio.run(importer.import_media(args))
+        outbox.assert_not_called()
+        adapter.assert_not_called()
+
+    def test_rejects_detector_without_reviewed_manifest(self):
+        args = self.make_args()
+        with (
+            patch.object(importer.OnnxDetector, "from_manifest", return_value=UnmanifestedDetector()),
+            patch.object(importer, "SQLiteOutbox") as outbox,
+        ):
+            with self.assertRaisesRegex(AdapterConfigurationError, "reviewed_model_manifest"):
+                asyncio.run(importer.import_media(args))
+        outbox.assert_not_called()
+
+    def test_shadow_import_discards_experimental_detections_without_outbox(self):
+        args = self.make_args()
+        args.shadow = True
+        stdout = io.StringIO()
+        with (
+            patch.object(importer.OnnxDetector, "from_manifest", return_value=ExperimentalDetector()),
+            patch.object(importer, "SQLiteOutbox") as outbox,
+            patch.object(importer, "LocalMediaAdapter", FakeAdapter),
+            patch.object(importer, "AdapterSupervisor", FakeSupervisor),
+            redirect_stdout(stdout),
+        ):
+            self.assertEqual(asyncio.run(importer.import_media(args)), 0)
+        outbox.assert_not_called()
+        report = stdout.getvalue()
+        self.assertIn("1 unverified detection event(s) discarded", report)
+        self.assertIn("no outbox was created or modified", report)
 
     def test_queues_only_metadata_and_never_constructs_network_client(self):
         args = self.make_args()

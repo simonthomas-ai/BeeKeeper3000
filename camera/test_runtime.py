@@ -57,6 +57,11 @@ class ExperimentalDetector(FakeDetector):
     manifest = type("Manifest", (), {"inference_status": "experimental"})()
 
 
+class UnmanifestedDetector:
+    def detect(self, frame):
+        return [Detection("vespa_velutina_candidate", 0.91)]
+
+
 class OfflineClient:
     def send_event(self, event):
         raise SourceClientError("offline")
@@ -114,6 +119,25 @@ class RuntimeTests(unittest.TestCase):
             with self.assertRaises(SourceClientError):
                 runtime.drain_outbox()
             self.assertEqual(box.count(), 1)
+
+    def test_unmanifested_detector_is_rejected_before_it_can_queue_events(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(CameraRuntimeError, "reviewed model manifest"):
+                LocalCameraRuntime(
+                    detector=UnmanifestedDetector(),
+                    outbox=SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3")),
+                    client=OfflineClient(), station_id="station-01", source="0",
+                )
+
+    def test_drain_only_runtime_cannot_process_frames(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = LocalCameraRuntime(
+                detector=None,
+                outbox=SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3")),
+                client=OfflineClient(), station_id="station-01", source="0",
+            )
+            with self.assertRaisesRegex(CameraRuntimeError, "drain-only"):
+                runtime.process_frame(object())
 
     def test_experimental_model_requires_explicit_shadow_mode(self):
         with tempfile.TemporaryDirectory() as tmp:

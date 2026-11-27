@@ -83,12 +83,15 @@ class LocalCameraRuntime:
             raise ValueError("reconnect_max_seconds must be between 1 and 120")
         if type(shadow_mode) is not bool:
             raise ValueError("shadow_mode must be boolean")
-        manifest = getattr(detector, "manifest", None)
-        inference_status = getattr(manifest, "inference_status", None)
-        if inference_status == "experimental" and not shadow_mode:
-            raise CameraRuntimeError("experimental models require explicit --shadow mode")
-        if inference_status not in {None, "experimental", "independently_validated"}:
-            raise CameraRuntimeError("detector has an unsupported inference status")
+        if detector is None:
+            inference_status = None  # Explicit drain-only recovery mode; no frame processing.
+        else:
+            manifest = getattr(detector, "manifest", None)
+            inference_status = getattr(manifest, "inference_status", None)
+            if manifest is None or inference_status not in {"experimental", "independently_validated"}:
+                raise CameraRuntimeError("detector must carry a reviewed model manifest")
+            if inference_status == "experimental" and not shadow_mode:
+                raise CameraRuntimeError("experimental models require explicit --shadow mode")
         self.detector, self.outbox, self.client = detector, outbox, client
         self.station_id, self.source = station_id, source
         self.frame_interval = 1.0 / float(max_fps)
@@ -97,6 +100,8 @@ class LocalCameraRuntime:
         self.shadow_mode = shadow_mode
 
     def process_frame(self, frame, *, now_epoch: float | None = None) -> int:
+        if self.detector is None:
+            raise CameraRuntimeError("drain-only runtime cannot process camera frames")
         detections = self.detector.detect(frame)
         if self.shadow_mode:
             return len(detections)
@@ -122,6 +127,8 @@ class LocalCameraRuntime:
         return sent
 
     def run_forever(self) -> None:
+        if self.detector is None:
+            raise CameraRuntimeError("drain-only runtime cannot start camera capture")
         backoff = 1.0
         if self.shadow_mode:
             print(
