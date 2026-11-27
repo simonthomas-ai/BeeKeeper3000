@@ -164,21 +164,55 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(runtime.drain_outbox(), 0)
             self.assertEqual(box.count(), 1)
 
-    def test_cooldown_survives_runtime_restart(self):
+    def test_self_asserted_independent_status_is_rejected_even_in_shadow_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            with self.assertRaisesRegex(CameraRuntimeError, "trusted evaluator attestation"):
+                LocalCameraRuntime(
+                    detector=FakeDetector(), outbox=box, client=OfflineClient(),
+                    station_id="station-01", source="0", shadow_mode=True,
+                )
+            self.assertEqual(box.count(), 0)
+
+    def test_outbox_cooldown_survives_database_reopen(self):
+        event = {
+            "id": "event-001",
+            "observed_at": "2026-11-27T00:00:00Z",
+            "station_id": "station-01",
+            "species": "vespa_velutina_candidate",
+            "confidence": 0.91,
+            "prey_detected": False,
+        }
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "outbox.sqlite3")
-            first = LocalCameraRuntime(
-                detector=FakeDetector(), outbox=SQLiteOutbox(path), client=OfflineClient(),
-                station_id="station-01", source="0", cooldown_seconds=30,
+            first = SQLiteOutbox(path)
+            self.assertTrue(first.enqueue_if_due(event, cooldown_seconds=30, now_epoch=2000))
+            second_event = dict(event, id="event-002")
+            self.assertFalse(first.enqueue_if_due(second_event, cooldown_seconds=30, now_epoch=2029))
+            reopened = SQLiteOutbox(path)
+            third_event = dict(event, id="event-003")
+            self.assertTrue(reopened.enqueue_if_due(third_event, cooldown_seconds=30, now_epoch=2030))
+            self.assertEqual(reopened.count(), 2)
+
+    def test_drain_only_runtime_preserves_pending_events_when_offline(self):
+        event = {
+            "id": "event-pending",
+            "observed_at": "2026-11-27T00:00:00Z",
+            "station_id": "station-01",
+            "species": "vespa_velutina_candidate",
+            "confidence": 0.91,
+            "prey_detected": False,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            box.enqueue(event)
+            runtime = LocalCameraRuntime(
+                detector=None, outbox=box, client=OfflineClient(),
+                station_id="station-01", source="0",
             )
-            self.assertEqual(first.process_frame(object(), now_epoch=2000), 1)
-            restarted = LocalCameraRuntime(
-                detector=FakeDetector(), outbox=SQLiteOutbox(path), client=OfflineClient(),
-                station_id="station-01", source="0", cooldown_seconds=30,
-            )
-            self.assertEqual(restarted.process_frame(object(), now_epoch=2029), 0)
-            self.assertEqual(restarted.process_frame(object(), now_epoch=2030), 1)
-            self.assertEqual(restarted.outbox.count(), 2)
+            with self.assertRaises(SourceClientError):
+                runtime.drain_outbox()
+            self.assertEqual(box.count(), 1)
 
 
 if __name__ == "__main__":
