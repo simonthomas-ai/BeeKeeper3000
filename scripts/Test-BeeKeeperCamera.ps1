@@ -40,7 +40,7 @@ try {
     Push-Location $repoRoot
     $locationPushed = $true
 
-    & $pythonCommand.Path $doctor --test-camera --json
+    & $pythonCommand.Path $doctor --no-model --test-camera --json
     $exitCode = $LASTEXITCODE
 } finally {
     [Environment]::SetEnvironmentVariable("BEEKEEPER_CAMERA_SOURCE", $null, "Process")
