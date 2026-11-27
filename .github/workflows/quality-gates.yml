@@ -31,6 +31,7 @@ jobs:
       - name: Verify immutable GitHub Actions references
         run: |
           python -m unittest scripts.test_audit_workflow_action_pins -v
+          python -m unittest scripts.test_supply_chain_artifact_policy -v
           python scripts/audit_workflow_action_pins.py
           python -m unittest scripts.test_supply_chain_path_coverage -v
           python -m unittest scripts.test_training_dependency_contract -v
