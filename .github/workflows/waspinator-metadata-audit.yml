@@ -21,6 +21,7 @@ jobs:
     steps:
       - name: Fetch pinned upstream metadata only; never fetch model bytes
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           UPSTREAM_REPO: gitDew/waspinator
           PINNED_COMMIT: 7251be99a69dfc38f82abb062e22a0062ff5c58c
           MODEL_PATH: models/yolo26n-waspinator-chamber_ncnn_model/model.ncnn.bin
@@ -42,6 +43,7 @@ jobs:
           headers = {
               "Accept": "application/vnd.github+json",
               "User-Agent": "BeeKeeper3000-Metadata-Audit",
+              "Authorization": "Bearer " + os.environ["GITHUB_TOKEN"],
           }
 
           def get_json(url):
