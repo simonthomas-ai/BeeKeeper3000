@@ -38,6 +38,12 @@ def _check_windows_private_directory(directory: Path) -> None:
     """Reject broad/deny NTFS ACEs and require current-user plus SYSTEM FullControl."""
     environment = os.environ.copy()
     environment["BEEKEEPER_BACKUP_ACL_PATH"] = str(directory)
+    system_root = environment.get("SystemRoot", r"C:\Windows")
+    program_files = environment.get("ProgramFiles", r"C:\Program Files")
+    environment["PSModulePath"] = os.pathsep.join((
+        os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0", "Modules"),
+        os.path.join(program_files, "WindowsPowerShell", "Modules"),
+    ))
     try:
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", _WINDOWS_ACL_SCRIPT],
