@@ -82,7 +82,7 @@ jobs:
         run: pip-audit --requirement training/requirements-training.txt --strict --format json --output reports/training-runtime-audit.json
 
       - name: Upload vulnerability report
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-vulnerability-audit
@@ -91,7 +91,7 @@ jobs:
             reports/nmea-serial-audit.json
             reports/training-runtime-audit.json
           if-no-files-found: ignore
-          retention-days: 30
+          retention-days: 7
 
   python-sbom:
     runs-on: ubuntu-latest
@@ -120,25 +120,28 @@ jobs:
           python -m json.tool reports/training-declared-requirements.cdx.json >/dev/null
 
       - name: Upload NMEA serial SBOM
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: nmea-serial-cyclonedx-sbom
           path: reports/nmea-serial.cdx.json
-          retention-days: 90
+          retention-days: 7
 
       - name: Upload declared training dependency SBOM
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: training-declared-requirements-cyclonedx-sbom
           path: reports/training-declared-requirements.cdx.json
-          retention-days: 90
+          retention-days: 7
 
       - name: Upload SBOM
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: meshcore-runtime-cyclonedx-sbom
           path: reports/meshcore-runtime.cdx.json
-          retention-days: 90
+          retention-days: 7
 
   camera-runtime-audit:
     runs-on: ubuntu-latest
@@ -157,13 +160,13 @@ jobs:
           mkdir -p reports
           pip-audit --requirement camera/requirements.txt --strict --format json --output reports/camera-runtime-audit.json
       - name: Upload camera vulnerability report
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: camera-runtime-vulnerability-audit
           path: reports/camera-runtime-audit.json
           if-no-files-found: ignore
-          retention-days: 30
+          retention-days: 7
 
   camera-runtime-sbom:
     runs-on: ubuntu-latest
@@ -188,11 +191,12 @@ jobs:
           cyclonedx-py environment /tmp/beekeeper-camera-runtime --spec-version 1.6 --output-format JSON --output-reproducible --output-file reports/camera-runtime.cdx.json
           python -m json.tool reports/camera-runtime.cdx.json >/dev/null
       - name: Upload camera runtime SBOM
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: camera-runtime-cyclonedx-sbom
           path: reports/camera-runtime.cdx.json
-          retention-days: 90
+          retention-days: 7
 
   npm-vulnerability-audit:
     runs-on: ubuntu-latest
