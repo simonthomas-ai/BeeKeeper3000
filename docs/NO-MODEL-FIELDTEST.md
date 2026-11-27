@@ -26,7 +26,7 @@ Er startet ausdrücklich **nicht** `camera.runtime`, führt keine Inferenz aus, 
 
 ## Datenfluss- und Sicherheitsgrenzen
 
-Die lokale Source API akzeptiert sechs Beobachtungsfelder. Die Bridge ordnet **jedes** Quellereignis als `camera_detection` mit `unverified_candidate`-Label ein. Daher dürfen manuelle PWA-Exporte in diesem Modus **nicht** mit `Import-BeeKeeperMobileExport.ps1` in die Source API importiert werden: Das würde eine manuelle Beobachtung fälschlich als Kameraereignis darstellen. Es gibt keinen etablierten separaten manuellen Beobachtungstyp im Source-API-/Bridge-Vertrag.
+Die Source API akzeptiert die sechs bisherigen Pflichtfelder sowie optional `origin`. Alte Ereignisse ohne dieses Feld bleiben aus Kompatibilitätsgründen `camera`. Die Mobile-PWA exportiert v2 mit explizitem `origin: manual_observation`; der Importer weist Kamera- und unbekannte Ursprünge ab. Die Bridge bildet manuelle Sichtungen als eigenen Monitor-Typ `manual_observation` mit `observer_report`-Kennzeichnung ab. Das ist eine menschlich eingegebene Beobachtung, **keine** Kameraerkennung, Modellkonfidenz oder Expertenbestätigung. Der Monitor-Warnpfad darf diesen Typ nicht berücksichtigen. Der Import ist erst nach Integration des passenden Monitor-Ereignisvertrags zu verwenden.
 
 Manuelle Sichtungen verbleiben im Browser und sind nicht in der Stationsdatenbank oder Monitor-Ansicht verfügbar. Für einen integrierten manuellen Server-Workflow ist zuerst ein versionierter Ereignistyp im Monitor-Vertrag und eine kompatible Änderung beider Repositories erforderlich. Keine künstlichen Ereignisse in eine Feldstation oder Produktionsdatenbank einspeisen.
 
