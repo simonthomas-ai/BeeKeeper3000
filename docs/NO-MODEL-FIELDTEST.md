@@ -52,7 +52,7 @@ sudo bash scripts/install-linux.sh \
   --monitor-repo "../Beekeeper-Monitor"
 
 systemctl is-active beekeeper-monitor beekeeper-source-api beekeeper-bridge
-python3 scripts/station_doctor.py --monitor-repo "../Beekeeper-Monitor" --json
+python3 scripts/station_doctor.py --monitor-repo "../Beekeeper-Monitor" --no-model --json
 ```
 
 Der Doctor muss die Repository- und Laufzeitprüfungen bestehen; nach gestarteten Diensten muss er die lokalen APIs erreichen. Authentifizierung wird nur geprüft, wenn die jeweiligen Schlüssel bereits in der Prozessumgebung vorhanden sind. Kein API-Port darf öffentlich freigegeben sein. Die Basisinstallation startet keine Kamera und aktiviert keine KI.
@@ -75,6 +75,7 @@ Unter Linux Modellkonfiguration in einer Subshell ausblenden, Quelle interaktiv 
   export BEEKEEPER_CAMERA_SOURCE
   python3 scripts/station_doctor.py \
     --monitor-repo "../Beekeeper-Monitor" \
+    --no-model \
     --test-camera \
     --json
 )
