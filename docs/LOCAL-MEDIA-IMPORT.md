@@ -29,7 +29,7 @@ Die ONNX-Auswertung läuft lokal auf der CPU. Der Event-Vertrag akzeptiert nur d
 
 1. Optionalen Kamera-Stack installieren: python -m pip install -r camera/requirements.txt.
 2. Das ONNX-Modell muss durch Manifest, SHA-256 und eine dokumentierte Lizenzprüfung eindeutig freigegeben sein. Das Beispielmanifest enthält absichtlich keine freigegebenen Modellgewichte.
-3. Zum Einreihen von Ereignissen ist ausschließlich ein Manifest mit `inference_status: "independently_validated"` zulässig. Ein experimentelles Manifest erfordert ausdrücklich `--shadow`; in diesem Modus werden alle Detektionen verworfen und die Outbox weder erstellt noch verändert.
+3. In diesem Stand ist ausschließlich `--shadow` unterstützt. Der Manifestvalidator weist `independently_validated` zurück, solange signierte unabhängige Evaluationsattestierung und Prüfung gegen einen vertrauenswürdigen Evaluatorschlüssel fehlen. Im Shadow-Modus werden alle Detektionen verworfen und die Outbox weder erstellt noch verändert.
 4. Der Betreiber wählt den Ordner mit der Quelldatei ausdrücklich aus und bestätigt den lokalen Dateizugriff.
 5. Die Quelldatei muss innerhalb dieses Ordners liegen; Symlink-Pfade sind nicht erlaubt.
 6. Die SQLite-Outbox muss auf einem geschützten Datenträger liegen. Die Datenbank ist nicht anwendungsseitig verschlüsselt; BitLocker bzw. eine verschlüsselte Systempartition ist erforderlich.
@@ -38,7 +38,7 @@ Die ONNX-Auswertung läuft lokal auf der CPU. Der Event-Vertrag akzeptiert nur d
 
 ~~~powershell
 python -m pip install -r camera/requirements.txt
-python scripts/import_local_media.py --manifest "C:/BeeKeeper/model/model-manifest.json" --source "C:/BeeKeeper/review/aufnahme.mp4" --allowed-root "C:/BeeKeeper/review" --station-id "station-01" --outbox "C:/BeeKeeper/data/local-media-outbox.sqlite3" --confirm-local-file-access
+python scripts/import_local_media.py --manifest "C:/BeeKeeper/model/model-manifest.json" --source "C:/BeeKeeper/review/aufnahme.mp4" --allowed-root "C:/BeeKeeper/review" --station-id "station-01" --outbox "C:/BeeKeeper/data/local-media-outbox.sqlite3" --confirm-local-file-access --shadow
 ~~~
 
 ## Beispiel – Linux
@@ -58,7 +58,7 @@ Ein experimentelles Manifest darf nur mit `--shadow` verwendet werden. Die lokal
 python scripts/import_local_media.py --manifest "C:/BeeKeeper/model/model-manifest.json" --source "C:/BeeKeeper/review/aufnahme.mp4" --allowed-root "C:/BeeKeeper/review" --station-id "station-01" --outbox "C:/BeeKeeper/data/local-media-outbox.sqlite3" --confirm-local-file-access --shadow
 ~~~
 
-Das Entfernen von `--shadow` ist nur mit einem unabhängig validierten Manifest zulässig. Der Shadow-Test bestätigt keine Modellgüte oder Feldfreigabe.
+`--shadow` kann in diesem Stand nicht entfernt werden. Eine öffentliche HTTPS-Berichts-URL genügt nicht: Es fehlt noch die kryptografische Prüfung einer signierten Attestierung durch einen vertrauenswürdigen unabhängigen Evaluator. Der Shadow-Test bestätigt keine Modellgüte oder Feldfreigabe.
 
 ## Tests und Abnahmegrenzen
 
