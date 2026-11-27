@@ -9,6 +9,7 @@ const sample = {
   species: "Vespa velutina (Verdacht)",
   confidence: 0.55,
   prey_detected: false,
+  origin: "manual_observation",
 };
 
 test("maps observer confidence levels to bounded numeric values", () => {
@@ -18,7 +19,7 @@ test("maps observer confidence levels to bounded numeric values", () => {
   assert.throws(() => confidenceScore("certain"));
 });
 
-test("validates the exact six-field Source API event contract", () => {
+test("validates the exact seven-field Source API event contract", () => {
   assert.deepEqual(validateSourceEvent({ ...sample }), sample);
 });
 
@@ -32,6 +33,7 @@ test("rejects invalid IDs, timezone-free timestamps and out-of-range confidence"
   assert.throws(() => validateSourceEvent({ ...sample, observed_at: "2026-11-20T12:00:00" }));
   assert.throws(() => validateSourceEvent({ ...sample, confidence: 1.5 }));
   assert.throws(() => validateSourceEvent({ ...sample, prey_detected: 0 }));
+  assert.throws(() => validateSourceEvent({ ...sample, origin: "camera" }));
 });
 
 test("metadata export strips every local-only field", () => {
@@ -41,7 +43,7 @@ test("metadata export strips every local-only field", () => {
     private: { note: "private", photo: "blob", location: { latitude: 1 } },
   });
   assert.deepEqual(Object.keys(exported).sort(), [
-    "id", "observed_at", "station_id", "species", "confidence", "prey_detected",
+    "id", "observed_at", "station_id", "species", "confidence", "prey_detected", "origin",
   ].sort());
   assert.equal("private" in exported, false);
   assert.deepEqual(exported, sample);

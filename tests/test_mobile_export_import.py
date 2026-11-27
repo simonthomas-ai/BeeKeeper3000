@@ -20,6 +20,7 @@ def sample_event(event_id="mobile-test-001"):
         "species": "Vespa velutina (Verdacht; unbestätigt)",
         "confidence": 0.55,
         "prey_detected": False,
+        "origin": "manual_observation",
     }
 
 
@@ -63,6 +64,14 @@ class MobileExportImportTests(unittest.TestCase):
             write_export(path)
             events = load_mobile_export(path)
         self.assertEqual(events, [sample_event()])
+
+    def test_rejects_camera_origin_in_manual_mobile_export(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "export.json"
+            camera = sample_event() | {"origin": "camera"}
+            write_export(path, [camera])
+            with self.assertRaises(MobileExportError):
+                load_mobile_export(path)
 
     def test_rejects_private_fields_and_duplicates(self):
         with tempfile.TemporaryDirectory() as directory:

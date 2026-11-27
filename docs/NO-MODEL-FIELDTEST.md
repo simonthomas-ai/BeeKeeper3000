@@ -26,9 +26,9 @@ Er startet ausdrücklich **nicht** `camera.runtime`, führt keine Inferenz aus, 
 
 ## Datenfluss- und Sicherheitsgrenzen
 
-Die lokale Source API akzeptiert sechs Beobachtungsfelder. Die Bridge ordnet **jedes** Quellereignis als `camera_detection` mit `unverified_candidate`-Label ein. Daher dürfen manuelle PWA-Exporte in diesem Modus **nicht** mit `Import-BeeKeeperMobileExport.ps1` in die Source API importiert werden: Das würde eine manuelle Beobachtung fälschlich als Kameraereignis darstellen. Es gibt keinen etablierten separaten manuellen Beobachtungstyp im Source-API-/Bridge-Vertrag.
+Die Source API akzeptiert die sechs bisherigen Pflichtfelder sowie optional `origin`. Alte Ereignisse ohne dieses Feld bleiben aus Kompatibilitätsgründen `camera`. Die Mobile-PWA exportiert v2 mit explizitem `origin: manual_observation`; der Importer weist Kamera- und unbekannte Ursprünge ab. Die Bridge bildet manuelle Sichtungen als eigenen Monitor-Typ `manual_observation` mit `observer_report`-Kennzeichnung ab. Das ist eine menschlich eingegebene Beobachtung, **keine** Kameraerkennung, Modellkonfidenz oder Expertenbestätigung. Der Monitor-Warnpfad darf diesen Typ nicht berücksichtigen. Der Import ist erst nach Integration des passenden Monitor-Ereignisvertrags zu verwenden.
 
-Manuelle Sichtungen verbleiben im Browser und sind nicht in der Stationsdatenbank oder Monitor-Ansicht verfügbar. Für einen integrierten manuellen Server-Workflow ist zuerst ein versionierter Ereignistyp im Monitor-Vertrag und eine kompatible Änderung beider Repositories erforderlich. Keine künstlichen Ereignisse in eine Feldstation oder Produktionsdatenbank einspeisen.
+Manuelle Sichtungen verbleiben zunächst im Browser. Nach erfolgreicher Integration beider zugehöriger PRs kann ein Betreiber einen v2-Export bewusst in die lokale Source API importieren. Die Bridge überträgt ihn dann als `manual_observation`; er darf weder als Kameraerkennung angezeigt noch für KI-Warnungen verwendet werden. Bis beide PRs gemergt und die gemeinsame Integration geprüft sind, bleibt der Import gesperrt. Keine künstlichen Ereignisse in eine Feldstation oder Produktionsdatenbank einspeisen.
 
 ## Voraussetzungen
 
@@ -83,7 +83,7 @@ Unter Linux Modellkonfiguration in einer Subshell ausblenden, Quelle interaktiv 
 
 RTSP-Zugangsdaten weder in die Shell-Historie noch in Logs oder Testnotizen schreiben. Eine erfolgreiche Zeile `Live camera test` belegt nur, dass die Kamera geöffnet und ein Frame gelesen wurde. Bei einem nicht-null Exitcode die einzelnen Prüfzeilen auswerten: Der Doctor kann unabhängig vom Kameratest an nicht laufenden Diensten scheitern.
 
-## Manuelle Beobachtung ohne Serverübertragung
+## Manuelle Beobachtung und optionaler lokaler Import
 
 Die Mobile-PWA kann zur Bedienungsprobe auf demselben Stationsgerät lokal bereitgestellt werden:
 
@@ -91,7 +91,7 @@ Die Mobile-PWA kann zur Bedienungsprobe auf demselben Stationsgerät lokal berei
 python3 -m http.server 8000 --bind 127.0.0.1 --directory mobile-pwa
 ```
 
-Auf diesem Gerät `http://127.0.0.1:8000/` öffnen und ausschließlich tatsächlich beobachtete Fälle manuell erfassen. Die Beobachterangabe ist weder Modellkonfidenz noch Expertenbestätigung. PWA-Datensätze bleiben in der lokalen Browser-IndexedDB; es gibt keine automatische Synchronisierung. Fotos, GPS und Notizen für diesen ersten Versuch ausgeschaltet lassen. Den Metadatenexport nicht in die Station importieren, solange der gemeinsame Vertrag manuelle und Kameraereignisse nicht unterscheidet. Server mit `Ctrl+C` beenden.
+Auf diesem Gerät `http://127.0.0.1:8000/` öffnen und ausschließlich tatsächlich beobachtete Fälle manuell erfassen. Die Beobachterangabe ist weder Modellkonfidenz noch Expertenbestätigung. PWA-Datensätze bleiben in der lokalen Browser-IndexedDB; es gibt keine automatische Synchronisierung. Fotos, GPS und Notizen für diesen ersten Versuch ausgeschaltet lassen. Ein Export enthält nur die begrenzten Metadaten plus `origin=manual_observation`. Erst nach Merge und erfolgreicher CI beider PRs darf der Betreiber den v2-Export bewusst mit `scripts/Import-BeeKeeperMobileExport.ps1` an die fest codierte Loopback-Source-API übergeben. Der Importer weist alte v1-Exporte und jeden anderen Ursprung ab; die Bridge muss den Eintrag als `manual_observation` ablegen. Bei fehlender Monitor-Kompatibilität nicht importieren. Server mit `Ctrl+C` beenden.
 
 ## Protokoll und Abbruch
 
@@ -107,5 +107,5 @@ sudo systemctl stop beekeeper-bridge beekeeper-source-api beekeeper-monitor
 
 - Automatische Detektion und jede Qualitätsaussage bleiben blockiert: kein lokales, freigegebenes und kompatibilitätsgeprüftes ONNX-Modell, keine belegte vollständige Rechtekette/fachliche Freigabe des externen Kandidaten, kein unabhängiger BeeKeeper-Holdoutbestand und keine gemessenen Kennzahlen.
 - Ein einzelner Kamera-Frame ist keine Dauerbetriebs-, Wiederverbindungs-, Datenschutz- oder Feldleistungsprüfung.
-- Das Feldprotokoll erzeugt absichtlich keine integrierten Beobachtungen. Ein manueller Server-Workflow benötigt einen eigenen, versionierten Eventtyp und Kompatibilitätstests im Monitor-Repository; dieses Repository allein kann das nicht sicher umsetzen.
+- Das Feldprotokoll erzeugt keine automatischen Beobachtungen. Der optionale manuelle Import bleibt bis zur erfolgreichen gemeinsamen Integration beider Repositories gesperrt.
 - Der tatsächliche Raspberry-Pi-/Kameratest, Datenschutzfreigabe, Datenaufbewahrung und Betreiberrollen müssen vor Ort entschieden und nachgewiesen werden.

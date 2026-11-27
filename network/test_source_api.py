@@ -36,6 +36,14 @@ class SourceContractTests(unittest.TestCase):
         self.assertEqual(event["id"], "source-event-0001")
         self.assertEqual(event["species"], "Vespa velutina")
         self.assertIs(type(event["prey_detected"]), bool)
+        self.assertEqual(event["origin"], "camera")
+
+    def test_preserves_explicit_manual_observation_origin(self):
+        event = validate_source_event(sample_event(1) | {"origin": "manual_observation"})
+        self.assertEqual(event["origin"], "manual_observation")
+        for invalid in ("expert_confirmed", [], None, True):
+            with self.subTest(origin=invalid), self.assertRaises(SourceEventError):
+                validate_source_event(sample_event(2) | {"origin": invalid})
 
     def test_rejects_media_gps_free_text_and_untrusted_fields(self):
         for extra in (

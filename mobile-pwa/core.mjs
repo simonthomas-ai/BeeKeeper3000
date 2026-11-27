@@ -1,4 +1,4 @@
-export const SOURCE_KEYS = Object.freeze(["id","observed_at","station_id","species","confidence","prey_detected"]);
+export const SOURCE_KEYS = Object.freeze(["id","observed_at","station_id","species","confidence","prey_detected","origin"]);
 export function confidenceScore(level){const scores={low:0.25,medium:0.55,high:0.85};if(!Object.hasOwn(scores,level))throw new TypeError("Unbekannte Einschätzungsstufe");return scores[level]}
 export function validateSourceEvent(event){
  if(!event||typeof event!=="object"||Array.isArray(event))throw new TypeError("Ereignis muss ein Objekt sein");
@@ -10,9 +10,10 @@ export function validateSourceEvent(event){
  if(typeof event.species!=="string"||!event.species.trim()||event.species.length>160||/[\u0000-\u001f\u007f]/.test(event.species))throw new TypeError("Ungültige Artangabe");
  if(typeof event.confidence!=="number"||!Number.isFinite(event.confidence)||event.confidence<0||event.confidence>1)throw new TypeError("Einschätzung muss zwischen 0 und 1 liegen");
  if(typeof event.prey_detected!=="boolean")throw new TypeError("prey_detected muss boolesch sein");
+ if(event.origin!=="manual_observation")throw new TypeError("Mobile-PWA-Ereignisse müssen als manuelle Beobachtung gekennzeichnet sein");
  return event;
 }
-export function toSourceEvent(report){if(!report||typeof report!=="object")throw new TypeError("Lokaler Bericht fehlt");return validateSourceEvent({id:report.event_id,observed_at:report.observed_at,station_id:report.station_id,species:report.species,confidence:report.confidence,prey_detected:report.prey_detected})}
+export function toSourceEvent(report){if(!report||typeof report!=="object")throw new TypeError("Lokaler Bericht fehlt");return validateSourceEvent({id:report.event_id,observed_at:report.observed_at,station_id:report.station_id,species:report.species,confidence:report.confidence,prey_detected:report.prey_detected,origin:"manual_observation"})}
 export function makeStationId(uuid){if(typeof uuid!=="string"||!/^[0-9a-f-]{16,36}$/i.test(uuid))throw new TypeError("Ungültige UUID");return "mobile-"+uuid.toLowerCase()}
 
 export function waitForOrientationSample(target, {

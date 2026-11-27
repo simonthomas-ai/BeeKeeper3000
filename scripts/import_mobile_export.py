@@ -20,12 +20,12 @@ if str(ROOT) not in sys.path:
 from network.source_events import SourceEventError, validate_source_event  # noqa: E402
 
 API_URL = "http://127.0.0.1:8787/api/events"
-EXPORT_FORMAT = "beekeeper-source-api-v1-metadata-export"
+EXPORT_FORMAT = "beekeeper-source-api-v2-metadata-export"
 MAX_EXPORT_BYTES = 2 * 1024 * 1024
 MAX_EVENTS = 100
 MAX_RESPONSE_BYTES = 16 * 1024
 POST_INTERVAL_SECONDS = 0.55
-_EVENT_FIELDS = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected"}
+_EVENT_FIELDS = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected", "origin"}
 
 
 class MobileExportError(ValueError):
@@ -87,6 +87,8 @@ def load_mobile_export(path: Path) -> list[dict]:
             if not isinstance(event, dict) or set(event) != _EVENT_FIELDS:
                 raise SourceEventError("event keys do not match")
             clean = validate_source_event(event)
+            if clean["origin"] != "manual_observation":
+                raise SourceEventError("mobile exports must be marked as manual_observation")
         except (SourceEventError, TypeError, ValueError) as exc:
             raise MobileExportError(f"Ereignis {index} verletzt den Source-API-v1-Vertrag.") from exc
         if clean["id"] in seen:

@@ -55,6 +55,19 @@ test('maps only metadata and never trusts upstream verification state', () => {
   assert.equal('lon' in mapped.payload, false);
 });
 
+test('manual PWA reports stay manual and are never mapped as camera detections', () => {
+  const mapped = toMonitorEvent({ ...sampleEvent, origin: 'manual_observation' });
+  assert.equal(mapped.kind, 'manual_observation');
+  assert.equal(mapped.source, 'beekeeper_mobile');
+  assert.equal(mapped.payload.label, 'observer_report:vespa_velutina');
+  assert.equal(mapped.payload.verification_status, 'observer_report');
+  assert.equal(mapped.payload.confidence, 0.83);
+});
+
+test('rejects unknown event origins', () => {
+  assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'expert_confirmed' }), null);
+});
+
 test('rejects invalid confidence, timestamps, IDs and species labels', () => {
   assert.equal(toMonitorEvent({ ...sampleEvent, confidence: 2 }), null);
   assert.equal(toMonitorEvent({ ...sampleEvent, confidence: '0.5' }), null);

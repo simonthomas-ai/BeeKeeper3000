@@ -181,22 +181,25 @@ export function toMonitorEvent(event) {
   if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
   const timestamp = typeof event.observed_at === 'string' ? event.observed_at : '';
   if (timestamp.length > 40 || !Number.isFinite(Date.parse(timestamp)) || !/(Z|[+-]\d\d:\d\d)$/.test(timestamp)) return null;
+  const origin = event.origin === undefined ? 'camera' : event.origin;
+  if (origin !== 'camera' && origin !== 'manual_observation') return null;
+  const manual = origin === 'manual_observation';
   const rawStation = typeof event.station_id === 'string' ? event.station_id : '';
   const station = rawStation.toLowerCase().replace(/[^a-z0-9._-]/g, '_').slice(0, 80) || 'hornet3000-local';
   const species = event.species.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 80);
   if (!species) return null;
   return {
-    kind: 'camera_detection',
+    kind: manual ? 'manual_observation' : 'camera_detection',
     device_id: station,
     timestamp,
-    source: 'hornet3000',
+    source: manual ? 'beekeeper_mobile' : 'hornet3000',
     schema_version: 1,
     payload: {
-      label: `unverified_candidate:${species}`,
+      label: `${manual ? 'observer_report' : 'unverified_candidate'}:${species}`,
       confidence,
       origin_event_id: event.id,
-      // Source/model fields are never allowed to claim expert confirmation.
-      verification_status: 'unverified',
+      // A manual report is never a model detection or expert confirmation.
+      verification_status: manual ? 'observer_report' : 'unverified',
       prey_detected: event.prey_detected === true
     }
   };
