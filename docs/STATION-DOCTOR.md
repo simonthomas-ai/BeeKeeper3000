@@ -7,14 +7,16 @@ Run from the BeeKeeper3000 repository root:
 ## Windows PowerShell
 
 ~~~powershell
-python .\scripts\station_doctor.py --monitor-repo ..\Beekeeper-Monitor
+python .\scripts\station_doctor.py --monitor-repo ..\Beekeeper-Monitor --no-model
 ~~~
 
 ## Linux
 
 ~~~sh
-python3 scripts/station_doctor.py --monitor-repo ../Beekeeper-Monitor
+python3 scripts/station_doctor.py --monitor-repo ../Beekeeper-Monitor --no-model
 ~~~
+
+For a No-AI field preflight, keep `--no-model` enabled. It takes precedence over both `--model-manifest` and `BEEKEEPER_MODEL_MANIFEST`; the doctor does not read a model file, import ONNX Runtime or execute synthetic inference. Remove this flag only for a separately planned model smoke test.
 
 The source API and Monitor checks use read-only GET requests to literal loopback IP addresses only (`127.0.0.0/8` or `::1`); DNS hostnames such as `localhost` are rejected to avoid DNS rebinding. HTTP redirects are not followed. To verify authenticated reads, run the doctor in a shell that has the correct secret environment variables loaded. The values are never printed:
 
@@ -45,7 +47,7 @@ One-frame camera check (explicit opt-in; set the source in the environment so RT
 
 ~~~powershell
 $env:BEEKEEPER_CAMERA_SOURCE = "0"
-python .\scripts\station_doctor.py --test-camera
+python .\scripts\station_doctor.py --no-model --test-camera
 ~~~
 
 Connect-only MeshCore hardware check (explicit opt-in; no packet transmitted):
