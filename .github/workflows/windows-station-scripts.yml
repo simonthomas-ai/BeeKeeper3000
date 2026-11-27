@@ -27,7 +27,19 @@ jobs:
         with:
           persist-credentials: false
           repository: simonthomas-ai/Beekeeper-Monitor
+          ref: b8491b8ed25d5ab7c8028a5d52cc5e760c6fbac1
           path: Beekeeper-Monitor
+      - name: Verify pinned Monitor backup ACL contract
+        shell: pwsh
+        run: |
+          $expected = "b8491b8ed25d5ab7c8028a5d52cc5e760c6fbac1"
+          $monitorPath = "$env:GITHUB_WORKSPACE/Beekeeper-Monitor"
+          $actual = (git -C $monitorPath rev-parse HEAD).Trim()
+          if ($actual -ne $expected) { throw "Monitor checkout does not match the reviewed backup ACL commit." }
+          $helper = Get-Content -Raw -LiteralPath (Join-Path $monitorPath "integrations/store_backup.py")
+          foreach ($marker in @("_check_windows_private_directory", "PSModulePath", "BEEKEEPER_BACKUP_ACL_PATH")) {
+            if (-not $helper.Contains($marker)) { throw "Pinned Monitor backup ACL contract is missing: $marker" }
+          }
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
