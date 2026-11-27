@@ -31,6 +31,12 @@ Set-Acl -LiteralPath $path -AclObject $acl
 """
     environment = os.environ.copy()
     environment["BEEKEEPER_TEST_BACKUP_PATH"] = str(path)
+    system_root = environment.get("SystemRoot", r"C:\Windows")
+    program_files = environment.get("ProgramFiles", r"C:\Program Files")
+    environment["PSModulePath"] = os.pathsep.join((
+        os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0", "Modules"),
+        os.path.join(program_files, "WindowsPowerShell", "Modules"),
+    ))
     subprocess.run(
         ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
         check=True,
