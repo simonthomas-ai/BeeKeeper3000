@@ -106,19 +106,15 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(fake.calls[0].source, 0)
         self.assertEqual(fake.calls[0].backend, fake.CAP_DSHOW)
 
-    def test_cooldown_and_offline_queue_preservation(self):
+    def test_self_asserted_independent_status_is_rejected_before_it_can_queue_events(self):
         with tempfile.TemporaryDirectory() as tmp:
             box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
-            runtime = LocalCameraRuntime(
-                detector=FakeDetector(), outbox=box, client=OfflineClient(),
-                station_id="station-01", source="0", max_fps=2, cooldown_seconds=30,
-            )
-            self.assertEqual(runtime.process_frame(object(), now_epoch=1000), 1)
-            self.assertEqual(runtime.process_frame(object(), now_epoch=1010), 0)
-            self.assertEqual(box.count(), 1)
-            with self.assertRaises(SourceClientError):
-                runtime.drain_outbox()
-            self.assertEqual(box.count(), 1)
+            with self.assertRaisesRegex(CameraRuntimeError, "trusted evaluator attestation"):
+                LocalCameraRuntime(
+                    detector=FakeDetector(), outbox=box, client=OfflineClient(),
+                    station_id="station-01", source="0",
+                )
+            self.assertEqual(box.count(), 0)
 
     def test_unmanifested_detector_is_rejected_before_it_can_queue_events(self):
         with tempfile.TemporaryDirectory() as tmp:
