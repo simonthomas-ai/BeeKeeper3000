@@ -7,7 +7,7 @@ from unittest import mock
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-from station_doctor import Report, _is_loopback_url, _request, _version, check_bridge_config, check_model
+from station_doctor import Report, _is_loopback_url, _request, _version, check_bridge_config, check_model, parse_args
 
 
 class StationDoctorTests(unittest.TestCase):
@@ -79,6 +79,21 @@ class StationDoctorTests(unittest.TestCase):
     def test_python_version_parser_handles_missing(self):
         with mock.patch("station_doctor.shutil.which", return_value=None):
             self.assertIsNone(_version("node"))
+
+    def test_no_model_flag_ignores_manifest_argument_and_environment(self):
+        report = Report()
+        with mock.patch.dict("os.environ", {"BEEKEEPER_MODEL_MANIFEST": "private-model.json"}):
+            check_model(report, Path("."), "explicit-model.json", no_model=True)
+
+        self.assertEqual(len(report.checks), 1)
+        self.assertEqual(report.checks[0].name, "Camera model manifest")
+        self.assertEqual(report.checks[0].status, "WARN")
+        self.assertIn("--no-model", report.checks[0].detail)
+        self.assertIn("no model file is read or executed", report.checks[0].detail)
+
+    def test_parse_args_accepts_no_model(self):
+        args = parse_args(["--no-model"])
+        self.assertTrue(args.no_model)
 
     def test_model_check_runs_and_discards_local_synthetic_inference(self):
         manifest = types.SimpleNamespace(width=320, height=240)
