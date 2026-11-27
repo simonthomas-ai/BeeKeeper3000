@@ -132,6 +132,24 @@ class WaspinatorMetadataAuditTests(unittest.TestCase):
         self.assertIn('"Authorization": "Bearer " + os.environ["GITHUB_TOKEN"]', workflow)
         self.assertNotIn("secrets.", workflow)
 
+    def test_upstream_tree_audit_is_metadata_only_and_does_not_publish_artifacts(self):
+        workflow = (
+            Path(__file__).resolve().parents[1]
+            / ".github"
+            / "workflows"
+            / "waspinator-upstream-audit.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("https://api.github.com/repos/", workflow)
+        self.assertIn("/git/trees/", workflow)
+        self.assertIn("No model weights were downloaded or executed.", workflow)
+        self.assertNotIn("raw.githubusercontent.com", workflow)
+        self.assertNotIn("download_url", workflow)
+        self.assertNotIn("actions/download-artifact", workflow)
+        self.assertNotIn("actions/upload-artifact", workflow)
+        self.assertIn("GITHUB_STEP_SUMMARY", workflow)
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", workflow)
+        self.assertIn('"Authorization": "Bearer " + os.environ["GITHUB_TOKEN"]', workflow)
+
     def test_old_weight_downloader_is_removed(self):
         old = (
             Path(__file__).resolve().parents[1]
