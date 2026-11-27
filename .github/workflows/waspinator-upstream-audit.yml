@@ -1,4 +1,4 @@
-name: Audit upstream Waspinator model metadata
+name: Audit upstream Waspinator metadata only (no weights or artifact)
 on:
   workflow_dispatch:
   push:
@@ -20,14 +20,14 @@ jobs:
           python-version: '3.12'
       - name: Fetch and inspect metadata only (no model execution)
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           UPSTREAM_REPO: gitDew/waspinator
         run: |
           python - <<'PY'
           import json, os, urllib.request
-          from pathlib import Path
           base="https://api.github.com/repos/"+os.environ["UPSTREAM_REPO"]
           def get(url):
-              request=urllib.request.Request(url,headers={"Accept":"application/vnd.github+json","User-Agent":"BeeKeeper3000-Model-Audit"})
+              request=urllib.request.Request(url,headers={"Accept":"application/vnd.github+json","User-Agent":"BeeKeeper3000-Model-Audit","Authorization":"Bearer "+os.environ["GITHUB_TOKEN"]})
               with urllib.request.urlopen(request,timeout=25) as response:
                   return json.load(response)
           repo=get(base)
@@ -45,17 +45,8 @@ jobs:
               lines.append("| `"+path+"` | "+("yes" if item else "NO")+" | "+(str(item["size"]) if item else "—")+" | "+(item["sha"] if item else "—")+" |")
           lines += ["","**No model weights were downloaded or executed.** Git blob hashes are not SHA-256. No independent inference/accuracy or training-data rights have been verified. **Not approved for production.**"]
           report="\n".join(lines)+"\n"
-          Path("waspinator-upstream-audit.md").write_text(report,encoding="utf-8")
           with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as f:
               f.write(report)
           if any(path not in files for path in wanted):
               raise SystemExit("required upstream metadata missing")
           PY
-      - name: Preserve audit report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: waspinator-upstream-metadata
-          path: waspinator-upstream-audit.md
-          if-no-files-found: warn
-          retention-days: 30
