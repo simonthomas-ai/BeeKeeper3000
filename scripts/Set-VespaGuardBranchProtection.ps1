@@ -40,6 +40,42 @@ function Get-ExistingProtection {
     throw "Cannot safely read current branch protection for $Repository. No change made. $message"
 }
 
+function Assert-RequiredChecksAvailable {
+    param(
+        [Parameter(Mandatory)][string]$Repository,
+        [Parameter(Mandatory)][string[]]$RequiredChecks
+    )
+
+    $branch = Invoke-GitHubJson -GhArguments @("api", "repos/$Repository/branches/main")
+    $headSha = [string]$branch.commit.sha
+    if ([string]::IsNullOrWhiteSpace($headSha)) {
+        throw "Cannot resolve main HEAD for $Repository. No branch protection was changed."
+    }
+
+    $checkData = Invoke-GitHubJson -GhArguments @(
+        "api",
+        "repos/$Repository/commits/$headSha/check-runs?per_page=100"
+    )
+    $checks = @($checkData.check_runs)
+
+    foreach ($required in $RequiredChecks) {
+        $matches = @($checks | Where-Object { $_.name -eq $required })
+        if ($matches.Count -eq 0) {
+            throw "Required check '$required' is absent from current main commit $headSha in $Repository. No branch protection was changed."
+        }
+
+        $latest = $matches | Sort-Object started_at -Descending | Select-Object -First 1
+        if ($latest.status -ne "completed" -or $latest.conclusion -ne "success") {
+            throw "Required check '$required' is not completed successfully on current main commit $headSha in $Repository. No branch protection was changed."
+        }
+    }
+
+    Write-Host "Verified $($RequiredChecks.Count) required check contexts on $Repository main ($headSha)." -ForegroundColor Green
+}
+
+# Only checks that run for every pull request to main belong here.
+# Path-filtered network and supply-chain workflows are intentionally not required,
+# because GitHub would leave an untriggered required context pending.
 $policies = @(
     @{
         Repository = "$Owner/BeeKeeper3000"
@@ -56,7 +92,10 @@ $policies = @(
         Repository = "$Owner/Beekeeper-Monitor"
         RequiredChecks = @(
             "gesamttest",
-            "BeeKeeper3000 $([char]0x2013) Bridge-Integration"
+            "Field-Dataset-Export gegen BeeKeeper-Validator",
+            "BeeKeeper3000 $([char]0x2013) Bridge-Integration",
+            "Analyze source (python)",
+            "Analyze source (javascript-typescript)"
         )
     }
 )
@@ -86,6 +125,9 @@ foreach ($policy in $policies) {
     $contexts = @($policy.RequiredChecks) |
         Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
         Sort-Object -Unique
+
+    # Read-only preflight: refuse to install a policy that names missing or failing checks.
+    Assert-RequiredChecksAvailable -Repository $repository -RequiredChecks $contexts
 
     $payload = [ordered]@{
         required_status_checks = [ordered]@{
