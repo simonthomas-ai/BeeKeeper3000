@@ -128,7 +128,8 @@ class WaspinatorMetadataAuditTests(unittest.TestCase):
         self.assertIn("No SHA-256 is computed.", workflow)
         self.assertIn("Git blob ID is not a SHA-256 digest", workflow)
         self.assertNotIn("actions/upload-artifact", workflow)
-        self.assertNotIn("GITHUB_TOKEN", workflow)
+        self.assertIn("GITHUB_TOKEN: ${{ github.token }}", workflow)
+        self.assertIn('"Authorization": "Bearer " + os.environ["GITHUB_TOKEN"]', workflow)
         self.assertNotIn("secrets.", workflow)
 
     def test_old_weight_downloader_is_removed(self):
