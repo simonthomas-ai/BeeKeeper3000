@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "purpose": "Capability inventory only; never authorizes inference or alarms",
+  "capabilities": [
+    {"id":"hornet_species","status":"not_validated","enabled":false,"model":null},
+    {"id":"bee_species","status":"not_validated","enabled":false,"model":null},
+    {"id":"varroa","status":"not_validated","enabled":false,"model":null},
+    {"id":"queen","status":"not_validated","enabled":false,"model":null},
+    {"id":"swarm_visual","status":"not_validated","enabled":false,"model":null},
+    {"id":"swarm_audio","status":"not_validated","enabled":false,"model":null},
+    {"id":"hive_audio","status":"not_validated","enabled":false,"model":null},
+    {"id":"flight_activity","status":"not_validated","enabled":false,"model":null}
+  ],
+  "candidates": [
+    {
+      "id": "hornet3000",
+      "capability": "hornet_species",
+      "source": "https://github.com/vespCV/hornet3000",
+      "revision": "78f51980ee99e45748e78e54dd1312cff846a5ac",
+      "status": "rights_and_runtime_pending",
+      "enabled": false
+    },
+    {
+      "id": "waspinator",
+      "capability": "hornet_species",
+      "source": "https://github.com/gitDew/waspinator",
+      "revision": "7251be99a69dfc38f82abb062e22a0062ff5c58c",
+      "status": "rights_and_runtime_pending",
+      "enabled": false
+    }
+  ]
+}
