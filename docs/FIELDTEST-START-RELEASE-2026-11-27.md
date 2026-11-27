@@ -38,8 +38,8 @@ Dies ist eine **begrenzte technische Feldtestfreigabe**, keine Produktivfreigabe
 ## Durchführung
 
 1. Zunächst die dokumentierte Validate-only-Prüfung aus `docs/NO-MODEL-FIELDTEST.md` durchführen.
-2. Basisdienste starten und `scripts/station_doctor.py` ausführen. Fehler nicht übergehen.
-3. Optional den dokumentierten Einzelbild-Kameratest ausführen. Das Modellmanifest muss für diesen Test unterdrückt sein; keine Inferenz.
+2. Basisdienste starten und `scripts/station_doctor.py --no-model` ausführen. Der Schalter ignoriert auch ein gesetztes `BEEKEEPER_MODEL_MANIFEST`; Fehler nicht übergehen.
+3. Optional den dokumentierten Einzelbild-Kameratest mit `--no-model` ausführen. Es wird kein Modell geladen und keine Inferenz ausgeführt.
 4. Manuelle Sichtungen ausschließlich lokal in der Mobile-PWA erfassen. Nicht über den Kameraereignis-Importer in die Stationsdatenbank übertragen.
 5. Nur technische Beobachtungen notieren: Gerät/Revision, Betriebssystem, Kamera/Firmware, Verbindungsart, Start-/Endzeit, Doctor-Ergebnis, Frame erfolgreich ja/nein, Abbrüche und Bedienprobleme.
 6. Dienste nach dem Test kontrolliert stoppen. Nicht mehr benötigte lokale Testbilder und Exporte nach Prüfung sicher löschen.
