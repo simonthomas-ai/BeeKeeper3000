@@ -88,9 +88,13 @@ class LocalCameraRuntime:
         else:
             manifest = getattr(detector, "manifest", None)
             inference_status = getattr(manifest, "inference_status", None)
-            if manifest is None or inference_status not in {"experimental", "independently_validated"}:
+            if manifest is None:
                 raise CameraRuntimeError("detector must carry a reviewed model manifest")
-            if inference_status == "experimental" and not shadow_mode:
+            if inference_status != "experimental":
+                raise CameraRuntimeError(
+                    "production inference is disabled until trusted evaluator attestation verification is implemented"
+                )
+            if not shadow_mode:
                 raise CameraRuntimeError("experimental models require explicit --shadow mode")
         self.detector, self.outbox, self.client = detector, outbox, client
         self.station_id, self.source = station_id, source

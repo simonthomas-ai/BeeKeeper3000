@@ -73,7 +73,7 @@ $env:BEEKEEPER_CAMERA_COOLDOWN_SECONDS = '30'
 .\scripts\Start-BeeKeeperCamera.ps1 -ModelManifest $env:BEEKEEPER_MODEL_MANIFEST -CameraSource $env:BEEKEEPER_CAMERA_SOURCE -StationId 'station-01' -PythonExe '.\.venv-camera\Scripts\python.exe' -Shadow
 ~~~
 
-Der Beispielaufruf nutzt `-Shadow`: alle Vorhersagen werden verworfen und keine Ereignisse übertragen. `-Shadow` erst dann weglassen, wenn das Manifest `independently_validated` mit einem echten unabhängigen Evaluationsbericht setzt und die Betreiberfreigabe dokumentiert ist.
+Der Beispielaufruf nutzt `-Shadow`: alle Vorhersagen werden verworfen und keine Ereignisse übertragen. In diesem Repository-Stand muss `-Shadow` für jedes Modell gesetzt bleiben. Manifestvalidator und Runtime lehnen `independently_validated` ab, bis die signierte Attestierung eines unabhängigen Evaluators und die Prüfung gegen einen vertrauenswürdigen Schlüssel tatsächlich implementiert und getestet sind. Ein Statusfeld oder eine frei eingetragene Berichts-URL darf produktive Inferenz nicht freischalten.
 
 Der Kamerastarter liest den Quell-API-Schlüssel aus der DPAPI-geschützten Schlüsseldatei der Basisstation und übergibt ihn ausschließlich über die Prozessumgebung an den Kindprozess. Der Schlüssel erscheint nicht in Befehlszeile oder Protokollen. Die Basisdienste zuvor separat mit `scripts/Start-BeeKeeperStation.ps1` starten. Die Quelladresse ist auf Loopback (`127.0.0.1` oder `::1`) beschränkt; authentifizierte HTTP-Anfragen dürfen Weiterleitungen nicht folgen. Die Kameraquelle ist eine lokale Einstellung. RTSP-Zugangsdaten niemals in Tickets oder Protokolle kopieren.
 

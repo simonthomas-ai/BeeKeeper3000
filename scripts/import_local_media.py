@@ -58,9 +58,13 @@ async def import_media(args: argparse.Namespace) -> int:
     detector = OnnxDetector.from_manifest(args.manifest, intra_op_threads=args.threads)
     manifest = getattr(detector, "manifest", None)
     inference_status = getattr(manifest, "inference_status", None)
-    if manifest is None or inference_status not in {"experimental", "independently_validated"}:
+    if manifest is None:
         raise AdapterConfigurationError("detector_must_have_reviewed_model_manifest")
-    if inference_status == "experimental" and not shadow_mode:
+    if inference_status != "experimental":
+        raise AdapterConfigurationError(
+            "production_inference_disabled_until_trusted_evaluator_attestation_verification"
+        )
+    if not shadow_mode:
         raise AdapterConfigurationError("experimental_model_requires_explicit_shadow_mode")
 
     outbox = None if shadow_mode else SQLiteOutbox(str(args.outbox))

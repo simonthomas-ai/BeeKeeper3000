@@ -119,24 +119,22 @@ class LocalMediaCliTests(unittest.TestCase):
         self.assertIn("1 unverified detection event(s) discarded", report)
         self.assertIn("no outbox was created or modified", report)
 
-    def test_queues_only_metadata_and_never_constructs_network_client(self):
-        args = self.make_args()
-        stdout = io.StringIO()
-        with (
-            patch.object(importer.OnnxDetector, "from_manifest", return_value=FakeDetector()),
-            patch.object(importer, "SQLiteOutbox", FakeOutbox),
-            patch.object(importer, "LocalMediaAdapter", FakeAdapter),
-            patch.object(importer, "AdapterSupervisor", FakeSupervisor),
-            redirect_stdout(stdout),
-        ):
-            self.assertEqual(asyncio.run(importer.import_media(args)), 0)
-        report = stdout.getvalue()
-        self.assertIn("1 unverified metadata event", report)
-        self.assertIn("Raw media remained local", report)
-        self.assertNotIn(str(args.source), report)
-        self.assertNotIn("http://", report)
-        self.assertNotIn("https://", report)
-        self.assertFalse(hasattr(importer, "SourceApiClient"))
+    def test_self_asserted_independent_status_is_rejected_with_or_without_shadow(self):
+        for shadow in (False, True):
+            args = self.make_args()
+            args.shadow = shadow
+            with (
+                patch.object(importer.OnnxDetector, "from_manifest", return_value=FakeDetector()),
+                patch.object(importer, "SQLiteOutbox") as outbox,
+                patch.object(importer, "LocalMediaAdapter") as adapter,
+            ):
+                with self.assertRaisesRegex(
+                    AdapterConfigurationError,
+                    "trusted_evaluator_attestation",
+                ):
+                    asyncio.run(importer.import_media(args))
+            outbox.assert_not_called()
+            adapter.assert_not_called()
 
 
 if __name__ == "__main__":
