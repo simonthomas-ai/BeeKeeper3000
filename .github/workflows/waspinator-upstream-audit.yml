@@ -27,7 +27,12 @@ jobs:
           import json, os, urllib.request
           base="https://api.github.com/repos/"+os.environ["UPSTREAM_REPO"]
           def get(url):
-              request=urllib.request.Request(url,headers={"Accept":"application/vnd.github+json","User-Agent":"BeeKeeper3000-Model-Audit","Authorization":"Bearer "+os.environ["GITHUB_TOKEN"]})
+              headers = {
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "BeeKeeper3000-Model-Audit",
+                  "Authorization": "Bearer " + os.environ["GITHUB_TOKEN"],
+              }
+              request = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(request,timeout=25) as response:
                   return json.load(response)
           repo=get(base)
