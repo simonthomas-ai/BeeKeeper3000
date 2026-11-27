@@ -30,7 +30,7 @@ class SupplyChainArtifactPolicyTests(unittest.TestCase):
     def test_public_artifacts_are_main_branch_only(self):
         for block in upload_step_blocks():
             with self.subTest(step=block.splitlines()[0]):
-                condition = re.search(r"(?m)^\\s+if:\\s+\\$\\{\\{\\s*(.*?)\\s*\\}\\}\\s*$", block)
+                condition = re.search(r"(?m)^\s+if:\s+\$\{\{\s*(.*?)\s*\}\}\s*$", block)
                 self.assertIsNotNone(condition, block)
                 expression = condition.group(1)
                 self.assertIn("github.ref == 'refs/heads/main'", expression)
