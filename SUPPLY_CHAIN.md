@@ -10,9 +10,9 @@ This register documents what automated checks actually cover. It is not a statem
 | Optional NMEA serial adapter | `adapters/nmea-requirements.lock` | Exact pinned requirements are checked with `pip-audit --no-deps --strict`; the matching CycloneDX requirements SBOM is uploaded |
 | Optional camera runtime | `camera/requirements.txt` | `pip-audit` resolves and checks direct plus transitive dependency vulnerabilities; camera runtime SBOM is generated from an isolated installed Python 3.12 environment |
 | Optional training runtime | `training/requirements-training.txt` | `pip-audit` resolves and checks the declared training runtime and transitive dependencies; no training, model download or dataset access is performed by this audit |
-| Python optional MeshCore dependency set | CycloneDX | A reproducible CycloneDX JSON SBOM is generated from the pinned requirements set and uploaded as a CI artifact (90-day retention) |
-| Optional NMEA serial adapter | CycloneDX | A reproducible CycloneDX 1.6 requirements SBOM is generated and uploaded as a CI artifact (90-day retention) |
-| Optional camera runtime | CycloneDX | A reproducible CycloneDX 1.6 SBOM is generated from the actual isolated Python 3.12 environment and uploaded as a CI artifact (90-day retention) |
+| Python optional MeshCore dependency set | CycloneDX | A reproducible CycloneDX JSON SBOM is generated from the pinned requirements set and uploaded as a CI artifact (7-day retention) |
+| Optional NMEA serial adapter | CycloneDX | A reproducible CycloneDX 1.6 requirements SBOM is generated and uploaded as a CI artifact (7-day retention) |
+| Optional camera runtime | CycloneDX | A reproducible CycloneDX 1.6 SBOM is generated from the actual isolated Python 3.12 environment and uploaded as a CI artifact (7-day retention) |
 | Optional training runtime | CycloneDX | A reproducible CycloneDX 1.6 SBOM covers the declared direct training requirements only; it is not a complete installed-environment SBOM |
 | Node.js bridge | `monitor-bridge/package-lock.json` | `npm ci` plus `npm audit --audit-level=low`; bridge currently has no third-party runtime dependencies |
 | Source code | CodeQL | Python and JavaScript/TypeScript static analysis |
@@ -21,7 +21,7 @@ This register documents what automated checks actually cover. It is not a statem
 | Workflow container images | `scripts/audit_workflow_action_pins.py` | Every YAML `image:` reference must use an immutable OCI SHA-256 digest; mutable tags block Quality-gates CI |
 | Checkout credentials | `scripts/audit_workflow_action_pins.py` | Every `actions/checkout` step in all workflow YAML files must set `persist-credentials: false`; missing or true values block Quality-gates CI |
 
-The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. All workflow checkout steps disable persisted Git credentials; this removes the read-only `GITHUB_TOKEN` from the local Git configuration after checkout. The workflow path filters include this register so documentation changes to the declared audit scope are tested. Generated SBOMs are CI artifacts, not yet a complete release SBOM for the inherited Hornet3000 product.
+The CI audit tool versions are pinned in `.github/workflows/supply-chain.yml`. All workflow checkout steps disable persisted Git credentials; this removes the read-only `GITHUB_TOKEN` from the local Git configuration after checkout. The workflow path filters include this register so documentation changes to the declared audit scope are tested. Because the repository is public, supply-chain report artifacts are uploaded only for pushes and manual dispatches, never for pull-request runs, and expire after seven days. The artifacts contain report JSON only; model weights, datasets, images, audio, station configuration and private location data are excluded. Generated SBOMs are CI artifacts, not yet a complete release SBOM for the inherited Hornet3000 product.
 
 ## Scope limitations that remain release blockers
 
