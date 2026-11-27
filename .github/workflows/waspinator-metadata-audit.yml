@@ -1,0 +1,88 @@
+name: Audit pinned Waspinator metadata only (no weight download)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/waspinator-metadata-audit.yml'
+      - 'scripts/test_audit_workflow_action_pins.py'
+      - 'LICENSES.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/waspinator-metadata-audit.yml'
+      - 'scripts/test_audit_workflow_action_pins.py'
+      - 'LICENSES.md'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch pinned upstream metadata only; never fetch model bytes
+        env:
+          UPSTREAM_REPO: gitDew/waspinator
+          PINNED_COMMIT: 7251be99a69dfc38f82abb062e22a0062ff5c58c
+          MODEL_PATH: models/yolo26n-waspinator-chamber_ncnn_model/model.ncnn.bin
+          EXPECTED_SIZE: '9602112'
+          EXPECTED_GIT_BLOB: 19b5fb51fd63a09e4a74b2f4469bf399e21792bf
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          repository = os.environ["UPSTREAM_REPO"]
+          pinned_commit = os.environ["PINNED_COMMIT"]
+          path = os.environ["MODEL_PATH"]
+          expected_size = int(os.environ["EXPECTED_SIZE"])
+          expected_git_blob = os.environ["EXPECTED_GIT_BLOB"]
+          api = "https://api.github.com/repos/" + repository
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "User-Agent": "BeeKeeper3000-Metadata-Audit",
+          }
+
+          def get_json(url):
+              request = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(request, timeout=25) as response:
+                  return json.load(response)
+
+          upstream = get_json(api)
+          if upstream.get("full_name") != repository:
+              raise SystemExit("unexpected upstream repository")
+          commit = get_json(api + "/commits/" + pinned_commit)
+          if commit.get("sha") != pinned_commit:
+              raise SystemExit("pinned upstream commit could not be verified")
+
+          encoded_path = urllib.parse.quote(path, safe="/")
+          entry = get_json(
+              api + "/contents/" + encoded_path + "?ref=" + pinned_commit
+          )
+          if (
+              entry.get("type") != "file"
+              or entry.get("size") != expected_size
+              or entry.get("sha") != expected_git_blob
+          ):
+              raise SystemExit(
+                  "pinned metadata changed; refusing any model-byte retrieval"
+              )
+
+          report = f"""## Waspinator metadata-only audit
+
+          Repository: https://github.com/{repository}
+          Pinned upstream commit: `{pinned_commit}`
+          Model path: `{path}`
+          Metadata byte count: {expected_size}
+          Git blob ID: `{expected_git_blob}` (matched via GitHub Contents API)
+
+          No model weight bytes are downloaded or read. No SHA-256 is computed.
+          The Git blob ID is not a SHA-256 digest and does not prove licensing,
+          training-image provenance, model accuracy, runtime compatibility or
+          field suitability. The candidate remains disabled and unapproved.
+          """
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write(report)
+          print("PASS: pinned commit and file metadata match; no model bytes fetched.")
+          PY
