@@ -36,6 +36,8 @@ jobs:
           python -m unittest scripts.test_supply_chain_path_coverage -v
           python -m unittest scripts.test_training_dependency_contract -v
           python -m unittest scripts.test_branch_protection_policy -v
+      - name: Test read-only station doctor and explicit no-model mode
+        run: python -m unittest discover -s scripts -p 'test_station_doctor.py' -v
       - name: Run dependency-free core and LLM safety tests
         run: python -m unittest network.test_triangulation network.test_geojson tests.test_llm_council tests.test_mobile_export_import -v
       - name: Check training CLIs as package modules (no dataset or weights)
