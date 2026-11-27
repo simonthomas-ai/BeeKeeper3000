@@ -28,7 +28,7 @@ def validate_source_event(value: Mapping) -> dict:
     if set(value) not in (expected, allowed):
         raise SourceEventError("event fields do not match the strict source contract")
     origin = value.get("origin", "camera")
-    if origin not in {"camera", "manual_observation"}:
+    if not isinstance(origin, str) or origin not in {"camera", "manual_observation"}:
         raise SourceEventError("origin must be camera or manual_observation")
 
     event_id = value["id"]
