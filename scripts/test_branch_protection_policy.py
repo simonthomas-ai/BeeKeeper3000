@@ -1,4 +1,4 @@
-""""Regression tests for the fail-closed branch-protection helper."""
+"""Regression tests for the fail-closed branch-protection helper."""
 import re
 import unittest
 from pathlib import Path
@@ -11,13 +11,13 @@ SOURCE = SCRIPT.read_text(encoding="utf-8")
 
 def required_checks(repository: str) -> set[str]:
     pattern = (
-        rf'Repository = "\\$Owner/{re.escape(repository)}"\\s+'
-        r"RequiredChecks = @\\((.*?)\\n\\s+\\)\\s+\\}"
+        rf'Repository = "\$Owner/{re.escape(repository)}"\s+'
+        r"RequiredChecks = @\((.*?)\n\s+\)\s+\}"
     )
     match = re.search(pattern, SOURCE, re.DOTALL)
     if not match:
         raise AssertionError(f"Missing branch-protection policy for {repository}")
-    return set(re.findall(r'^\\s*"([^"]+)"', match.group(1), re.MULTILINE))
+    return set(re.findall(r'^\s*"([^"]+)"', match.group(1), re.MULTILINE))
 
 
 class BranchProtectionPolicyTests(unittest.TestCase):
