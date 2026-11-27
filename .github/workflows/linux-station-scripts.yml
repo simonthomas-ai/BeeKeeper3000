@@ -33,7 +33,16 @@ jobs:
         with:
           persist-credentials: false
           repository: simonthomas-ai/Beekeeper-Monitor
+          ref: b8491b8ed25d5ab7c8028a5d52cc5e760c6fbac1
           path: Beekeeper-Monitor
+      - name: Verify pinned Monitor backup ACL contract
+        shell: bash
+        run: |
+          expected="b8491b8ed25d5ab7c8028a5d52cc5e760c6fbac1"
+          actual="$(git -C Beekeeper-Monitor rev-parse HEAD)"
+          test "$actual" = "$expected"
+          grep -q "_check_windows_private_directory" Beekeeper-Monitor/integrations/store_backup.py
+          grep -q "BEEKEEPER_BACKUP_ACL_PATH" Beekeeper-Monitor/integrations/store_backup.py
       - name: Validate installer syntax and non-destructive base preflight
         shell: bash
         run: |
