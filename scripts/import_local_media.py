@@ -40,6 +40,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-video-duration", type=int, default=3_600)
     parser.add_argument("--confirm-local-file-access", action="store_true",
                         help="explicitly attest that this local file may be read for inference")
+    parser.add_argument("--shadow", action="store_true",
+                        help="allow experimental inference but discard all detections without creating or changing the outbox")
     return parser
 
 
@@ -47,10 +49,21 @@ async def import_media(args: argparse.Namespace) -> int:
     if not args.confirm_local_file_access:
         raise AdapterConfigurationError("explicit_local_file_access_confirmation_required")
 
+    shadow_mode = getattr(args, "shadow", False)
+    if type(shadow_mode) is not bool:
+        raise AdapterConfigurationError("shadow_mode_must_be_boolean")
+
     extension = args.source.suffix.lower()
     capability = "local_image" if extension in {".jpg", ".jpeg", ".png", ".webp"} else "local_video"
     detector = OnnxDetector.from_manifest(args.manifest, intra_op_threads=args.threads)
-    outbox = SQLiteOutbox(str(args.outbox))
+    manifest = getattr(detector, "manifest", None)
+    inference_status = getattr(manifest, "inference_status", None)
+    if manifest is None or inference_status not in {"experimental", "independently_validated"}:
+        raise AdapterConfigurationError("detector_must_have_reviewed_model_manifest")
+    if inference_status == "experimental" and not shadow_mode:
+        raise AdapterConfigurationError("experimental_model_requires_explicit_shadow_mode")
+
+    outbox = None if shadow_mode else SQLiteOutbox(str(args.outbox))
     adapter = LocalMediaAdapter(
         source_path=args.source,
         allowed_root=args.allowed_root,
@@ -69,9 +82,13 @@ async def import_media(args: argparse.Namespace) -> int:
     )
     supervisor = AdapterSupervisor(spec, adapter)
     queued = 0
+    discarded = 0
 
     def store_metadata(event):
-        nonlocal queued
+        nonlocal queued, discarded
+        if shadow_mode:
+            discarded += 1
+            return
         try:
             inserted = outbox.enqueue_if_due(
                 dict(event),
@@ -83,6 +100,14 @@ async def import_media(args: argparse.Namespace) -> int:
             queued += 1
 
     await supervisor.run_once(store_metadata, asyncio.Event())
+    if shadow_mode:
+        print(
+            "Local shadow import complete: "
+            f"{discarded} unverified detection event(s) discarded; "
+            "no outbox was created or modified. Raw media remained local."
+        )
+        return 0
+
     pending = outbox.count()
     print(
         "Local import complete: "
