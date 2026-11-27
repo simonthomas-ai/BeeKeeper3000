@@ -27,10 +27,12 @@ class SupplyChainArtifactPolicyTests(unittest.TestCase):
                 self.assertRegex(block, r"(?m)^\s+retention-days: 7\s*$")
                 self.assertNotRegex(block, r"(?m)^\s+retention-days: (?:[8-9]|[1-9][0-9]+)\s*$")
 
-    def test_public_artifacts_are_not_created_from_pull_requests(self):
+    def test_public_artifacts_are_main_or_manual_only(self):
         for block in upload_step_blocks():
             with self.subTest(step=block.splitlines()[0]):
-                self.assertIn("github.event_name != 'pull_request'", block)
+                self.assertIn("github.ref == 'refs/heads/main'", block)
+                self.assertIn("github.event_name == 'workflow_dispatch'", block)
+                self.assertNotIn("github.event_name != 'pull_request'", block)
                 if "vulnerability report" in block:
                     self.assertIn("always()", block)
 
