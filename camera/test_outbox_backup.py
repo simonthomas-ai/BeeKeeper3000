@@ -1,3 +1,5 @@
+import os
+import subprocess
 import tempfile
 import unittest
 from contextlib import closing
