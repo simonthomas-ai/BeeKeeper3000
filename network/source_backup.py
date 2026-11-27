@@ -1,7 +1,8 @@
 """Consistent, non-overwriting SQLite backup/restore for the source journal."""
 from __future__ import annotations
-import argparse, os, sqlite3, stat, tempfile
+import argparse, os, sqlite3, tempfile
 from pathlib import Path
+from network.backup_permissions import assert_private_directory
 
 _REQUIRED = {
     "source_events": {"sequence", "event_id", "payload_hash", "payload_json", "created_at"},
@@ -12,14 +13,7 @@ def _readonly_uri(path: Path) -> str:
     return path.as_uri() + "?mode=ro"
 
 def _check_directory(path: Path) -> None:
-    if not path.is_dir():
-        raise NotADirectoryError(f"backup directory does not exist: {path}")
-    if os.name == "posix":
-        info = path.stat()
-        if info.st_uid != os.getuid():
-            raise PermissionError("backup directory must belong to the current service account")
-        if stat.S_IMODE(info.st_mode) & 0o077:
-            raise PermissionError("backup directory must be private (POSIX mode 0700)")
+    assert_private_directory(path)
 
 def verify_database(path: str | os.PathLike) -> dict:
     """Verify SQLite integrity and the expected BeeKeeper source-journal schema."""
@@ -47,7 +41,10 @@ def verify_database(path: str | os.PathLike) -> dict:
 
 def _snapshot(source_path: str | os.PathLike, destination_path: str | os.PathLike) -> Path:
     source = Path(source_path).expanduser().resolve()
-    destination = Path(destination_path).expanduser().resolve()
+    raw_destination = Path(destination_path).expanduser()
+    if raw_destination.is_symlink():
+        raise ValueError("destination must not be a symbolic link")
+    destination = raw_destination.resolve()
     if source == destination:
         raise ValueError("source and destination must be different files")
     if not source.is_file():

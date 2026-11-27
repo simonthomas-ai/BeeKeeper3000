@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sqlite3
 from contextlib import closing
 from pathlib import Path
+
+from network.backup_permissions import assert_private_directory
 
 
 class OutboxBackupError(RuntimeError):
@@ -34,44 +37,56 @@ def verify(source: str | Path) -> None:
     _validate(source)
 
 
+def _new_destination(path: str | Path) -> Path:
+    raw = Path(path).expanduser()
+    if raw.is_symlink():
+        raise OutboxBackupError("backup destination must not be a symbolic link")
+    return raw.resolve()
+
+
+def _copy_to_new_database(source: Path, destination: Path) -> Path:
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    assert_private_directory(destination.parent)
+    reserved = False
+    try:
+        descriptor = os.open(destination, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(descriptor)
+        reserved = True
+        with closing(sqlite3.connect(source, timeout=5)) as source_db, closing(
+            sqlite3.connect(destination, timeout=5)
+        ) as target_db:
+            source_db.backup(target_db)
+        if os.name == "posix":
+            os.chmod(destination, 0o600)
+        _validate(destination)
+        return destination
+    except FileExistsError as exc:
+        raise OutboxBackupError("backup destination must be a new file") from exc
+    except Exception:
+        if reserved:
+            try:
+                destination.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
+
+
 def backup(source: str | Path, destination: str | Path) -> Path:
     src = Path(source).expanduser().resolve(strict=True)
-    dst = Path(destination).expanduser().resolve()
+    dst = _new_destination(destination)
     if src == dst or dst.exists():
         raise OutboxBackupError("backup destination must be a new file")
     _validate(src)
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with closing(sqlite3.connect(src, timeout=5)) as source_db, closing(sqlite3.connect(dst)) as target_db:
-            source_db.backup(target_db)
-        _validate(dst)
-        return dst
-    except Exception:
-        try:
-            dst.unlink(missing_ok=True)
-        except OSError:
-            pass
-        raise
+    return _copy_to_new_database(src, dst)
 
 
 def restore(source: str | Path, destination: str | Path) -> Path:
-    verify(source)
     src = Path(source).expanduser().resolve(strict=True)
-    dst = Path(destination).expanduser().resolve()
+    dst = _new_destination(destination)
     if src == dst or dst.exists():
         raise OutboxBackupError("restore destination must be a new file")
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with closing(sqlite3.connect(src, timeout=5)) as source_db, closing(sqlite3.connect(dst)) as target_db:
-            source_db.backup(target_db)
-        _validate(dst)
-        return dst
-    except Exception:
-        try:
-            dst.unlink(missing_ok=True)
-        except OSError:
-            pass
-        raise
+    _validate(src)
+    return _copy_to_new_database(src, dst)
 
 
 def main() -> int:
