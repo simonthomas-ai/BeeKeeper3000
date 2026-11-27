@@ -48,10 +48,10 @@ function Assert-RestrictedDirectoryAcl([string]$Path) {
     $systemSid = "S-1-5-18"
     $administratorsSid = "S-1-5-32-544"
     $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
-    if ($ownerSid -ne $currentSid) {
-        throw "Backup directory ACL owner must be the current Windows user."
-    }
     $allowedSids = @($currentSid, $systemSid, $administratorsSid)
+    if ($allowedSids -notcontains $ownerSid) {
+        throw "Backup directory ACL owner must be the current user, SYSTEM or BUILTIN Administrators."
+    }
     $rightsBySid = @{}
     $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
     if ($rules.Count -eq 0) { throw "Backup directory ACL contains no access rules." }
