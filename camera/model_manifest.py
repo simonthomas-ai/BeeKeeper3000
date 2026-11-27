@@ -381,10 +381,14 @@ def load_manifest(path: str | Path, *, verify_model: bool = True) -> ModelManife
     if not inference_use_allowed:
         raise ModelManifestError("model license review does not permit inference use")
     inference_status = raw.get("inference_status")
-    if not isinstance(inference_status, str) or inference_status not in {"experimental", "independently_validated"}:
-        raise ModelManifestError("inference_status must be experimental or independently_validated")
     if inference_status == "independently_validated":
-        _require_public_https_url(raw.get("validation_report_url"), "validation_report_url")
+        raise ModelManifestError(
+            "independently_validated requires a signed trusted evaluator attestation; URL-only reports are not verified"
+        )
+    if inference_status != "experimental":
+        raise ModelManifestError(
+            "inference_status must be experimental until signed validation attestations are supported"
+        )
 
     dataset_manifest_file = raw.get("dataset_manifest_file")
     dataset_manifest_digest = raw.get("dataset_manifest_sha256")
