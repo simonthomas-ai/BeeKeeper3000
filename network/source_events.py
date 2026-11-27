@@ -24,8 +24,12 @@ def validate_source_event(value: Mapping) -> dict:
         raise SourceEventError("event must be an object")
 
     expected = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected"}
-    if set(value) != expected:
+    allowed = expected | {"origin"}
+    if set(value) not in (expected, allowed):
         raise SourceEventError("event fields do not match the strict source contract")
+    origin = value.get("origin", "camera")
+    if origin not in {"camera", "manual_observation"}:
+        raise SourceEventError("origin must be camera or manual_observation")
 
     event_id = value["id"]
     station_id = value["station_id"]
@@ -69,4 +73,5 @@ def validate_source_event(value: Mapping) -> dict:
         "species": species.strip(),
         "confidence": confidence_number,
         "prey_detected": prey_detected,
+        "origin": origin,
     }
