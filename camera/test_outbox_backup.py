@@ -6,10 +6,44 @@ from camera.outbox import SQLiteOutbox
 from camera.outbox_backup import backup, verify, restore, OutboxBackupError
 
 
+def _restrict_windows_test_directory(path: Path) -> None:
+    if os.name != "nt":
+        return
+    script = r"""
+$ErrorActionPreference = 'Stop'
+$path = $env:BEEKEEPER_TEST_BACKUP_PATH
+$identity = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$acl = New-Object System.Security.AccessControl.DirectorySecurity
+$acl.SetOwner($identity)
+$acl.SetAccessRuleProtection($true, $false)
+$userRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    $identity, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$systemSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-18")
+$systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    $systemSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.SetAccessRule($userRule)
+$acl.AddAccessRule($systemRule)
+Set-Acl -LiteralPath $path -AclObject $acl
+"""
+    environment = os.environ.copy()
+    environment["BEEKEEPER_TEST_BACKUP_PATH"] = str(path)
+    subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        env=environment,
+    )
+
+
 class OutboxBackupTests(unittest.TestCase):
     def test_backup_verify_restore_to_new_database(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            _restrict_windows_test_directory(root)
             source = root / "source.sqlite3"
             box = SQLiteOutbox(str(source))
             event = {"id":"evt-1","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_candidate","confidence":0.8,"prey_detected":False}
@@ -24,6 +58,7 @@ class OutboxBackupTests(unittest.TestCase):
     def test_backup_restore_preserves_detection_cooldown(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            _restrict_windows_test_directory(root)
             source = root / "source.sqlite3"
             box = SQLiteOutbox(str(source))
             first = {"id":"first","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False}
