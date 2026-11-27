@@ -217,7 +217,14 @@ def check_services(report: Report, source_url: str, monitor_ingest_url: str) -> 
             report.add(name + " authenticated read", "FAIL", f"loopback service unavailable ({exc}); check process/service and local firewall")
 
 
-def check_model(report: Report, root: Path, manifest_arg: str | None) -> None:
+def check_model(report: Report, root: Path, manifest_arg: str | None, *, no_model: bool = False) -> None:
+    if no_model:
+        report.add(
+            "Camera model manifest",
+            "WARN",
+            "disabled by --no-model; manifest is ignored and no model file is read or executed",
+        )
+        return
     manifest_value = manifest_arg or os.environ.get("BEEKEEPER_MODEL_MANIFEST", "").strip()
     if not manifest_value:
         report.add("Camera model manifest", "WARN", "no model configured; camera AI remains disabled")
@@ -311,6 +318,11 @@ def parse_args(argv: list[str] | None = None):
     parser.add_argument("--source-url", default=os.environ.get("HORNET3000_URL", "http://127.0.0.1:8787"))
     parser.add_argument("--monitor-ingest-url", default=os.environ.get("BEEKEEPER_MONITOR_INGEST_URL", "http://127.0.0.1:8765/api/v1/events"))
     parser.add_argument("--model-manifest", default=None)
+    parser.add_argument(
+        "--no-model",
+        action="store_true",
+        help="Force model checks off; ignore manifest arguments/environment and never load or execute a model",
+    )
     parser.add_argument("--test-camera", action="store_true", help="Explicitly open the configured camera and read one frame")
     parser.add_argument("--camera-source", default=None, help="Camera index, local file or RTSP(S)/HTTP(S) source; never printed")
     parser.add_argument("--probe-radio", action="store_true", help="Explicitly connect to MeshCore; sends no packet")
@@ -338,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     check_versions(report)
     check_bridge_config(report)
     check_services(report, args.source_url, args.monitor_ingest_url)
-    check_model(report, root, args.model_manifest)
+    check_model(report, root, args.model_manifest, no_model=args.no_model)
     if args.test_camera:
         if not args.camera_source and not os.environ.get("BEEKEEPER_CAMERA_SOURCE"):
             report.add("Live camera test", "FAIL", "--test-camera requires --camera-source or BEEKEEPER_CAMERA_SOURCE")
