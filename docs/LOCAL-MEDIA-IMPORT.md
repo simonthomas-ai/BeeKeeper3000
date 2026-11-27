@@ -29,9 +29,10 @@ Die ONNX-Auswertung läuft lokal auf der CPU. Der Event-Vertrag akzeptiert nur d
 
 1. Optionalen Kamera-Stack installieren: python -m pip install -r camera/requirements.txt.
 2. Das ONNX-Modell muss durch Manifest, SHA-256 und eine dokumentierte Lizenzprüfung eindeutig freigegeben sein. Das Beispielmanifest enthält absichtlich keine freigegebenen Modellgewichte.
-3. Der Betreiber wählt den Ordner mit der Quelldatei ausdrücklich aus und bestätigt den lokalen Dateizugriff.
-4. Die Quelldatei muss innerhalb dieses Ordners liegen; Symlink-Pfade sind nicht erlaubt.
-5. Die SQLite-Outbox muss auf einem geschützten Datenträger liegen. Die Datenbank ist nicht anwendungsseitig verschlüsselt; BitLocker bzw. eine verschlüsselte Systempartition ist erforderlich.
+3. Zum Einreihen von Ereignissen ist ausschließlich ein Manifest mit `inference_status: "independently_validated"` zulässig. Ein experimentelles Manifest erfordert ausdrücklich `--shadow`; in diesem Modus werden alle Detektionen verworfen und die Outbox weder erstellt noch verändert.
+4. Der Betreiber wählt den Ordner mit der Quelldatei ausdrücklich aus und bestätigt den lokalen Dateizugriff.
+5. Die Quelldatei muss innerhalb dieses Ordners liegen; Symlink-Pfade sind nicht erlaubt.
+6. Die SQLite-Outbox muss auf einem geschützten Datenträger liegen. Die Datenbank ist nicht anwendungsseitig verschlüsselt; BitLocker bzw. eine verschlüsselte Systempartition ist erforderlich.
 
 ## Beispiel – Windows PowerShell
 
@@ -48,6 +49,16 @@ python scripts/import_local_media.py --manifest "$HOME/.config/beekeeper/model-m
 ~~~
 
 Der CLI-Importer verwendet keine Netzwerkverbindung. Nach erfolgreicher Auswertung meldet er, wie viele Metadatenereignisse in die lokale Outbox übernommen wurden. Die spätere Weiterleitung bleibt Aufgabe des getrennten Stations-/Bridge-Dienstes und unterliegt dessen Authentifizierungs- und Datenschutzprüfungen.
+
+## Experimentelle Prüfung ohne Outbox
+
+Ein experimentelles Manifest darf nur mit `--shadow` verwendet werden. Die lokale Bild-/Videoverarbeitung läuft dann ausschließlich zur technischen Sichtprüfung; erkannte Ereignisse werden verworfen. Die Outbox wird weder angelegt noch verändert:
+
+~~~powershell
+python scripts/import_local_media.py --manifest "C:/BeeKeeper/model/model-manifest.json" --source "C:/BeeKeeper/review/aufnahme.mp4" --allowed-root "C:/BeeKeeper/review" --station-id "station-01" --outbox "C:/BeeKeeper/data/local-media-outbox.sqlite3" --confirm-local-file-access --shadow
+~~~
+
+Das Entfernen von `--shadow` ist nur mit einem unabhängig validierten Manifest zulässig. Der Shadow-Test bestätigt keine Modellgüte oder Feldfreigabe.
 
 ## Tests und Abnahmegrenzen
 
