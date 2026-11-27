@@ -19,7 +19,7 @@ Dies ist eine **begrenzte technische Feldtestfreigabe**, keine Produktivfreigabe
 
 - automatische KI-Inferenz, Artenbestimmung oder produktive Modellalarme;
 - fremde Modellgewichte oder Trainingsbilder ohne individuelle Rechte- und Lizenzprüfung;
-- Import manueller PWA-Beobachtungen in den Source-API-Kameraereignisvertrag (dies würde manuelle Sichtungen fälschlich als Kameraerkennung darstellen);
+- Import manueller PWA-Beobachtungen als Kameraereignisse oder automatische KI-/Warnereignisse; manuelle Sichtungen dürfen nur als eigener Typ `manual_observation` über den geprüften lokalen v2-Importer übernommen werden.
 - öffentliche GitHub-Pages-Veröffentlichung, öffentliche Ports, Portweiterleitungen oder externe RTSP-Erreichbarkeit;
 - Daueraufnahme, Audioaufzeichnung, automatische GPS-Erfassung oder Übermittlung von Fotos/Koordinaten;
 - Nestlokalisierung oder Bekämpfungsentscheidungen auf Basis dieses Systems.
@@ -40,9 +40,10 @@ Dies ist eine **begrenzte technische Feldtestfreigabe**, keine Produktivfreigabe
 1. Zunächst die dokumentierte Validate-only-Prüfung aus `docs/NO-MODEL-FIELDTEST.md` durchführen.
 2. Basisdienste starten und `scripts/station_doctor.py --no-model` ausführen. Der Schalter ignoriert auch ein gesetztes `BEEKEEPER_MODEL_MANIFEST`; Fehler nicht übergehen.
 3. Optional den dokumentierten Einzelbild-Kameratest mit `--no-model` ausführen. Es wird kein Modell geladen und keine Inferenz ausgeführt.
-4. Manuelle Sichtungen ausschließlich lokal in der Mobile-PWA erfassen. Nicht über den Kameraereignis-Importer in die Stationsdatenbank übertragen.
-5. Nur technische Beobachtungen notieren: Gerät/Revision, Betriebssystem, Kamera/Firmware, Verbindungsart, Start-/Endzeit, Doctor-Ergebnis, Frame erfolgreich ja/nein, Abbrüche und Bedienprobleme.
-6. Dienste nach dem Test kontrolliert stoppen. Nicht mehr benötigte lokale Testbilder und Exporte nach Prüfung sicher löschen.
+4. Manuelle Sichtungen in der Mobile-PWA erfassen. Standardmäßig bleiben sie lokal in der Browser-IndexedDB; es gibt keine automatische Synchronisierung.
+5. Nur wenn die lokale Bridge-Übergabe ausdrücklich Teil dieses Tests ist, darf der Betreiber einen v2-Metadatenexport bewusst über den dedizierten Importer übernehmen (`scripts/Import-BeeKeeperMobileExport.ps1` unter Windows oder `python3 scripts/import_mobile_export.py <export.json>` unter Linux). Der Importer verlangt `origin=manual_observation` und sendet ausschließlich die sieben begrenzten Metadatenfelder an die feste Loopback-Source-API. Fotos, GPS, Kompasswerte, Notizen und Zugangsdaten werden nicht exportiert. Die Bridge erhält den eigenen Typ `manual_observation`; daraus entstehen weder Kameraerkennung noch Hornissenwarnung. Keine künstlichen Ereignisse einspeisen; den API-Schlüssel nur aus einer geschützten lokalen Prozessumgebung beziehen, niemals als Befehlsargument oder in Shell-Historie/Logs.
+6. Nur technische Beobachtungen notieren: Gerät/Revision, Betriebssystem, Kamera/Firmware, Verbindungsart, Start-/Endzeit, Doctor-Ergebnis, Frame erfolgreich ja/nein, Abbrüche und Bedienprobleme.
+7. Dienste nach dem Test kontrolliert stoppen. Nicht mehr benötigte lokale Testbilder und Exporte nach Prüfung sicher löschen.
 
 ## Sofortige Abbruchkriterien
 
