@@ -94,38 +94,51 @@ class CheckoutCredentialTests(unittest.TestCase):
         self.assertEqual(find_checkout_steps_without_persist_credentials(text), [])
 
 
-class WaspinatorWeightAuditPinTests(unittest.TestCase):
-    def test_checksum_audit_uses_exact_reviewed_upstream_snapshot(self):
+class WaspinatorMetadataAuditTests(unittest.TestCase):
+    def test_metadata_audit_pins_exact_source_snapshot(self):
         workflow = (
             Path(__file__).resolve().parents[1]
             / ".github"
             / "workflows"
-            / "waspinator-weight-sha256.yml"
+            / "waspinator-metadata-audit.yml"
         ).read_text(encoding="utf-8")
         self.assertIn("7251be99a69dfc38f82abb062e22a0062ff5c58c", workflow)
         self.assertIn(
             "models/yolo26n-waspinator-chamber_ncnn_model/model.ncnn.bin",
             workflow,
         )
-        self.assertIn("expected_size = 9602112", workflow)
-        self.assertIn("19b5fb51fd63a09e4a74b2f4469bf399e21792bf", workflow)
-        self.assertNotIn('upstream["default_branch"]', workflow)
-        self.assertNotIn('"/commits/" + upstream["default_branch"]', workflow)
-        self.assertIn("The model was **not loaded, imported, executed, converted, trained, installed, activated, or redistributed**.", workflow)
+        self.assertIn("EXPECTED_SIZE: '9602112'", workflow)
+        self.assertIn(
+            "EXPECTED_GIT_BLOB: 19b5fb51fd63a09e4a74b2f4469bf399e21792bf",
+            workflow,
+        )
+        self.assertIn('entry.get("size") != expected_size', workflow)
+        self.assertIn('entry.get("sha") != expected_git_blob', workflow)
 
-    def test_checksum_audit_fails_closed_when_upstream_blob_changes(self):
+    def test_metadata_audit_never_retrieves_or_publishes_model_bytes(self):
         workflow = (
             Path(__file__).resolve().parents[1]
             / ".github"
             / "workflows"
-            / "waspinator-weight-sha256.yml"
+            / "waspinator-metadata-audit.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn('entry.get("size") != expected_size', workflow)
-        self.assertIn('entry.get("sha") != expected_git_blob', workflow)
-        self.assertIn("refusing download", workflow)
-        self.assertIn("downloaded model byte count does not match pinned metadata", workflow)
+        self.assertIn("No model weight bytes are downloaded or read.", workflow)
+        self.assertNotIn("raw.githubusercontent.com", workflow)
+        self.assertNotIn("hashlib", workflow)
+        self.assertIn("No SHA-256 is computed.", workflow)
+        self.assertIn("Git blob ID is not a SHA-256 digest", workflow)
+        self.assertNotIn("actions/upload-artifact", workflow)
+        self.assertNotIn("GITHUB_TOKEN", workflow)
+        self.assertNotIn("secrets.", workflow)
 
-
+    def test_old_weight_downloader_is_removed(self):
+        old = (
+            Path(__file__).resolve().parents[1]
+            / ".github"
+            / "workflows"
+            / "waspinator-weight-sha256.yml"
+        )
+        self.assertFalse(old.exists())
 
 
 class WorkflowPermissionTests(unittest.TestCase):
