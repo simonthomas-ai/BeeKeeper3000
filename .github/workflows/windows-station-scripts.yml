@@ -27,7 +27,19 @@ jobs:
         with:
           persist-credentials: false
           repository: simonthomas-ai/Beekeeper-Monitor
+          ref: b8491b8ed25d5ab7c8028a5d52cc5e760c6fbac1
           path: Beekeeper-Monitor
+      - name: Verify pinned Monitor backup ACL contract
+        shell: pwsh
+        run: |
+          $expected = "b8491b8ed25d5ab7c8028a5d52cc5e760c6fbac1"
+          $monitorPath = "$env:GITHUB_WORKSPACE/Beekeeper-Monitor"
+          $actual = (git -C $monitorPath rev-parse HEAD).Trim()
+          if ($actual -ne $expected) { throw "Monitor checkout does not match the reviewed backup ACL commit." }
+          $helper = Get-Content -Raw -LiteralPath (Join-Path $monitorPath "integrations/store_backup.py")
+          foreach ($marker in @("_check_windows_private_directory", "PSModulePath", "BEEKEEPER_BACKUP_ACL_PATH")) {
+            if (-not $helper.Contains($marker)) { throw "Pinned Monitor backup ACL contract is missing: $marker" }
+          }
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
@@ -71,6 +83,21 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $stateRoot = Join-Path $env:RUNNER_TEMP "BeeKeeperStationBackupTest"
+          New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
+          $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+          $stateAcl = New-Object System.Security.AccessControl.DirectorySecurity
+          $stateAcl.SetOwner($currentSid)
+          $stateAcl.SetAccessRuleProtection($true, $false)
+          $userRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            $currentSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+          )
+          $systemSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-18")
+          $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            $systemSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+          )
+          $stateAcl.SetAccessRule($userRule)
+          $stateAcl.AddAccessRule($systemRule)
+          Set-Acl -LiteralPath $stateRoot -AclObject $stateAcl
           $dataRoot = Join-Path $stateRoot "data"
           New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
           $env:BK_TEST_STATE_ROOT = $stateRoot
@@ -144,4 +171,29 @@ jobs:
           print("Camera outbox restore preserved pending event and cooldown state.")
           '@ | python - (Join-Path $restoreRoot "camera.sqlite3")
           if ($LASTEXITCODE -ne 0) { throw "Restored camera cooldown state did not behave correctly." }
+
+          # A broad BUILTIN\Users ACE must be rejected before the backup root is created.
+          $unsafeRoot = Join-Path $env:RUNNER_TEMP "BeeKeeperUnsafeBackupTest"
+          New-Item -ItemType Directory -Path $unsafeRoot -Force | Out-Null
+          $unsafeAcl = New-Object System.Security.AccessControl.DirectorySecurity
+          $unsafeAcl.SetOwner($currentSid)
+          $unsafeAcl.SetAccessRuleProtection($true, $false)
+          $unsafeAcl.SetAccessRule($userRule)
+          $unsafeAcl.AddAccessRule($systemRule)
+          $usersSid = New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-545")
+          $usersRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            $usersSid, "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow"
+          )
+          $unsafeAcl.AddAccessRule($usersRule)
+          Set-Acl -LiteralPath $unsafeRoot -AclObject $unsafeAcl
+          $unsafeBackupRoot = Join-Path $unsafeRoot "backups"
+          $blockedUnsafeBackup = $false
+          try {
+            ./scripts/Backup-BeeKeeperStation.ps1 -MonitorRepo "$env:GITHUB_WORKSPACE/Beekeeper-Monitor" -StateRoot $unsafeRoot -BackupRoot $unsafeBackupRoot
+          } catch {
+            if ($_.Exception.Message -notmatch "ACL|principal") { throw }
+            $blockedUnsafeBackup = $true
+          }
+          if (-not $blockedUnsafeBackup) { throw "Backup runner accepted a directory shared with BUILTIN\Users." }
+          if (Test-Path -LiteralPath $unsafeBackupRoot) { throw "Backup root was created before unsafe ACL rejection." }
 

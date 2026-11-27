@@ -16,7 +16,11 @@ if ($env:OS -ne "Windows_NT") {
 if (-not (Test-Path $StateRoot -PathType Container)) {
     throw "Station state directory not found: $StateRoot. Start BeeKeeper3000 once before backing it up."
 }
-$StateRoot = (Resolve-Path $StateRoot).Path
+$stateItem = Get-Item -LiteralPath $StateRoot -Force
+if ($stateItem.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+    throw "StateRoot must not be a symbolic link or reparse point."
+}
+$StateRoot = $stateItem.FullName
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 if ([string]::IsNullOrWhiteSpace($MonitorRepo)) {
@@ -34,14 +38,66 @@ $pythonCommand = Get-Command -Name $PythonExe -CommandType Application -ErrorAct
 if (-not $pythonCommand) { throw "Python executable not found: $PythonExe" }
 $pythonPath = $pythonCommand.Path
 
-# Keep backups inside the installer's restricted state directory so the
-# current-user/SYSTEM NTFS ACL is inherited rather than silently weakened.
-New-Item -ItemType Directory -Path $BackupRoot -Force | Out-Null
-$BackupRoot = (Resolve-Path $BackupRoot).Path
-$statePrefix = $StateRoot.TrimEnd('\') + '\'
-if (-not $BackupRoot.StartsWith($statePrefix, [StringComparison]::OrdinalIgnoreCase)) {
+function Assert-RestrictedDirectoryAcl([string]$Path) {
+    $item = Get-Item -LiteralPath $Path -Force
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "Backup directory must not be a symbolic link or reparse point."
+    }
+    $acl = Get-Acl -LiteralPath $Path
+    $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $systemSid = "S-1-5-18"
+    $administratorsSid = "S-1-5-32-544"
+    $ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    $allowedSids = @($currentSid, $systemSid, $administratorsSid)
+    if ($allowedSids -notcontains $ownerSid) {
+        throw "Backup directory ACL owner must be the current user, SYSTEM or BUILTIN Administrators."
+    }
+    $rightsBySid = @{}
+    $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))
+    if ($rules.Count -eq 0) { throw "Backup directory ACL contains no access rules." }
+    foreach ($rule in $rules) {
+        $sid = $rule.IdentityReference.Value
+        if (($allowedSids -notcontains $sid) -or $rule.AccessControlType.ToString() -ne "Allow") {
+            throw "Backup directory ACL contains an unexpected principal or deny rule."
+        }
+        $rights = [int]$rule.FileSystemRights
+        if ($rights -lt 0 -or (($rights -band 0x1F01FF) -ne $rights)) {
+            throw "Backup directory ACL contains unexpected filesystem rights."
+        }
+        if (-not $rightsBySid.ContainsKey($sid)) { $rightsBySid[$sid] = 0 }
+        $rightsBySid[$sid] = $rightsBySid[$sid] -bor $rights
+    }
+    foreach ($sid in @($currentSid, $systemSid)) {
+        if (-not $rightsBySid.ContainsKey($sid) -or
+            (($rightsBySid[$sid] -band 0x1F01FF) -ne 0x1F01FF)) {
+            throw "Current user and SYSTEM must have FullControl on backup directories."
+        }
+    }
+    if ($rightsBySid.ContainsKey($administratorsSid) -and
+        (($rightsBySid[$administratorsSid] -band 0x1F01FF) -ne 0x1F01FF)) {
+        throw "Administrators ACL must be FullControl when present."
+    }
+}
+
+# Verify the actual NTFS DACL before creating any snapshot or staging file.
+$statePrefix = [IO.Path]::GetFullPath($StateRoot).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+$backupCandidate = [IO.Path]::GetFullPath($BackupRoot)
+if (-not $backupCandidate.StartsWith($statePrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw "BackupRoot must be inside the protected StateRoot directory."
 }
+Assert-RestrictedDirectoryAcl -Path $StateRoot
+if (Test-Path -LiteralPath $backupCandidate) {
+    $existingBackupRoot = Get-Item -LiteralPath $backupCandidate -Force
+    if ($existingBackupRoot.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "BackupRoot must not be a symbolic link or reparse point."
+    }
+}
+New-Item -ItemType Directory -Path $backupCandidate -Force | Out-Null
+$BackupRoot = (Resolve-Path -LiteralPath $backupCandidate).Path
+if (-not [string]::Equals($BackupRoot, $backupCandidate, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "BackupRoot resolved through a symbolic link or reparse point."
+}
+Assert-RestrictedDirectoryAcl -Path $BackupRoot
 
 $dataRoot = Join-Path $StateRoot "data"
 $sourceDb = Join-Path $dataRoot "source-events.sqlite3"
@@ -61,6 +117,7 @@ if (Test-Path $backupDir) { throw "Backup destination already exists: $backupDir
 New-Item -ItemType Directory -Path $stagingDir -ErrorAction Stop | Out-Null
 
 try {
+    Assert-RestrictedDirectoryAcl -Path $stagingDir
     $sourceBackup = Join-Path $stagingDir "source-events.sqlite3"
     $monitorBackup = Join-Path $stagingDir "monitor-events.sqlite3"
     $bridgeBackup = Join-Path $stagingDir "bridge-state.json"
@@ -134,6 +191,7 @@ try {
     $manifestPath = Join-Path $stagingDir "manifest.json"
     $manifest | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $manifestPath -Encoding UTF8 -NoNewline
     Move-Item -LiteralPath $stagingDir -Destination $backupDir -ErrorAction Stop
+    Assert-RestrictedDirectoryAcl -Path $backupDir
 
     Write-Host "BeeKeeper station backup completed and verified."
     Write-Host "Backup directory: $backupDir"
