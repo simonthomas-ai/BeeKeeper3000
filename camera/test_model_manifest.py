@@ -648,13 +648,6 @@ class ManifestTests(unittest.TestCase):
         cases = (
             ({"model_source_url": "https://example.org/model?token=secret"}, "model_source_url"),
             ({"license_evidence_url": "https://example.org/LICENSE#private"}, "license_evidence_url"),
-            (
-                {
-                    "inference_status": "independently_validated",
-                    "validation_report_url": "https://example.org/report?share=secret",
-                },
-                "validation_report_url",
-            ),
         )
         for changes, field in cases:
             with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
@@ -662,5 +655,14 @@ class ManifestTests(unittest.TestCase):
                 with self.assertRaisesRegex(ModelManifestError, field):
                     load_manifest(path)
 
+    def test_rejects_unsigned_independent_validation_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.make(
+                tmp,
+                inference_status="independently_validated",
+                validation_report_url="https://example.org/report",
+            )
+            with self.assertRaisesRegex(ModelManifestError, "signed trusted evaluator attestation"):
+                load_manifest(path)
 if __name__ == "__main__":
     unittest.main()
