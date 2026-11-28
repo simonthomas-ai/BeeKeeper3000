@@ -144,12 +144,37 @@ def audit_database(database: str | Path) -> dict:
             table_cursor.close()
         if table is None:
             raise OutboxAuditError("outbox table is missing")
-        columns_cursor = db.execute("PRAGMA table_info(outbox)")
+        # PRAGMA table_info() hides generated/hidden columns and does not
+        # distinguish an ordinary table from a virtual table. Require the exact
+        # three-column SQLiteOutbox shape before trusting this file as an outbox.
+        shape_cursor = db.execute("PRAGMA table_list('outbox')")
         try:
-            columns = {row[1] for row in columns_cursor.fetchall()}
+            shapes = shape_cursor.fetchall()
+        finally:
+            shape_cursor.close()
+        if (
+            len(shapes) != 1
+            or shapes[0][2] != "table"
+            or shapes[0][3] != 3
+        ):
+            raise OutboxAuditError(
+                "outbox table has an unsupported schema; expected an ordinary three-column SQLite table"
+            )
+
+        columns_cursor = db.execute("PRAGMA table_xinfo(outbox)")
+        try:
+            columns = [
+                (row[1], str(row[2]).upper(), row[3], row[5], row[6])
+                for row in columns_cursor.fetchall()
+            ]
         finally:
             columns_cursor.close()
-        if not {"event_id", "payload_json"}.issubset(columns):
+        expected_columns = [
+            ("event_id", "TEXT", 0, 1, 0),
+            ("payload_json", "TEXT", 1, 0, 0),
+            ("created_at", "TEXT", 1, 0, 0),
+        ]
+        if columns != expected_columns:
             raise OutboxAuditError("outbox table has an unsupported schema")
 
         cursor = db.execute(

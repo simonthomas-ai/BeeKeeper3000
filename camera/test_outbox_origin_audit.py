@@ -201,5 +201,44 @@ class OutboxOriginAuditTests(unittest.TestCase):
                 audit_database(database)
 
 
+    def test_generated_column_cannot_hide_from_schema_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "generated.sqlite3"
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute(
+                    """CREATE TABLE outbox (
+                        event_id TEXT PRIMARY KEY,
+                        payload_json TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT (
+                            strftime('%Y-%m-%dT%H:%M:%fZ','now')
+                        ),
+                        hidden_extra TEXT GENERATED ALWAYS AS (payload_json) VIRTUAL
+                    )"""
+                )
+                event = camera_event()
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (event["id"], json.dumps(event)),
+                )
+            with self.assertRaisesRegex(OutboxAuditError, "unsupported schema"):
+                audit_database(path)
+
+    def test_virtual_table_named_outbox_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "virtual.sqlite3"
+            with closing(sqlite3.connect(path)) as db, db:
+                try:
+                    db.execute("CREATE VIRTUAL TABLE outbox USING fts5(event_id, payload_json)")
+                except sqlite3.OperationalError as exc:
+                    self.skipTest(f"SQLite FTS5 is unavailable: {exc}")
+                event = camera_event()
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (event["id"], json.dumps(event)),
+                )
+            with self.assertRaisesRegex(OutboxAuditError, "unsupported schema"):
+                audit_database(path)
+
+
 if __name__ == "__main__":
     unittest.main()
