@@ -54,7 +54,7 @@ class OutboxBackupTests(unittest.TestCase):
             _restrict_windows_test_directory(root)
             source = root / "source.sqlite3"
             box = SQLiteOutbox(str(source))
-            event = {"id":"evt-1","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_candidate","confidence":0.8,"prey_detected":False}
+            event = {"id":"evt-1","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_candidate","confidence":0.8,"prey_detected":False,"origin":"camera"}
             box.enqueue(event)
             backup_path = backup(source, root / "backup.sqlite3")
             verify(backup_path)
@@ -69,7 +69,7 @@ class OutboxBackupTests(unittest.TestCase):
             _restrict_windows_test_directory(root)
             source = root / "source.sqlite3"
             box = SQLiteOutbox(str(source))
-            first = {"id":"first","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False}
+            first = {"id":"first","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False,"origin":"camera"}
             box.enqueue_if_due(first, cooldown_seconds=30, now_epoch=1000)
 
             saved = backup(source, root / "camera-backup.sqlite3")
