@@ -13,6 +13,7 @@ const sampleEvent = {
   station_id: 'Yard Cam / North',
   species: 'Vespa velutina',
   confidence: 0.83,
+  origin: 'camera',
   status: 'expert_confirmed',
   image_path: '/private/capture.jpg',
   lat: 51.2,
@@ -64,7 +65,9 @@ test('manual PWA reports stay manual and are never mapped as camera detections',
   assert.equal(mapped.payload.confidence, 0.83);
 });
 
-test('rejects unknown event origins', () => {
+test('rejects missing and unknown event origins instead of assuming camera', () => {
+  const { origin, ...legacyEvent } = sampleEvent;
+  assert.equal(toMonitorEvent(legacyEvent), null);
   assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'expert_confirmed' }), null);
 });
 
