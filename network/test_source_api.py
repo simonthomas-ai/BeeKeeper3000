@@ -27,6 +27,7 @@ def sample_event(index: int, *, timestamp=None):
         "species": "Vespa velutina",
         "confidence": 0.91,
         "prey_detected": index % 2 == 0,
+        "origin": "camera",
     }
 
 
@@ -37,6 +38,12 @@ class SourceContractTests(unittest.TestCase):
         self.assertEqual(event["species"], "Vespa velutina")
         self.assertIs(type(event["prey_detected"]), bool)
         self.assertEqual(event["origin"], "camera")
+
+    def test_rejects_missing_origin_instead_of_assuming_camera(self):
+        event = sample_event(1)
+        del event["origin"]
+        with self.assertRaisesRegex(SourceEventError, "origin is required"):
+            validate_source_event(event)
 
     def test_preserves_explicit_manual_observation_origin(self):
         event = validate_source_event(sample_event(1) | {"origin": "manual_observation"})
