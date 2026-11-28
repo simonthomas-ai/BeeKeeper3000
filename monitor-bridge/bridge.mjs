@@ -222,7 +222,7 @@ export function isQuarantinedLegacyEvent(event) {
       keys.some(key => !LEGACY_SOURCE_EVENT_KEYS.has(key))) return false;
   if (typeof event.station_id !== 'string' || !LEGACY_STATION_ID.test(event.station_id)) return false;
   if (typeof event.prey_detected !== 'boolean') return false;
-  if (typeof event.species !== 'string' || /[\\x00-\\x1f\\x7f]/.test(event.species)) return false;
+  if (typeof event.species !== 'string' || /[\x00-\x1f\x7f]/.test(event.species)) return false;
   return toMonitorEvent({ ...event, origin: 'camera' }) !== null;
 }
 
