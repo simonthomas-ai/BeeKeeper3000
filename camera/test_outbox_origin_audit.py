@@ -1,5 +1,6 @@
 import contextlib
 import io
+from contextlib import closing
 import json
 import sqlite3
 import tempfile
@@ -23,7 +24,7 @@ def camera_event(event_id="event-001"):
 
 
 def make_database(path, rows):
-    with sqlite3.connect(path) as db:
+    with closing(sqlite3.connect(path)) as db, db:
         db.execute(
             """CREATE TABLE outbox (
                 event_id TEXT PRIMARY KEY,
