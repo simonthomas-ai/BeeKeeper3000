@@ -4,9 +4,11 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import sqlite3
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 
@@ -22,6 +24,8 @@ _LEGACY_SOURCE_EVENT_KEYS = frozenset({
     "id", "observed_at", "station_id", "species", "confidence", "prey_detected"
 })
 _SOURCE_EVENT_KEYS = _LEGACY_SOURCE_EVENT_KEYS | {"origin"}
+_EVENT_ID = re.compile(r"^[\x21-\x7e]{1,128}$")
+_STATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$")
 
 
 class SQLiteOutbox:
@@ -121,18 +125,46 @@ class SQLiteOutbox:
             raise ValueError("outbox accepts only the strict camera source event schema")
         if event.get("origin") != "camera":
             raise ValueError("camera outbox accepts only explicit origin=camera")
-        canonical = json.dumps(
-            event, ensure_ascii=False, allow_nan=False,
-            sort_keys=True, separators=(",", ":")
-        )
+
         event_id = event.get("id")
-        if not isinstance(event_id, str) or not event_id:
-            raise ValueError("event id is required")
+        if not isinstance(event_id, str) or not _EVENT_ID.fullmatch(event_id):
+            raise ValueError("event id must be 1..128 printable ASCII characters")
+        station_id = event.get("station_id")
+        if not isinstance(station_id, str) or not _STATION_ID.fullmatch(station_id):
+            raise ValueError("station_id must be a short technical identifier")
+
+        observed_at = event.get("observed_at")
+        if not isinstance(observed_at, str) or not 1 <= len(observed_at) <= 40:
+            raise ValueError("observed_at must be an ISO-8601 timestamp")
+        try:
+            timestamp = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("observed_at must be a valid ISO-8601 timestamp") from exc
+        if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+            raise ValueError("observed_at must include an explicit timezone")
+
         species = event.get("species")
-        if not isinstance(species, str) or not species.strip() or len(species) > 160:
-            raise ValueError("event species must be a non-empty label of at most 160 characters")
+        if not isinstance(species, str) or not 1 <= len(species.strip()) <= 160:
+            raise ValueError("event species must contain 1..160 characters")
+        if any(ord(char) < 32 or ord(char) == 127 for char in species):
+            raise ValueError("event species contains control characters")
+
+        confidence = event.get("confidence")
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+            raise ValueError("confidence must be numeric")
+        confidence_number = float(confidence)
+        if not math.isfinite(confidence_number) or not 0 <= confidence_number <= 1:
+            raise ValueError("confidence must be finite and within 0..1")
         if type(event.get("prey_detected")) is not bool:
             raise ValueError("prey_detected must be boolean")
+
+        normalized = dict(event)
+        normalized["species"] = species.strip()
+        normalized["confidence"] = confidence_number
+        canonical = json.dumps(
+            normalized, ensure_ascii=False, allow_nan=False,
+            sort_keys=True, separators=(",", ":")
+        )
         return event_id, canonical
 
     def enqueue(self, event: dict) -> bool:
