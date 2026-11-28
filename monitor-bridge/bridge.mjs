@@ -181,7 +181,8 @@ export function toMonitorEvent(event) {
   if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
   const timestamp = typeof event.observed_at === 'string' ? event.observed_at : '';
   if (timestamp.length > 40 || !Number.isFinite(Date.parse(timestamp)) || !/(Z|[+-]\d\d:\d\d)$/.test(timestamp)) return null;
-  const origin = event.origin === undefined ? 'camera' : event.origin;
+  // Origin is a routing claim, not proof of a physical camera; missing/legacy values fail closed.
+  const origin = event.origin;
   if (origin !== 'camera' && origin !== 'manual_observation') return null;
   const manual = origin === 'manual_observation';
   const rawStation = typeof event.station_id === 'string' ? event.station_id : '';
