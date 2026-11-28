@@ -106,8 +106,9 @@ class SQLiteOutbox:
             except (TypeError, json.JSONDecodeError) as exc:
                 raise OutboxError("existing outbox row contains invalid JSON") from exc
             if isinstance(event, dict) and set(event) == _LEGACY_SOURCE_EVENT_KEYS:
-                event = dict(event)
-                event["origin"] = "camera"
+                raise OutboxError(
+                    "legacy outbox row has no verifiable origin; manual review required"
+                )
             try:
                 normalized_id, canonical = SQLiteOutbox._canonical_event(event)
             except (TypeError, ValueError, OverflowError) as exc:
