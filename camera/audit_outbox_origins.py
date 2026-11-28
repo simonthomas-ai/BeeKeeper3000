@@ -28,6 +28,17 @@ class OutboxAuditError(RuntimeError):
     """A safe, non-sensitive diagnostic failure."""
 
 
+def _is_link_or_junction(path: Path) -> bool:
+    """Return whether a path component is a symlink or (where supported) junction."""
+    try:
+        if path.is_symlink():
+            return True
+        is_junction = getattr(path, "is_junction", None)
+        return bool(is_junction()) if callable(is_junction) else False
+    except OSError as exc:
+        raise OutboxAuditError("database path components could not be inspected") from exc
+
+
 def _valid_camera_event(event: dict, row_id: object) -> bool:
     if set(event) != CURRENT_KEYS or event.get("origin") != "camera":
         return False
@@ -73,10 +84,16 @@ def _valid_camera_event(event: dict, row_id: object) -> bool:
 def audit_database(database: str | Path) -> dict:
     """Inspect an already stopped/checkpointed SQLite copy without modifying it."""
     candidate = Path(database).expanduser()
-    if candidate.is_symlink():
-        raise OutboxAuditError("database path must not be a symbolic link")
+    absolute_candidate = candidate if candidate.is_absolute() else Path.cwd() / candidate
     try:
-        target = candidate.resolve(strict=True)
+        # Check every supplied path component before resolve(). Checking only the
+        # final component misses a symlinked parent directory.
+        for component in (absolute_candidate, *absolute_candidate.parents):
+            if _is_link_or_junction(component):
+                raise OutboxAuditError(
+                    "database path must not traverse symbolic links or junctions"
+                )
+        target = absolute_candidate.resolve(strict=True)
         details = target.stat()
     except OSError as exc:
         raise OutboxAuditError("database does not exist or cannot be read") from exc
@@ -89,6 +106,10 @@ def audit_database(database: str | Path) -> dict:
     try:
         for suffix, label in (("-wal", "WAL"), ("-journal", "rollback journal")):
             sidecar = Path(str(target) + suffix)
+            if _is_link_or_junction(sidecar):
+                raise OutboxAuditError(
+                    f"{label} sidecar must not be a symbolic link or junction"
+                )
             if sidecar.exists() and sidecar.stat().st_size > 0:
                 raise OutboxAuditError(
                     f"non-empty {label} sidecar found; stop the station and create a consistent backup"
