@@ -108,6 +108,7 @@ def audit_database(database: str | Path) -> dict:
         "invalid_json": 0,
         "invalid_schema": 0,
     }
+    cursor = None
     try:
         db.execute("PRAGMA query_only=ON")
         table = db.execute(
@@ -153,6 +154,8 @@ def audit_database(database: str | Path) -> dict:
     except sqlite3.Error as exc:
         raise OutboxAuditError("database could not be inspected read-only") from exc
     finally:
+        if cursor is not None:
+            cursor.close()
         db.close()
 
     blocked = sum(
