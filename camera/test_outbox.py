@@ -1,3 +1,5 @@
+import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -5,7 +7,7 @@ from camera.outbox import SQLiteOutbox, OutboxFull, OutboxError
 
 
 def event(event_id, species="vespa_velutina_candidate"):
-    return {"id": event_id, "observed_at": "2026-11-20T00:00:00Z", "station_id": "station-1", "species": species, "confidence": 0.8, "prey_detected": False}
+    return {"id": event_id, "observed_at": "2026-11-20T00:00:00Z", "station_id": "station-1", "species": species, "confidence": 0.8, "prey_detected": False, "origin": "camera"}
 
 
 class OutboxTests(unittest.TestCase):
@@ -67,6 +69,59 @@ class OutboxTests(unittest.TestCase):
             self.assertTrue(SQLiteOutbox(path, max_rows=2).enqueue(event("overflow")))
             self.assertEqual([x["id"] for x in SQLiteOutbox(path, max_rows=2).pending()],
                              ["second", "overflow"])
+
+    def test_migrates_legacy_camera_rows_to_explicit_origin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "legacy.sqlite3")
+            legacy = event("legacy-camera")
+            del legacy["origin"]
+            with sqlite3.connect(path) as db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (legacy["id"], json.dumps(legacy, sort_keys=True, separators=(",", ":"))),
+                )
+
+            box = SQLiteOutbox(path)
+            migrated = box.pending(10)
+            self.assertEqual(len(migrated), 1)
+            self.assertEqual(migrated[0]["origin"], "camera")
+
+    def test_refuses_to_reclassify_manual_or_unknown_existing_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "unexpected.sqlite3")
+            unexpected = event("unexpected")
+            unexpected["origin"] = "manual_observation"
+            with sqlite3.connect(path) as db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (unexpected["id"], json.dumps(unexpected, sort_keys=True, separators=(",", ":"))),
+                )
+
+            with self.assertRaises(OutboxError):
+                SQLiteOutbox(path)
+
+    def test_requires_explicit_camera_origin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            for origin in ("manual_observation", "unknown", None):
+                payload = event("invalid-" + str(origin))
+                payload["origin"] = origin
+                with self.subTest(origin=origin), self.assertRaises(ValueError):
+                    box.enqueue(payload)
+            missing = event("missing")
+            del missing["origin"]
+            with self.assertRaises(ValueError):
+                box.enqueue(missing)
 
     def test_rejects_payload_with_media_or_extra_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
