@@ -34,7 +34,7 @@ function concatBytes(parts) {
   return output;
 }
 
-function pngFixture(width, height, { animated = false } = {}) {
+function pngFixture(width, height, { animated = false, duplicateIhdr = false } = {}) {
   const encoder = new TextEncoder();
   const signature = new Uint8Array([137,80,78,71,13,10,26,10]);
   const ihdr = new Uint8Array(25);
@@ -48,6 +48,7 @@ function pngFixture(width, height, { animated = false } = {}) {
   const end = new Uint8Array(12);
   end.set(encoder.encode("IEND"), 4);
   const parts = [signature, ihdr];
+  if (duplicateIhdr) parts.push(ihdr.slice());
   if (animated) {
     const animation = new Uint8Array(20);
     const view = new DataView(animation.buffer);
@@ -166,6 +167,19 @@ test("rejects unsupported, mismatched and oversized files before decoding", asyn
   await assert.rejects(inspectPhotoFile(oversized), /8 MB/);
   await assert.rejects(inspectPhotoFile(fileFromBytes("image/jpeg", pngFixture(100, 100))), /JPEG-Bild ist ungültig/);
   assert.equal(reads, 0);
+});
+
+test("rejects duplicate PNG IHDR chunks before browser decoding", async () => {
+  const file = fileFromBytes("image/png", pngFixture(100, 100, { duplicateIhdr: true }));
+  let decodeCalls = 0;
+  await assert.rejects(
+    preparePhotoBlob(file, {
+      decodeImage: async () => { decodeCalls += 1; throw new Error("decoder must not run"); },
+      createCanvas: () => { throw new Error("canvas must not be created"); }
+    }),
+    /mehrere IHDR-Header/
+  );
+  assert.equal(decodeCalls, 0);
 });
 
 test("rejects animated PNG/WebP and multi-picture JPEG before decoding", async () => {
