@@ -167,8 +167,38 @@ class OutboxOriginAuditTests(unittest.TestCase):
                 link.symlink_to(target)
             except (OSError, NotImplementedError) as exc:
                 self.skipTest(f"symlink creation unavailable on this runner: {exc}")
-            with self.assertRaisesRegex(OutboxAuditError, "symbolic link"):
+            with self.assertRaisesRegex(OutboxAuditError, "symbolic links or junctions"):
                 audit_database(link)
+
+    def test_symlinked_parent_directory_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            real_dir = root / "real"
+            real_dir.mkdir()
+            target = real_dir / "outbox.sqlite3"
+            make_database(target, [])
+            parent_link = root / "alias"
+            try:
+                parent_link.symlink_to(real_dir, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"directory symlink creation unavailable on this runner: {exc}")
+            with self.assertRaisesRegex(OutboxAuditError, "symbolic links or junctions"):
+                audit_database(parent_link / target.name)
+
+    def test_symlinked_wal_sidecar_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            database = root / "outbox.sqlite3"
+            sidecar_target = root / "sidecar-target"
+            make_database(database, [])
+            sidecar_target.write_bytes(b"sidecar")
+            wal = Path(str(database) + "-wal")
+            try:
+                wal.symlink_to(sidecar_target)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"sidecar symlink creation unavailable on this runner: {exc}")
+            with self.assertRaisesRegex(OutboxAuditError, "WAL sidecar must not be a symbolic link or junction"):
+                audit_database(database)
 
 
 if __name__ == "__main__":
