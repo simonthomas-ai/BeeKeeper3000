@@ -12,7 +12,7 @@ const sample = {
   origin: "manual_observation",
 };
 
-test("rejects malformed or oversized photo bitmaps before canvas allocation", () => {
+test("validates photo bitmap dimensions against the configured pixel budget", () => {
   assert.deepEqual(assertPhotoDimensions(4000, 4000), { width: 4000, height: 4000 });
   assert.equal(MAX_PHOTO_PIXELS, 16_000_000);
   assert.throws(() => assertPhotoDimensions(4001, 4000), /16 Megapixel/);
