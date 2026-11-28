@@ -76,6 +76,7 @@ test('cursor mode quarantines valid legacy events and continues to later camera 
   const state = new Set();
   state.cursor = null;
   const sent = [];
+  const quarantineCounts = [];
   const legacy = { ...sampleEvent, id: 'legacy-unverified-1', origin: 'legacy_unverified' };
   const camera = { ...sampleEvent, id: 'camera-after-legacy-1', origin: 'camera' };
   assert.equal(isQuarantinedLegacyEvent(legacy), true);
@@ -98,7 +99,12 @@ test('cursor mode quarantines valid legacy events and continues to later camera 
       });
     },
     saveState: async () => {},
-    sleep: async () => {}
+    sleep: async () => {},
+    onQuarantined: (...args) => {
+      assert.equal(args.length, 1);
+      assert.equal(Number.isSafeInteger(args[0]), true);
+      quarantineCounts.push(args[0]);
+    }
   });
 
   assert.equal(forwarded, 1);
@@ -107,6 +113,27 @@ test('cursor mode quarantines valid legacy events and continues to later camera 
   assert.equal(state.cursor, 'cursor-after-legacy');
   assert.equal(state.has(legacy.id), false);
   assert.equal(state.has(camera.id), true);
+  assert.deepEqual(quarantineCounts, [1]);
+});
+
+test('malformed legacy quarantine entries still stop the cursor without a diagnostic', async () => {
+  const state = new Set();
+  state.cursor = null;
+  const malformed = { ...sampleEvent, id: 'legacy-malformed-1', origin: 'legacy_unverified', confidence: 2 };
+  const quarantineCounts = [];
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({
+      events: [malformed], next_cursor: 'cursor-after-malformed', has_more: false
+    }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    saveState: async () => {},
+    onQuarantined: count => quarantineCounts.push(count)
+  }), /invalid source event/);
+  assert.equal(state.cursor, null);
+  assert.deepEqual(quarantineCounts, []);
 });
 
 test('rejects invalid confidence, timestamps, IDs and species labels', () => {
