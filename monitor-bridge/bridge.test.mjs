@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement, MAX_STATE_BYTES } from './bridge.mjs';
+import { toMonitorEvent, isQuarantinedLegacyEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement, MAX_STATE_BYTES } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -70,6 +70,43 @@ test('rejects missing, quarantined and unknown event origins instead of assuming
   assert.equal(toMonitorEvent(legacyEvent), null);
   assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'legacy_unverified' }), null);
   assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'expert_confirmed' }), null);
+});
+
+test('cursor mode quarantines valid legacy events and continues to later camera events', async () => {
+  const state = new Set();
+  state.cursor = null;
+  const sent = [];
+  const legacy = { ...sampleEvent, id: 'legacy-unverified-1', origin: 'legacy_unverified' };
+  const camera = { ...sampleEvent, id: 'camera-after-legacy-1', origin: 'camera' };
+  assert.equal(isQuarantinedLegacyEvent(legacy), true);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, confidence: 2 }), false);
+
+  const forwarded = await pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-monitor-token-long-enough-123',
+    fetchImpl: async (url, init) => {
+      if (url.startsWith('http://127.0.0.1:8787/')) {
+        return new Response(JSON.stringify({
+          events: [legacy, camera], next_cursor: 'cursor-after-legacy', has_more: false
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      sent.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ accepted: true }), {
+        status: 202, headers: { 'content-type': 'application/json' }
+      });
+    },
+    saveState: async () => {},
+    sleep: async () => {}
+  });
+
+  assert.equal(forwarded, 1);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].payload.origin_event_id, camera.id);
+  assert.equal(state.cursor, 'cursor-after-legacy');
+  assert.equal(state.has(legacy.id), false);
+  assert.equal(state.has(camera.id), true);
 });
 
 test('rejects invalid confidence, timestamps, IDs and species labels', () => {
