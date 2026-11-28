@@ -146,6 +146,7 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             event = await adapter.read_event(1.0)
             self.assertEqual(event["species"], "vespa_velutina_candidate")
             self.assertEqual(event["station_id"], "station-01")
+            self.assertEqual(event["origin"], "camera")
             self.assertNotIn("image", event)
             self.assertNotIn("image_bytes", event)
             self.assertNotIn("path", event)
