@@ -1,6 +1,17 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { assertPhotoDimensions, MAX_PHOTO_PIXELS, confidenceScore, makeStationId, toSourceEvent, validateSourceEvent, waitForOrientationSample } from "./core.mjs";
+import {
+  assertPhotoDimensions,
+  inspectPhotoFile,
+  MAX_PHOTO_BYTES,
+  MAX_PHOTO_PIXELS,
+  preparePhotoBlob,
+  confidenceScore,
+  makeStationId,
+  toSourceEvent,
+  validateSourceEvent,
+  waitForOrientationSample
+} from "./core.mjs";
 
 const sample = {
   id: "mobile-test-123456",
@@ -12,6 +23,88 @@ const sample = {
   origin: "manual_observation",
 };
 
+function concatBytes(parts) {
+  const size = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+
+function pngFixture(width, height, { animated = false } = {}) {
+  const encoder = new TextEncoder();
+  const signature = new Uint8Array([137,80,78,71,13,10,26,10]);
+  const ihdr = new Uint8Array(25);
+  const ihdrView = new DataView(ihdr.buffer);
+  ihdrView.setUint32(0, 13, false);
+  ihdr.set(encoder.encode("IHDR"), 4);
+  ihdrView.setUint32(8, width, false);
+  ihdrView.setUint32(12, height, false);
+  ihdr[16] = 8;
+  ihdr[17] = 2;
+  const end = new Uint8Array(12);
+  end.set(encoder.encode("IEND"), 4);
+  const parts = [signature, ihdr];
+  if (animated) {
+    const animation = new Uint8Array(20);
+    const view = new DataView(animation.buffer);
+    view.setUint32(0, 8, false);
+    animation.set(encoder.encode("acTL"), 4);
+    view.setUint32(8, 1, false);
+    parts.push(animation);
+  }
+  parts.push(end);
+  return concatBytes(parts);
+}
+
+function jpegFixture(width, height, { multiPicture = false } = {}) {
+  const parts = [new Uint8Array([0xff,0xd8])];
+  if (multiPicture) {
+    parts.push(new Uint8Array([0xff,0xe2,0x00,0x08,0x4d,0x50,0x46,0x00,0x00,0x00]));
+  }
+  parts.push(new Uint8Array([
+    0xff,0xc0,0x00,0x07,0x08,
+    (height >>> 8) & 0xff,height & 0xff,
+    (width >>> 8) & 0xff,width & 0xff,
+    0xff,0xd9
+  ]));
+  return concatBytes(parts);
+}
+
+function webpFixture(width, height, { animated = false } = {}) {
+  const encoder = new TextEncoder();
+  const bytes = new Uint8Array(30);
+  const view = new DataView(bytes.buffer);
+  bytes.set(encoder.encode("RIFF"), 0);
+  view.setUint32(4, bytes.length - 8, true);
+  bytes.set(encoder.encode("WEBP"), 8);
+  bytes.set(encoder.encode("VP8X"), 12);
+  view.setUint32(16, 10, true);
+  bytes[20] = animated ? 0x02 : 0;
+  const w = width - 1, h = height - 1;
+  bytes[24] = w & 0xff;
+  bytes[25] = (w >>> 8) & 0xff;
+  bytes[26] = (w >>> 16) & 0xff;
+  bytes[27] = h & 0xff;
+  bytes[28] = (h >>> 8) & 0xff;
+  bytes[29] = (h >>> 16) & 0xff;
+  return bytes;
+}
+
+function fileFromBytes(type, bytes) {
+  const snapshot = bytes.slice();
+  return {
+    type,
+    size: snapshot.length,
+    async arrayBuffer() {
+      return snapshot.slice().buffer;
+    }
+  };
+}
+
 test("validates photo bitmap dimensions against the configured pixel budget", () => {
   assert.deepEqual(assertPhotoDimensions(4000, 4000), { width: 4000, height: 4000 });
   assert.equal(MAX_PHOTO_PIXELS, 16_000_000);
@@ -19,6 +112,97 @@ test("validates photo bitmap dimensions against the configured pixel budget", ()
   assert.throws(() => assertPhotoDimensions(0, 100), /Bildabmessungen/);
   assert.throws(() => assertPhotoDimensions(100, NaN), /Bildabmessungen/);
   assert.throws(() => assertPhotoDimensions(1.5, 100), /Bildabmessungen/);
+});
+
+test("reads JPEG, PNG and WebP dimensions from bounded headers", async () => {
+  assert.deepEqual(await inspectPhotoFile(fileFromBytes("image/png", pngFixture(1200, 900))), {
+    type: "image/png", width: 1200, height: 900
+  });
+  assert.deepEqual(await inspectPhotoFile(fileFromBytes("image/jpeg", jpegFixture(4032, 3024))), {
+    type: "image/jpeg", width: 4032, height: 3024
+  });
+  assert.deepEqual(await inspectPhotoFile(fileFromBytes("image/webp", webpFixture(1600, 1200))), {
+    type: "image/webp", width: 1600, height: 1200
+  });
+});
+
+test("rejects oversized image headers before invoking the browser decoder", async () => {
+  const file = fileFromBytes("image/png", pngFixture(5000, 5000));
+  let decodeCalls = 0;
+  let canvasCalls = 0;
+  await assert.rejects(
+    preparePhotoBlob(file, {
+      decodeImage: async () => { decodeCalls += 1; return { width: 5000, height: 5000 }; },
+      createCanvas: () => { canvasCalls += 1; return {}; }
+    }),
+    /16 Megapixel/
+  );
+  assert.equal(decodeCalls, 0);
+  assert.equal(canvasCalls, 0);
+});
+
+test("rejects unsupported, mismatched and oversized files before decoding", async () => {
+  let reads = 0;
+  const unsupported = {
+    type: "image/heic",
+    size: 10,
+    async arrayBuffer() { reads += 1; return new ArrayBuffer(10); }
+  };
+  await assert.rejects(inspectPhotoFile(unsupported), /Nur JPEG/);
+  const oversized = {
+    type: "image/jpeg",
+    size: MAX_PHOTO_BYTES + 1,
+    async arrayBuffer() { reads += 1; return new ArrayBuffer(0); }
+  };
+  await assert.rejects(inspectPhotoFile(oversized), /8 MB/);
+  await assert.rejects(inspectPhotoFile(fileFromBytes("image/jpeg", pngFixture(100, 100))), /JPEG-Bild ist ungültig/);
+  assert.equal(reads, 0);
+});
+
+test("rejects animated PNG/WebP and multi-picture JPEG before decoding", async () => {
+  await assert.rejects(inspectPhotoFile(fileFromBytes("image/png", pngFixture(100, 100, { animated: true }))), /Animierte PNG/);
+  await assert.rejects(inspectPhotoFile(fileFromBytes("image/webp", webpFixture(100, 100, { animated: true }))), /Animierte WebP/);
+  await assert.rejects(inspectPhotoFile(fileFromBytes("image/jpeg", jpegFixture(100, 100, { multiPicture: true }))), /Mehrbild-JPEG/);
+});
+
+test("rechecks decoded dimensions and closes a bitmap if decoder output differs", async () => {
+  const file = fileFromBytes("image/png", pngFixture(100, 100));
+  let closed = 0;
+  let canvasCalls = 0;
+  await assert.rejects(
+    preparePhotoBlob(file, {
+      decodeImage: async () => ({ width: 5000, height: 5000, close() { closed += 1; } }),
+      createCanvas: () => { canvasCalls += 1; return {}; }
+    }),
+    /16 Megapixel/
+  );
+  assert.equal(closed, 1);
+  assert.equal(canvasCalls, 0);
+});
+
+test("preflights before decoding, resizes locally and closes the bitmap", async () => {
+  const file = fileFromBytes("image/png", pngFixture(4000, 3000));
+  let closed = 0;
+  let drawn = false;
+  const canvas = {
+    width: 0,
+    height: 0,
+    getContext() {
+      return { drawImage() { drawn = true; } };
+    },
+    toBlob(callback, type) {
+      callback(new Blob(["sanitized"], { type }));
+    }
+  };
+  const blob = await preparePhotoBlob(file, {
+    decodeImage: async () => ({ width: 4000, height: 3000, close() { closed += 1; } }),
+    createCanvas: () => canvas
+  });
+  assert.equal(blob.type, "image/jpeg");
+  assert.equal(canvas.width, 1600);
+  assert.equal(canvas.height, 1200);
+  assert.equal(drawn, true);
+  assert.equal(closed, 1);
 });
 
 test("maps observer confidence levels to bounded numeric values", () => {
