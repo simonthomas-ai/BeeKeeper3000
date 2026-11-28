@@ -158,7 +158,7 @@ def audit_database(database: str | Path) -> dict:
             or shapes[0][3] != 3
         ):
             raise OutboxAuditError(
-                "outbox must be an ordinary three-column SQLite table"
+                "outbox table has an unsupported schema; expected an ordinary three-column SQLite table"
             )
 
         columns_cursor = db.execute("PRAGMA table_xinfo(outbox)")
