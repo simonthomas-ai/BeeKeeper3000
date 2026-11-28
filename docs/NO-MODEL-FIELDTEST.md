@@ -121,7 +121,7 @@ Auf einer **Kopie** der gestoppten und vollständig checkpointeten Datenbank aus
 python -m camera.audit_outbox_origins --database /pfad/zur/sicherung/outbox.sqlite3
 ```
 
-Der Prüfer öffnet die Datei ausschließlich mit SQLite `mode=ro&immutable=1`. Ein vorhandenes, nicht leeres `-wal`-Journal wird abgewiesen, damit kein unvollständiger Snapshot als vollständig ausgegeben wird. Die Ausgabe enthält ausschließlich aggregierte Zähler; keine Ereignis-IDs, Stationsnamen, Payloads oder Dateipfade. Die Datenbank wird weder migriert noch repariert oder verändert.
+Der Prüfer öffnet die Datei ausschließlich mit SQLite `mode=ro&immutable=1`. Ein vorhandenes, nicht leeres `-wal`- oder `-journal`-Sidecar wird abgewiesen, damit kein unvollständiger Snapshot als vollständig ausgegeben wird. Die Ausgabe enthält ausschließlich aggregierte Zähler; keine Ereignis-IDs, Stationsnamen, Payloads oder Dateipfade. Die Datenbank wird weder migriert noch repariert oder verändert.
 
 - Exitcode `0`: leer oder strukturell kompatible explizite Kameraeinträge; **keine** Herkunfts- oder Hardwarebestätigung.
 - Exitcode `2`: fehlende Herkunft, Nicht-Kamera-Herkunft, ungültiges JSON oder ungültiges Schema; Upgrade anhalten und die Sicherung manuell prüfen.
