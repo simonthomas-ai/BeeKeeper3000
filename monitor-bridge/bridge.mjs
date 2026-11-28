@@ -181,8 +181,9 @@ export function toMonitorEvent(event) {
   if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
   const timestamp = typeof event.observed_at === 'string' ? event.observed_at : '';
   if (timestamp.length > 40 || !Number.isFinite(Date.parse(timestamp)) || !/(Z|[+-]\d\d:\d\d)$/.test(timestamp)) return null;
-  const origin = event.origin === undefined ? 'camera' : event.origin;
-  if (origin !== 'camera' && origin !== 'manual_observation') return null;
+  // Never infer a camera source from an omitted, client-controlled origin.
+  if (event.origin !== 'camera' && event.origin !== 'manual_observation') return null;
+  const origin = event.origin;
   const manual = origin === 'manual_observation';
   const rawStation = typeof event.station_id === 'string' ? event.station_id : '';
   const station = rawStation.toLowerCase().replace(/[^a-z0-9._-]/g, '_').slice(0, 80) || 'hornet3000-local';
