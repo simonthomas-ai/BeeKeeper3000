@@ -206,6 +206,14 @@ export function toMonitorEvent(event) {
   };
 }
 
+// A server-normalized legacy event is valid metadata but has no trustworthy
+// producer origin. Quarantine it without forwarding it as a camera event.
+export function isQuarantinedLegacyEvent(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event) ||
+      event.origin !== 'legacy_unverified') return false;
+  return toMonitorEvent({ ...event, origin: 'camera' }) !== null;
+}
+
 const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const DEFAULT_MAX_ATTEMPTS = 4;
 const MAX_RETRY_AFTER_MS = 60_000;
@@ -284,6 +292,9 @@ export async function forwardBatch(events, state, options = {}) {
     if (state.has(event.id)) continue;
     const mapped = toMonitorEvent(event);
     if (!mapped) {
+      // Only a fully valid server-quarantined legacy event may be skipped in
+      // cursor mode. Other malformed events still stop the page fail-closed.
+      if (options.quarantineLegacy && isQuarantinedLegacyEvent(event)) continue;
       if (options.rejectInvalid) throw new Error(`Cursor page contains invalid source event ${event.id}`);
       continue;
     }
@@ -412,7 +423,8 @@ export async function pollOnce(state, options = {}) {
     // would make it permanently unrecoverable and violate lossless catch-up.
     forwarded += await forwardBatch(body.events, currentState, {
       ...options,
-      rejectInvalid: true
+      rejectInvalid: true,
+      quarantineLegacy: true
     });
     await saveCursor(body.next_cursor);
 
