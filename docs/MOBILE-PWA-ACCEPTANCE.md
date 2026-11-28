@@ -6,7 +6,8 @@ Status: source implementation and browser-independent contract tests exist. No p
 
 - Manual sightings remain explicitly unverified.
 - Photo picker/camera intent is user initiated; local image re-encoding is attempted and no media upload exists.
-- Selected photos are limited to 8 MiB and 16 megapixels after browser decoding; larger decoded bitmaps are rejected before canvas allocation. This bounds canvas work but does not guarantee protection against memory use inside the browser's image decoder.
+- Selected photos are limited to 8 MiB and 16 megapixels. Only JPEG, PNG and WebP are accepted; their headers are parsed before `createImageBitmap`. Invalid or inconsistent headers, known animated-image flags, multi-picture JPEGs and oversized dimensions are rejected before browser decoding. Decoded bitmap dimensions are checked again before canvas allocation, and the bitmap is closed after processing.
+- HEIC/HEIF and other unsupported formats must be converted locally to JPEG before selection; no external conversion service is used. Header preflight reduces exposure to oversized decoder allocations but cannot guarantee protection from browser decoder vulnerabilities or every memory-exhaustion path.
 - GPS and orientation permissions are asked only when the user clicks the corresponding control.
 - IndexedDB stores offline reports; export is manual and excludes photos, notes, precise location and sensor data.
 - Service worker caches only same-origin static assets. CSP has no remote connect target.
@@ -18,13 +19,14 @@ For each exact phone model, OS build and browser version, record date and eviden
 - Install from an HTTPS origin; reload once offline and confirm the shell opens.
 - Create, review, delete and export a report with no permissions granted.
 - Deny then grant photo, location and orientation separately; confirm the app still works when denied.
-- Verify a supported photo under 16 megapixels opens; verify a decoded image over 16 megapixels is rejected with a clear message and is not stored.
+- Verify a JPEG, PNG and WebP photo under 16 megapixels opens; verify oversized header dimensions are rejected before `createImageBitmap` and are not stored.
+- Verify malformed or inconsistent headers, animated PNG/WebP, multi-picture JPEG and HEIC/HEIF are rejected with a clear message. HEIC/HEIF conversion must remain local.
 - Verify the re-encoded photo opens; verify photo, EXIF, GPS and compass are absent from exported JSON.
 - Confirm airplane-mode reports persist through app/browser restart and that pending/saved state is visible.
 - Use browser developer tools or a network monitor to verify that no unexpected external request, upload or beacon occurs.
 - Measure storage growth, app stability and permission persistence. Test storage clearing and recovery.
 
-A passed browser unit test is not a device acceptance. iOS background execution, continuous camera access, BLE, WebUSB, Web Serial and Web NFC are not promised. Any future native bridge must undergo separate privacy, security and store-policy review.
+The header-parser tests use synthetic fixtures and do not prove compatibility with real camera files. A passed browser unit test is not a device acceptance. iOS background execution, continuous camera access, BLE, WebUSB, Web Serial and Web NFC are not promised. Any future native bridge must undergo separate privacy, security and store-policy review.
 
 ## Current user path
 
