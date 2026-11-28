@@ -109,3 +109,22 @@ sudo systemctl stop beekeeper-bridge beekeeper-source-api beekeeper-monitor
 - Ein einzelner Kamera-Frame ist keine Dauerbetriebs-, Wiederverbindungs-, Datenschutz- oder Feldleistungsprüfung.
 - Das Feldprotokoll erzeugt keine automatischen Beobachtungen. Der optionale manuelle v2-Import ist über `manual_observation` integriert, bleibt aber eine bewusste lokale Betreiberaktion und aktiviert weder KI noch Warnungen.
 - Der tatsächliche Raspberry-Pi-/Kameratest, Datenschutzfreigabe, Datenaufbewahrung und Betreiberrollen müssen vor Ort entschieden und nachgewiesen werden.
+
+
+## Read-only Outbox-Vorprüfung vor einem Upgrade
+
+Vor dem Wechsel auf einen Build, der fehlende Ereignis-Herkunft nicht mehr akzeptiert, zuerst die Station geordnet stoppen und eine konsistente, lokal geschützte SQLite-Sicherung erstellen. Nicht auf der laufenden Produktionsdatenbank testen.
+
+Auf einer **Kopie** der gestoppten und vollständig checkpointeten Datenbank ausführen:
+
+```sh
+python -m camera.audit_outbox_origins --database /pfad/zur/sicherung/outbox.sqlite3
+```
+
+Der Prüfer öffnet die Datei ausschließlich mit SQLite `mode=ro&immutable=1`. Ein vorhandenes, nicht leeres `-wal`- oder `-journal`-Sidecar wird abgewiesen, damit kein unvollständiger Snapshot als vollständig ausgegeben wird. Die Ausgabe enthält ausschließlich aggregierte Zähler; keine Ereignis-IDs, Stationsnamen, Payloads oder Dateipfade. Die Datenbank wird weder migriert noch repariert oder verändert.
+
+- Exitcode `0`: leer oder strukturell kompatible explizite Kameraeinträge; **keine** Herkunfts- oder Hardwarebestätigung.
+- Exitcode `2`: fehlende Herkunft, Nicht-Kamera-Herkunft, ungültiges JSON oder ungültiges Schema; Upgrade anhalten und die Sicherung manuell prüfen.
+- Exitcode `3`: Datenbank oder Snapshot nicht lesbar; keine Aussage zur Upgradefähigkeit.
+
+`STRUCTURALLY_COMPATIBLE_NOT_AUTHENTICATED` bedeutet nur, dass die gespeicherten Zeilen dem aktuellen Kamera-Schema entsprechen. `origin=camera` bleibt clientgeliefertes Metadatum und beweist keine physische Kameraquelle. Der Prüfer gibt keine Upgradefreigabe und schreibt niemals `origin=camera` in alte Zeilen. Unklare Datensätze nicht löschen oder in der Produktionsdatenbank manuell umetikettieren.
