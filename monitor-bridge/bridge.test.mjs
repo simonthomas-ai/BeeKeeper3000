@@ -65,9 +65,10 @@ test('manual PWA reports stay manual and are never mapped as camera detections',
   assert.equal(mapped.payload.confidence, 0.83);
 });
 
-test('rejects missing and unknown event origins instead of assuming camera', () => {
+test('rejects missing, quarantined and unknown event origins instead of assuming camera', () => {
   const { origin, ...legacyEvent } = sampleEvent;
   assert.equal(toMonitorEvent(legacyEvent), null);
+  assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'legacy_unverified' }), null);
   assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'expert_confirmed' }), null);
 });
 
