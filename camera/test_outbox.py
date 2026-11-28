@@ -124,6 +124,54 @@ class OutboxTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 box.enqueue(missing)
 
+    def test_rejects_invalid_source_metadata_before_enqueue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            invalid_values = [
+                ("id", "event id with spaces"),
+                ("station_id", "station/with/slash"),
+                ("observed_at", "2026-11-20T00:00:00"),
+                ("species", "invalid\nspecies"),
+                ("confidence", True),
+                ("confidence", -0.01),
+                ("confidence", 1.01),
+                ("confidence", "0.8"),
+                ("prey_detected", 1),
+            ]
+            for index, (field, value) in enumerate(invalid_values):
+                payload = event("invalid-metadata-" + str(index))
+                payload[field] = value
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    box.enqueue(payload)
+
+    def test_refuses_to_migrate_legacy_row_with_invalid_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "invalid-legacy.sqlite3")
+            legacy = event("legacy-invalid")
+            del legacy["origin"]
+            legacy["confidence"] = "not-numeric"
+            original = json.dumps(legacy, sort_keys=True, separators=(",", ":"))
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (legacy["id"], original),
+                )
+
+            with self.assertRaisesRegex(OutboxError, "unsupported event schema"):
+                SQLiteOutbox(path)
+
+            with closing(sqlite3.connect(path)) as db:
+                stored = db.execute(
+                    "SELECT payload_json FROM outbox WHERE event_id=?",
+                    (legacy["id"],),
+                ).fetchone()[0]
+            self.assertEqual(stored, original)
+
     def test_rejects_payload_with_media_or_extra_fields(self):
         with tempfile.TemporaryDirectory() as tmp:
             box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
