@@ -282,8 +282,12 @@ export async function forwardBatch(events, state, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const save = options.saveState || writeState;
   if (typeof token !== 'string' || token.length < 24) throw new Error('Monitor ingestion token is missing or too short');
+  if (options.onQuarantined !== undefined && typeof options.onQuarantined !== 'function') {
+    throw new Error('onQuarantined must be a function');
+  }
 
   let forwarded = 0;
+  let quarantined = 0;
   for (const event of events) {
     if (!event || typeof event.id !== 'string' || event.id.length < 1 || event.id.length > 128) {
       if (options.rejectInvalid) throw new Error('Cursor page contains an event without a valid stable ID');
@@ -294,7 +298,10 @@ export async function forwardBatch(events, state, options = {}) {
     if (!mapped) {
       // Only a fully valid server-quarantined legacy event may be skipped in
       // cursor mode. Other malformed events still stop the page fail-closed.
-      if (options.quarantineLegacy && isQuarantinedLegacyEvent(event)) continue;
+      if (options.quarantineLegacy && isQuarantinedLegacyEvent(event)) {
+        quarantined++;
+        continue;
+      }
       if (options.rejectInvalid) throw new Error(`Cursor page contains invalid source event ${event.id}`);
       continue;
     }
@@ -337,6 +344,8 @@ export async function forwardBatch(events, state, options = {}) {
     }
     forwarded++;
   }
+  // Emit only an aggregate count: never expose event IDs, station IDs or payloads.
+  if (quarantined > 0) options.onQuarantined?.(quarantined);
   return forwarded;
 }
 
@@ -444,7 +453,12 @@ async function main() {
     if (busy) return;
     busy = true;
     try {
-      const count = await pollOnce(state, { requireCursor });
+      const count = await pollOnce(state, {
+        requireCursor,
+        onQuarantined: quarantined => console.warn(
+          `Quarantined ${quarantined} legacy event(s) without explicit producer origin; not forwarded. Check the station producer version.`
+        )
+      });
       if (count) console.log(`Forwarded ${count} event(s); metadata only.`);
     } catch (error) {
       console.error(`Bridge cycle failed: ${error.message}`);
