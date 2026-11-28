@@ -99,7 +99,7 @@ class SQLiteOutbox:
 
     @staticmethod
     def _migrate_legacy_camera_events(db) -> None:
-        rows = db.execute("SELECT event_id, payload_json FROM outbox").fetchall()
+        rows = db.execute("SELECT event_id, payload_json FROM outbox ORDER BY event_id").fetchall()
         for event_id, payload_json in rows:
             try:
                 event = json.loads(payload_json)
