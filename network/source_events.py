@@ -23,14 +23,19 @@ def validate_source_event(value: Mapping) -> dict:
     if not isinstance(value, Mapping):
         raise SourceEventError("event must be an object")
 
-    expected = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected", "origin"}
-    if "origin" not in value:
-        raise SourceEventError("origin is required; legacy omission is rejected")
-    if set(value) != expected:
+    required = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected"}
+    allowed = required | {"origin"}
+    if set(value) not in (required, allowed):
         raise SourceEventError("event fields do not match the strict source contract")
-    origin = value["origin"]
-    if not isinstance(origin, str) or origin not in {"camera", "manual_observation"}:
-        raise SourceEventError("origin must be camera or manual_observation")
+
+    # Keep old local producers compatible without ever classifying their events
+    # as camera detections. The bridge deliberately drops this quarantine value.
+    if "origin" not in value:
+        origin = "legacy_unverified"
+    else:
+        origin = value["origin"]
+        if not isinstance(origin, str) or origin not in {"camera", "manual_observation"}:
+            raise SourceEventError("origin must be camera or manual_observation")
 
     event_id = value["id"]
     station_id = value["station_id"]
