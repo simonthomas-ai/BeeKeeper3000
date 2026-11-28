@@ -29,7 +29,7 @@ function pngDimensions(bytes){
 }
 function jpegDimensions(bytes){
  if(bytes.length<4||bytes[0]!==0xff||bytes[1]!==0xd8)throw new Error("JPEG-Bild ist ungültig oder stimmt nicht mit dem Dateityp überein");
- let offset=2;
+ let offset=2,dimensions=null;
  while(offset<bytes.length){
   if(bytes[offset]!==0xff)throw new Error("JPEG-Bild enthält eine ungültige Markerfolge");
   while(offset<bytes.length&&bytes[offset]===0xff)offset++;
@@ -44,40 +44,44 @@ function jpegDimensions(bytes){
   if(marker===0xe2&&segmentLength>=6&&ascii(bytes,payload,4)==="MPF\u0000")throw new Error("Mehrbild-JPEGs werden nicht unterstützt");
   if(JPEG_SOF_MARKERS.has(marker)){
    if(segmentLength<7)throw new Error("JPEG-Bild enthält ungültige Abmessungen");
+   if(dimensions)throw new Error("JPEG-Bild enthält mehrere Abmessungsmarker");
    const height=(bytes[offset+3]<<8)|bytes[offset+4];
    const width=(bytes[offset+5]<<8)|bytes[offset+6];
-   return assertPhotoDimensions(width,height);
+   dimensions=assertPhotoDimensions(width,height);
   }
   offset+=segmentLength;
  }
- throw new Error("JPEG-Abmessungen konnten nicht sicher gelesen werden");
+ if(!dimensions)throw new Error("JPEG-Abmessungen konnten nicht sicher gelesen werden");
+ return dimensions;
 }
 function webpDimensions(bytes){
  if(bytes.length<26||ascii(bytes,0,4)!=="RIFF"||ascii(bytes,8,4)!=="WEBP"||readU32LE(bytes,4)+8!==bytes.length)throw new Error("WebP-Bild ist ungültig oder unvollständig");
- let offset=12,dimensions=null;
+ let offset=12,dimensions=null,extendedHeaderSeen=false;
  while(offset+8<=bytes.length){
   const type=ascii(bytes,offset,4),size=readU32LE(bytes,offset+4),data=offset+8;
   if(size>bytes.length-data)throw new Error("WebP-Bild enthält einen ungültigen Chunk");
+  const nextOffset=data+size+(size&1);
+  if(nextOffset>bytes.length)throw new Error("WebP-Bild enthält eine fehlende Chunk-Ausrichtung");
   if(type==="ANIM"||type==="ANMF")throw new Error("Animierte WebP-Bilder werden nicht unterstützt");
   if(type==="VP8X"){
    if(size<10)throw new Error("WebP-Erweiterungsheader ist ungültig");
+   if(extendedHeaderSeen)throw new Error("WebP-Bild enthält mehrere Erweiterungsheader");
+   extendedHeaderSeen=true;
    if(bytes[data]&0x02)throw new Error("Animierte WebP-Bilder werden nicht unterstützt");
    dimensions=assertPhotoDimensions(1+readU24LE(bytes,data+4),1+readU24LE(bytes,data+7));
-   break;
+  }else if(type==="VP8 "&&size>=10&&bytes[data+3]===0x9d&&bytes[data+4]===0x01&&bytes[data+5]===0x2a){
+   if(!dimensions)dimensions=assertPhotoDimensions(((bytes[data+7]<<8)|bytes[data+6])&0x3fff,((bytes[data+9]<<8)|bytes[data+8])&0x3fff);
+  }else if(type==="VP8L"&&size>=5&&bytes[data]===0x2f){
+   if(!dimensions){
+    const b1=bytes[data+1],b2=bytes[data+2],b3=bytes[data+3],b4=bytes[data+4];
+    const width=1+(((b2&0x3f)<<8)|b1);
+    const height=1+(((b4&0x0f)<<10)|(b3<<2)|((b2&0xc0)>>6));
+    dimensions=assertPhotoDimensions(width,height);
+   }
   }
-  if(type==="VP8 "&&size>=10&&bytes[data+3]===0x9d&&bytes[data+4]===0x01&&bytes[data+5]===0x2a){
-   dimensions=assertPhotoDimensions(((bytes[data+7]<<8)|bytes[data+6])&0x3fff,((bytes[data+9]<<8)|bytes[data+8])&0x3fff);
-   break;
-  }
-  if(type==="VP8L"&&size>=5&&bytes[data]===0x2f){
-   const b1=bytes[data+1],b2=bytes[data+2],b3=bytes[data+3],b4=bytes[data+4];
-   const width=1+(((b2&0x3f)<<8)|b1);
-   const height=1+(((b4&0x0f)<<10)|(b3<<2)|((b2&0xc0)>>6));
-   dimensions=assertPhotoDimensions(width,height);
-   break;
-  }
-  offset=data+size+(size&1);
+  offset=nextOffset;
  }
+ if(offset!==bytes.length)throw new Error("WebP-Bild enthält einen unvollständigen Chunk");
  if(!dimensions)throw new Error("WebP-Abmessungen konnten nicht sicher gelesen werden");
  return dimensions;
 }
