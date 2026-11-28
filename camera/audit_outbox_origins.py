@@ -11,7 +11,6 @@ import math
 import re
 import sqlite3
 import stat
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -20,7 +19,7 @@ LEGACY_KEYS = frozenset({
     "id", "observed_at", "station_id", "species", "confidence", "prey_detected"
 })
 CURRENT_KEYS = LEGACY_KEYS | {"origin"}
-EVENT_ID = re.compile(r"^[\\x21-\\x7e]{1,128}$")
+EVENT_ID = re.compile(r"^[\x21-\x7e]{1,128}$")
 STATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$")
 
 
