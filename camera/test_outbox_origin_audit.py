@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from camera.audit_outbox_origins import OutboxAuditError, audit_database, main
+from camera.audit_outbox_origins import MAX_PAYLOAD_BYTES, OutboxAuditError, audit_database, main
 
 
 def camera_event(event_id="event-001"):
@@ -113,6 +113,22 @@ class OutboxOriginAuditTests(unittest.TestCase):
             make_database(path, [])
             Path(str(path) + "-wal").write_bytes(b"not-a-clean-checkpoint")
             with self.assertRaisesRegex(OutboxAuditError, "non-empty WAL"):
+                audit_database(path)
+
+    def test_oversized_payload_is_counted_without_json_parsing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "oversized.sqlite3"
+            make_database(path, [("large", " " * (MAX_PAYLOAD_BYTES + 1))])
+            report = audit_database(path)
+        self.assertEqual(report["counts"]["invalid_schema"], 1)
+        self.assertEqual(report["assessment"], "BLOCKED_REQUIRES_MANUAL_REVIEW")
+
+    def test_nonempty_rollback_journal_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "journal.sqlite3"
+            make_database(path, [])
+            Path(str(path) + "-journal").write_bytes(b"unfinished-transaction")
+            with self.assertRaisesRegex(OutboxAuditError, "rollback journal"):
                 audit_database(path)
 
     def test_missing_database_is_not_created(self):
