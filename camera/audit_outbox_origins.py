@@ -21,6 +21,7 @@ LEGACY_KEYS = frozenset({
 CURRENT_KEYS = LEGACY_KEYS | {"origin"}
 EVENT_ID = re.compile(r"^[\x21-\x7e]{1,128}$")
 STATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$")
+MAX_PAYLOAD_BYTES = 64 * 1024
 
 
 class OutboxAuditError(RuntimeError):
@@ -85,12 +86,13 @@ def audit_database(database: str | Path) -> dict:
     # immutable=1 prevents SQLite from creating locks or sidecars. A non-empty
     # WAL means the supplied file is not a clean standalone backup; refuse to
     # produce a potentially incomplete report.
-    wal = Path(str(target) + "-wal")
     try:
-        if wal.exists() and wal.stat().st_size > 0:
-            raise OutboxAuditError(
-                "non-empty WAL sidecar found; stop the station and create a consistent backup"
-            )
+        for suffix, label in (("-wal", "WAL"), ("-journal", "rollback journal")):
+            sidecar = Path(str(target) + suffix)
+            if sidecar.exists() and sidecar.stat().st_size > 0:
+                raise OutboxAuditError(
+                    f"non-empty {label} sidecar found; stop the station and create a consistent backup"
+                )
     except OSError as exc:
         raise OutboxAuditError("database sidecar could not be inspected") from exc
 
@@ -122,13 +124,20 @@ def audit_database(database: str | Path) -> dict:
         if not {"event_id", "payload_json"}.issubset(columns):
             raise OutboxAuditError("outbox table has an unsupported schema")
 
-        cursor = db.execute("SELECT event_id, payload_json FROM outbox ORDER BY event_id")
+        cursor = db.execute(
+            "SELECT event_id, length(CAST(payload_json AS BLOB)), "
+            "substr(CAST(payload_json AS BLOB), 1, ?) FROM outbox ORDER BY event_id",
+            (MAX_PAYLOAD_BYTES + 1,),
+        )
         while True:
             batch = cursor.fetchmany(256)
             if not batch:
                 break
-            for row_id, payload_json in batch:
+            for row_id, payload_size, payload_json in batch:
                 counts["total"] += 1
+                if payload_size is None or payload_size > MAX_PAYLOAD_BYTES:
+                    counts["invalid_schema"] += 1
+                    continue
                 try:
                     event = json.loads(payload_json)
                 except (TypeError, ValueError, UnicodeDecodeError):
