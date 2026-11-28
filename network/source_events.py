@@ -23,11 +23,12 @@ def validate_source_event(value: Mapping) -> dict:
     if not isinstance(value, Mapping):
         raise SourceEventError("event must be an object")
 
-    expected = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected"}
-    allowed = expected | {"origin"}
-    if set(value) not in (expected, allowed):
+    expected = {"id", "observed_at", "station_id", "species", "confidence", "prey_detected", "origin"}
+    if "origin" not in value:
+        raise SourceEventError("origin is required; legacy omission is rejected")
+    if set(value) != expected:
         raise SourceEventError("event fields do not match the strict source contract")
-    origin = value.get("origin", "camera")
+    origin = value["origin"]
     if not isinstance(origin, str) or origin not in {"camera", "manual_observation"}:
         raise SourceEventError("origin must be camera or manual_observation")
 
