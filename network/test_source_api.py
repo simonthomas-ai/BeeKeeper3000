@@ -48,7 +48,7 @@ class SourceContractTests(unittest.TestCase):
     def test_preserves_explicit_manual_observation_origin(self):
         event = validate_source_event(sample_event(1) | {"origin": "manual_observation"})
         self.assertEqual(event["origin"], "manual_observation")
-        for invalid in ("expert_confirmed", "legacy_unverified", [], None, True):
+        for invalid in ("expert_confirmed", "legacy_unverified", "local_media_unverified", [], None, True):
             with self.subTest(origin=invalid), self.assertRaises(SourceEventError):
                 validate_source_event(sample_event(2) | {"origin": invalid})
 
