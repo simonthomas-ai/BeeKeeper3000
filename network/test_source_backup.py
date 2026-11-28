@@ -13,7 +13,7 @@ class SourceBackupTests(unittest.TestCase):
         self.store.append({
             "id": "backup-test-1", "observed_at": "2026-11-20T10:00:00Z",
             "station_id": "station_north", "species": "vespa_velutina",
-            "confidence": 0.91, "prey_detected": False,
+            "confidence": 0.91, "prey_detected": False, "origin": "camera",
         })
 
     def tearDown(self):
@@ -44,7 +44,7 @@ class SourceBackupTests(unittest.TestCase):
             reopened.append({
                 "id": "backup-test-1", "observed_at": "2026-11-20T10:00:00Z",
                 "station_id": "station_north", "species": "vespa_velutina",
-                "confidence": 0.91, "prey_detected": False,
+                "confidence": 0.91, "prey_detected": False, "origin": "camera",
             })
 
     def test_refuses_to_overwrite_existing_backup(self):
