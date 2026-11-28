@@ -6,6 +6,7 @@ Status: source implementation and browser-independent contract tests exist. No p
 
 - Manual sightings remain explicitly unverified.
 - Photo picker/camera intent is user initiated; local image re-encoding is attempted and no media upload exists.
+- Selected photos are limited to 8 MiB and 16 megapixels after browser decoding; larger decoded bitmaps are rejected before canvas allocation. This bounds canvas work but does not guarantee protection against memory use inside the browser's image decoder.
 - GPS and orientation permissions are asked only when the user clicks the corresponding control.
 - IndexedDB stores offline reports; export is manual and excludes photos, notes, precise location and sensor data.
 - Service worker caches only same-origin static assets. CSP has no remote connect target.
@@ -17,6 +18,7 @@ For each exact phone model, OS build and browser version, record date and eviden
 - Install from an HTTPS origin; reload once offline and confirm the shell opens.
 - Create, review, delete and export a report with no permissions granted.
 - Deny then grant photo, location and orientation separately; confirm the app still works when denied.
+- Verify a supported photo under 16 megapixels opens; verify a decoded image over 16 megapixels is rejected with a clear message and is not stored.
 - Verify the re-encoded photo opens; verify photo, EXIF, GPS and compass are absent from exported JSON.
 - Confirm airplane-mode reports persist through app/browser restart and that pending/saved state is visible.
 - Use browser developer tools or a network monitor to verify that no unexpected external request, upload or beacon occurs.
@@ -30,6 +32,7 @@ A passed browser unit test is not a device acceptance. iOS background execution,
 2. Open the address on the phone and add it to the home screen.
 3. Create an observation; optional camera/photo and location permissions are requested only when selected.
 4. Export the metadata JSON and transfer it deliberately to a trusted station operator for reviewed ingestion. Do not upload private media or exact coordinates to public services.
+
 ## Übergabe-/Stationsimport
 
 - Importer-Tests prüfen strikte Umschlag-/Ereignis-Schemata, Ausschluss zusätzlicher GPS-/Medienfelder, Zeitzonen, doppelte Ereignis-IDs und feste Loopback-Zieladresse.
