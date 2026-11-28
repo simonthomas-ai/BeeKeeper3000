@@ -89,9 +89,10 @@ class SQLiteOutbox:
                 last_emitted_epoch REAL NOT NULL,
                 PRIMARY KEY (species, prey_detected)
             )""")
-            # The outbox is camera-only. Legacy rows from this camera producer
-            # can therefore be migrated to an explicit camera routing origin.
-            # Unknown or manual rows fail closed and are never reclassified.
+            # Older releases of scripts/import_local_media.py wrote untagged
+            # local-media candidates to this same outbox. Their origin cannot be
+            # reconstructed from the legacy schema. Never promote them to camera;
+            # fail closed and let the transaction preserve the original row.
             db.execute("BEGIN IMMEDIATE")
             self._migrate_legacy_camera_events(db)
         self._secure()
