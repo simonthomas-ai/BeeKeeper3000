@@ -17,8 +17,8 @@
 <label for="certainty">Eigene Einschätzung</label><select id="certainty"><option value="low">Unsicher</option><option value="medium" selected>Mittlere Sicherheit</option><option value="high">Ziemlich sicher</option></select>
 <p class="hint">Das ist deine Einschätzung, keine KI-Wahrscheinlichkeit und keine Artbestätigung.</p>
 <label class="check"><input id="prey-detected" type="checkbox"> Beute / Insekt im Flug beobachtet</label>
-<label for="photo">Foto (optional, bleibt lokal)</label><input id="photo" type="file" accept="image/*" capture="environment">
-<p class="hint">Maximal 8 MB und 16 Megapixel. Größere Bilder werden abgewiesen; kleinere Bilder werden lokal verkleinert.</p>
+<label for="photo">Foto (optional, bleibt lokal)</label><input id="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+<p class="hint">Nur JPEG, PNG oder WebP. Maximal 8 MB und 16 Megapixel. Die Bildabmessungen werden vor dem Browser-Decoding geprüft. HEIC bitte lokal als JPEG speichern.</p>
 <div id="photo-state" class="hint">Kein Foto ausgewählt.</div><button id="remove-photo" type="button" class="secondary" hidden>Foto entfernen</button>
 <div class="actions"><button id="capture-location" type="button" class="secondary">Standort einmalig erfassen</button><button id="clear-location" type="button" class="secondary" hidden>Standort löschen</button></div><div id="location-state" class="hint">Standort: nicht erfasst</div>
 <div class="actions"><button id="capture-orientation" type="button" class="secondary">Kompass-Rohwert erfassen</button><button id="clear-orientation" type="button" class="secondary" hidden>Rohwert löschen</button></div><div id="orientation-state" class="hint">Kompass: nicht erfasst</div>
@@ -27,7 +27,7 @@
 </section>
 <section class="panel"><div class="row"><h2>Lokaler Speicher</h2><strong id="record-count">0</strong></div><p class="hint" id="storage-state">Wird initialisiert …</p><div id="records-list"></div>
 <div class="actions"><button id="export-events" type="button" disabled>Metadaten exportieren</button><button id="clear-records" type="button" class="danger" disabled>Alle Einträge löschen</button></div>
-<p class="hint">Der Export enthält ausschließlich die sechs Felder des Source-API-v1-Vertrags. Fotos, Notizen, exakte Koordinaten und Kompasswerte werden nicht exportiert. Es gibt keine automatische Übertragung.</p></section>
+<p class="hint">Der Export enthält ausschließlich die sieben Felder des Source-API-v2-Vertrags einschließlich origin=manual_observation. Fotos, Notizen, exakte Koordinaten und Kompasswerte werden nicht exportiert. Es gibt keine automatische Übertragung.</p></section>
 <section class="panel"><div class="row"><h2>Gerätefunktionen</h2><button id="refresh-capabilities" type="button" class="secondary">Neu prüfen</button></div><ul id="capability-list"></ul><p class="hint">Die Anzeige erkennt nur Browser-APIs. Sie beweist weder Gerätekompatibilität noch eine bestehende Funk- oder Sensorverbindung.</p></section>
 </main><footer>BeeKeeper3000 · lokale Meldestelle · keine automatische Artbestätigung oder Nestortung</footer>
 <script type="module" src="./app.mjs"></script>
