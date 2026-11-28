@@ -112,15 +112,22 @@ def audit_database(database: str | Path) -> dict:
     }
     cursor = None
     try:
-        db.execute("PRAGMA query_only=ON")
-        table = db.execute(
+        pragma_cursor = db.execute("PRAGMA query_only=ON")
+        pragma_cursor.close()
+        table_cursor = db.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='outbox'"
-        ).fetchone()
+        )
+        try:
+            table = table_cursor.fetchone()
+        finally:
+            table_cursor.close()
         if table is None:
             raise OutboxAuditError("outbox table is missing")
-        columns = {
-            row[1] for row in db.execute("PRAGMA table_info(outbox)").fetchall()
-        }
+        columns_cursor = db.execute("PRAGMA table_info(outbox)")
+        try:
+            columns = {row[1] for row in columns_cursor.fetchall()}
+        finally:
+            columns_cursor.close()
         if not {"event_id", "payload_json"}.issubset(columns):
             raise OutboxAuditError("outbox table has an unsupported schema")
 
@@ -165,7 +172,9 @@ def audit_database(database: str | Path) -> dict:
     finally:
         if cursor is not None:
             cursor.close()
+            cursor = None
         db.close()
+        db = None
 
     blocked = sum(
         counts[key]
