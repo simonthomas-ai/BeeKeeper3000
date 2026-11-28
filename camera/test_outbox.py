@@ -71,11 +71,12 @@ class OutboxTests(unittest.TestCase):
             self.assertEqual([x["id"] for x in SQLiteOutbox(path, max_rows=2).pending()],
                              ["second", "overflow"])
 
-    def test_migrates_legacy_camera_rows_to_explicit_origin(self):
+    def test_refuses_to_guess_origin_for_legacy_rows_and_preserves_payload(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "legacy.sqlite3")
-            legacy = event("legacy-camera")
+            legacy = event("legacy-ambiguous")
             del legacy["origin"]
+            original = json.dumps(legacy, sort_keys=True, separators=(",", ":"))
             with closing(sqlite3.connect(path)) as db, db:
                 db.execute("""CREATE TABLE outbox (
                     event_id TEXT PRIMARY KEY,
@@ -84,13 +85,18 @@ class OutboxTests(unittest.TestCase):
                 )""")
                 db.execute(
                     "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
-                    (legacy["id"], json.dumps(legacy, sort_keys=True, separators=(",", ":"))),
+                    (legacy["id"], original),
                 )
 
-            box = SQLiteOutbox(path)
-            migrated = box.pending(10)
-            self.assertEqual(len(migrated), 1)
-            self.assertEqual(migrated[0]["origin"], "camera")
+            with self.assertRaisesRegex(OutboxError, "no verifiable origin"):
+                SQLiteOutbox(path)
+
+            with closing(sqlite3.connect(path)) as db:
+                stored = db.execute(
+                    "SELECT payload_json FROM outbox WHERE event_id=?",
+                    (legacy["id"],),
+                ).fetchone()[0]
+            self.assertEqual(stored, original)
 
     def test_refuses_to_reclassify_manual_or_unknown_existing_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
