@@ -6,7 +6,7 @@ Status: source implementation and browser-independent contract tests exist. No p
 
 - Manual sightings remain explicitly unverified.
 - Photo picker/camera intent is user initiated; local image re-encoding is attempted and no media upload exists.
-- Selected photos are limited to 8 MiB and 16 megapixels. Only JPEG, PNG and WebP are accepted; their headers are parsed before `createImageBitmap`. Invalid or inconsistent headers, known animated-image flags, multi-picture JPEGs and oversized dimensions are rejected before browser decoding. Decoded bitmap dimensions are checked again before canvas allocation, and the bitmap is closed after processing.
+- Selected photos are limited to 8 MiB and 16 megapixels. Only JPEG, PNG and WebP are accepted; their headers are parsed before `createImageBitmap`. Invalid or inconsistent headers, known animation flags/container chunks, multi-picture JPEGs and oversized dimensions are rejected before browser decoding. Decoded bitmap dimensions are checked again before canvas allocation, and the bitmap is closed after processing.
 - HEIC/HEIF and other unsupported formats must be converted locally to JPEG before selection; no external conversion service is used. Header preflight reduces exposure to oversized decoder allocations but cannot guarantee protection from browser decoder vulnerabilities or every memory-exhaustion path.
 - GPS and orientation permissions are asked only when the user clicks the corresponding control.
 - IndexedDB stores offline reports; export is manual and excludes photos, notes, precise location and sensor data.
