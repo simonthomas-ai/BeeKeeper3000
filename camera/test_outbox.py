@@ -150,11 +150,10 @@ class OutboxTests(unittest.TestCase):
                 with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                     box.enqueue(payload)
 
-    def test_refuses_to_migrate_legacy_row_with_invalid_metadata(self):
+    def test_refuses_to_migrate_explicit_camera_row_with_invalid_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "invalid-legacy.sqlite3")
             legacy = event("legacy-invalid")
-            del legacy["origin"]
             legacy["confidence"] = "not-numeric"
             original = json.dumps(legacy, sort_keys=True, separators=(",", ":"))
             with closing(sqlite3.connect(path)) as db, db:
