@@ -1,4 +1,10 @@
 export const SOURCE_KEYS = Object.freeze(["id","observed_at","station_id","species","confidence","prey_detected","origin"]);
+export const MAX_PHOTO_PIXELS = 16_000_000;
+export function assertPhotoDimensions(width,height){
+ if(!Number.isSafeInteger(width)||!Number.isSafeInteger(height)||width<1||height<1)throw new TypeError("Ungültige Bildabmessungen");
+ if(width>Math.floor(MAX_PHOTO_PIXELS/height))throw new RangeError("Foto überschreitet die lokale Grenze von 16 Megapixeln");
+ return {width,height};
+}
 export function confidenceScore(level){const scores={low:0.25,medium:0.55,high:0.85};if(!Object.hasOwn(scores,level))throw new TypeError("Unbekannte Einschätzungsstufe");return scores[level]}
 export function validateSourceEvent(event){
  if(!event||typeof event!=="object"||Array.isArray(event))throw new TypeError("Ereignis muss ein Objekt sein");

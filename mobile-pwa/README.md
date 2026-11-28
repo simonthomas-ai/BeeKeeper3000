@@ -4,8 +4,6 @@ Responsive installable participant client for Android, iPhone and tablets. It su
 
 ## Run locally
 
-From the repository root:
-
 ```sh
 python -m http.server 8000 --directory mobile-pwa
 ```
@@ -16,6 +14,7 @@ Open `http://127.0.0.1:8000/` on the same device. For a phone on another device,
 
 - Nothing is uploaded and no API key exists in the PWA. There is no auto-sync or background capture.
 - Photo, note, exact GPS and orientation values are stored only in local IndexedDB. Images are re-encoded as JPEG to remove original metadata where browser image decoding permits.
+- Selected photos are limited to 8 MiB and 16 megapixels after browser decoding. Oversized decoded bitmaps are rejected before canvas allocation; this does not guarantee that the browser decoder itself uses bounded memory.
 - Export uses the seven-field source API v2 metadata contract and explicitly marks `origin=manual_observation`; no photos, private notes, GPS, compass data, tokens or diagnostics are exported.
 - A v2 export can be imported separately by the local station operator. The bridge preserves it as `manual_observation`; it is not a camera detection and cannot trigger the hornet alert rule. There is still no automatic sync.
 - Observer confidence is not model confidence and does not confirm a species.
@@ -23,6 +22,7 @@ Open `http://127.0.0.1:8000/` on the same device. For a phone on another device,
 - Local browser storage can be cleared by the OS/browser and is not a backed-up station database. Delete records from the app when no longer needed.
 
 See [mobile hardware acceptance](../docs/MOBILE-PWA-ACCEPTANCE.md).
+
 ## Übergabe an eine lokale Windows-Station
 
 1. Exportiere in der PWA `beekeeper-mobile-events.json`.

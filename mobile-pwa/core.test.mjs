@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { confidenceScore, makeStationId, toSourceEvent, validateSourceEvent, waitForOrientationSample } from "./core.mjs";
+import { assertPhotoDimensions, MAX_PHOTO_PIXELS, confidenceScore, makeStationId, toSourceEvent, validateSourceEvent, waitForOrientationSample } from "./core.mjs";
 
 const sample = {
   id: "mobile-test-123456",
@@ -11,6 +11,15 @@ const sample = {
   prey_detected: false,
   origin: "manual_observation",
 };
+
+test("validates photo bitmap dimensions against the configured pixel budget", () => {
+  assert.deepEqual(assertPhotoDimensions(4000, 4000), { width: 4000, height: 4000 });
+  assert.equal(MAX_PHOTO_PIXELS, 16_000_000);
+  assert.throws(() => assertPhotoDimensions(4001, 4000), /16 Megapixel/);
+  assert.throws(() => assertPhotoDimensions(0, 100), /Bildabmessungen/);
+  assert.throws(() => assertPhotoDimensions(100, NaN), /Bildabmessungen/);
+  assert.throws(() => assertPhotoDimensions(1.5, 100), /Bildabmessungen/);
+});
 
 test("maps observer confidence levels to bounded numeric values", () => {
   assert.equal(confidenceScore("low"), 0.25);
