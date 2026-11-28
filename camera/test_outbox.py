@@ -2,6 +2,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from camera.outbox import SQLiteOutbox, OutboxFull, OutboxError
 
@@ -75,7 +76,7 @@ class OutboxTests(unittest.TestCase):
             path = str(Path(tmp) / "legacy.sqlite3")
             legacy = event("legacy-camera")
             del legacy["origin"]
-            with sqlite3.connect(path) as db:
+            with closing(sqlite3.connect(path)) as db, db:
                 db.execute("""CREATE TABLE outbox (
                     event_id TEXT PRIMARY KEY,
                     payload_json TEXT NOT NULL,
@@ -96,7 +97,7 @@ class OutboxTests(unittest.TestCase):
             path = str(Path(tmp) / "unexpected.sqlite3")
             unexpected = event("unexpected")
             unexpected["origin"] = "manual_observation"
-            with sqlite3.connect(path) as db:
+            with closing(sqlite3.connect(path)) as db, db:
                 db.execute("""CREATE TABLE outbox (
                     event_id TEXT PRIMARY KEY,
                     payload_json TEXT NOT NULL,
