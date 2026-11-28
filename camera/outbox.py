@@ -152,7 +152,10 @@ class SQLiteOutbox:
         confidence = event.get("confidence")
         if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
             raise ValueError("confidence must be numeric")
-        confidence_number = float(confidence)
+        try:
+            confidence_number = float(confidence)
+        except (OverflowError, TypeError, ValueError) as exc:
+            raise ValueError("confidence must be finite") from exc
         if not math.isfinite(confidence_number) or not 0 <= confidence_number <= 1:
             raise ValueError("confidence must be finite and within 0..1")
         if type(event.get("prey_detected")) is not bool:
