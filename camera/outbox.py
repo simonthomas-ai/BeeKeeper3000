@@ -18,6 +18,12 @@ class OutboxFull(OutboxError):
     pass
 
 
+_LEGACY_SOURCE_EVENT_KEYS = frozenset({
+    "id", "observed_at", "station_id", "species", "confidence", "prey_detected"
+})
+_SOURCE_EVENT_KEYS = _LEGACY_SOURCE_EVENT_KEYS | {"origin"}
+
+
 class SQLiteOutbox:
     def __init__(self, path: str, *, max_rows: int = 10_000):
         if not isinstance(path, str) or not path.strip():
@@ -79,14 +85,42 @@ class SQLiteOutbox:
                 last_emitted_epoch REAL NOT NULL,
                 PRIMARY KEY (species, prey_detected)
             )""")
+            # The outbox is camera-only. Legacy rows from this camera producer
+            # can therefore be migrated to an explicit camera routing origin.
+            # Unknown or manual rows fail closed and are never reclassified.
+            db.execute("BEGIN IMMEDIATE")
+            self._migrate_legacy_camera_events(db)
         self._secure()
 
     @staticmethod
+    def _migrate_legacy_camera_events(db) -> None:
+        rows = db.execute("SELECT event_id, payload_json FROM outbox").fetchall()
+        for event_id, payload_json in rows:
+            try:
+                event = json.loads(payload_json)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise OutboxError("existing outbox row contains invalid JSON") from exc
+            if isinstance(event, dict) and set(event) == _LEGACY_SOURCE_EVENT_KEYS:
+                event = dict(event)
+                event["origin"] = "camera"
+            try:
+                normalized_id, canonical = SQLiteOutbox._canonical_event(event)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise OutboxError("existing outbox row has an unsupported event schema") from exc
+            if normalized_id != event_id:
+                raise OutboxError("existing outbox row ID does not match its payload")
+            if canonical != payload_json:
+                db.execute(
+                    "UPDATE outbox SET payload_json=? WHERE event_id=?",
+                    (canonical, event_id),
+                )
+
+    @staticmethod
     def _canonical_event(event: dict) -> tuple[str, str]:
-        if not isinstance(event, dict) or set(event) != {
-            "id", "observed_at", "station_id", "species", "confidence", "prey_detected"
-        }:
-            raise ValueError("outbox accepts only the strict source event schema")
+        if not isinstance(event, dict) or set(event) != _SOURCE_EVENT_KEYS:
+            raise ValueError("outbox accepts only the strict camera source event schema")
+        if event.get("origin") != "camera":
+            raise ValueError("camera outbox accepts only explicit origin=camera")
         canonical = json.dumps(
             event, ensure_ascii=False, allow_nan=False,
             sort_keys=True, separators=(",", ":")
