@@ -1,0 +1,89 @@
+name: ARM64 camera runtime compatibility
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "camera/requirements.txt"
+      - "camera/**/*.py"
+      - "adapters/local_media.py"
+      - "adapters/test_local_media.py"
+      - "scripts/test_import_local_media.py"
+      - ".github/workflows/camera-arm64-compat.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "camera/requirements.txt"
+      - "camera/**/*.py"
+      - "adapters/local_media.py"
+      - "adapters/test_local_media.py"
+      - "scripts/test_import_local_media.py"
+      - ".github/workflows/camera-arm64-compat.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: camera-arm64-compat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  camera-runtime-arm64:
+    name: Linux ARM64 camera runtime (wheel and safety tests)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install only published ARM64 binary wheels
+        run: >-
+          python -m pip install
+          --disable-pip-version-check
+          --only-binary=:all:
+          --requirement camera/requirements.txt
+
+      - name: Verify architecture and native runtime imports
+        run: |
+          python - <<'PY'
+          import platform
+          import cv2
+          import onnxruntime
+
+          machine = platform.machine().lower()
+          if machine not in {"aarch64", "arm64"}:
+              raise SystemExit(f"Expected ARM64 runner, got {machine!r}")
+
+          print(f"Architecture: {machine}")
+          print(f"OpenCV: {cv2.__version__}")
+          print(f"ONNX Runtime: {onnxruntime.__version__}")
+          print("Execution providers:", onnxruntime.get_available_providers())
+          PY
+
+      - name: Check dependency consistency
+        run: python -m pip check
+
+      - name: Run camera runtime and durable outbox tests
+        run: python -m unittest discover -s camera -p "test_*.py" -v
+
+      - name: Run local media adapter safety tests
+        run: python -m unittest adapters.test_local_media scripts.test_import_local_media -v
+
+      - name: State hardware boundary
+        if: always()
+        run: |
+          {
+            echo "## Linux ARM64 camera runtime"
+            echo "- Validates published ARM64 wheels and software tests on an ARM64 Linux runner."
+            echo "- Does not certify Raspberry Pi camera drivers, CSI/USB hardware, thermal behavior, power use or field reliability."
+            echo "- No model weights, training images, camera recordings or user data are downloaded."
+            echo "- No artifact upload or deployment."
+          } >> "$GITHUB_STEP_SUMMARY"
