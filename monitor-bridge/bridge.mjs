@@ -207,10 +207,22 @@ export function toMonitorEvent(event) {
 }
 
 // A server-normalized legacy event is valid metadata but has no trustworthy
-// producer origin. Quarantine it without forwarding it as a camera event.
+// producer origin. Quarantine only the exact source-API schema; malformed or
+// extended records must stop cursor processing rather than being silently skipped.
+const LEGACY_SOURCE_EVENT_KEYS = new Set([
+  'id', 'observed_at', 'station_id', 'species', 'confidence', 'prey_detected', 'origin'
+]);
+const LEGACY_STATION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
+
 export function isQuarantinedLegacyEvent(event) {
   if (!event || typeof event !== 'object' || Array.isArray(event) ||
       event.origin !== 'legacy_unverified') return false;
+  const keys = Object.keys(event);
+  if (keys.length !== LEGACY_SOURCE_EVENT_KEYS.size ||
+      keys.some(key => !LEGACY_SOURCE_EVENT_KEYS.has(key))) return false;
+  if (typeof event.station_id !== 'string' || !LEGACY_STATION_ID.test(event.station_id)) return false;
+  if (typeof event.prey_detected !== 'boolean') return false;
+  if (typeof event.species !== 'string' || /[\\x00-\\x1f\\x7f]/.test(event.species)) return false;
   return toMonitorEvent({ ...event, origin: 'camera' }) !== null;
 }
 
