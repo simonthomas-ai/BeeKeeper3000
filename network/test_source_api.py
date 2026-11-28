@@ -48,7 +48,7 @@ class SourceContractTests(unittest.TestCase):
     def test_preserves_explicit_manual_observation_origin(self):
         event = validate_source_event(sample_event(1) | {"origin": "manual_observation"})
         self.assertEqual(event["origin"], "manual_observation")
-        for invalid in ("expert_confirmed", [], None, True):
+        for invalid in ("expert_confirmed", "legacy_unverified", [], None, True):
             with self.subTest(origin=invalid), self.assertRaises(SourceEventError):
                 validate_source_event(sample_event(2) | {"origin": invalid})
 
@@ -328,6 +328,14 @@ class SourceApiTests(unittest.TestCase):
         stored = self.store.page(0, 10)["events"]
         self.assertEqual(len(stored), 1)
         self.assertEqual(stored[0]["origin"], "legacy_unverified")
+
+    def test_post_rejects_client_supplied_legacy_quarantine_origin(self):
+        event = sample_event(1)
+        event["origin"] = "legacy_unverified"
+        status, payload, _ = self.request("POST", "/api/events", body=json.dumps(event))
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"], "invalid_event")
+        self.assertEqual(self.store.count(), 0)
 
     def test_post_rejects_location_and_media_fields(self):
         event = sample_event(1)
