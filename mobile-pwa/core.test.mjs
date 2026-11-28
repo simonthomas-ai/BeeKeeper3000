@@ -60,37 +60,46 @@ function pngFixture(width, height, { animated = false } = {}) {
   return concatBytes(parts);
 }
 
-function jpegFixture(width, height, { multiPicture = false } = {}) {
+function jpegFixture(width, height, { multiPicture = false, multiPictureAfterSof = false } = {}) {
   const parts = [new Uint8Array([0xff,0xd8])];
-  if (multiPicture) {
-    parts.push(new Uint8Array([0xff,0xe2,0x00,0x08,0x4d,0x50,0x46,0x00,0x00,0x00]));
-  }
-  parts.push(new Uint8Array([
+  const mpf = new Uint8Array([0xff,0xe2,0x00,0x08,0x4d,0x50,0x46,0x00,0x00,0x00]);
+  const sof = new Uint8Array([
     0xff,0xc0,0x00,0x07,0x08,
     (height >>> 8) & 0xff,height & 0xff,
-    (width >>> 8) & 0xff,width & 0xff,
-    0xff,0xd9
-  ]));
+    (width >>> 8) & 0xff,width & 0xff
+  ]);
+  if (multiPicture && !multiPictureAfterSof) parts.push(mpf);
+  parts.push(sof);
+  if (multiPicture && multiPictureAfterSof) parts.push(mpf);
+  parts.push(new Uint8Array([0xff,0xd9]));
   return concatBytes(parts);
 }
 
-function webpFixture(width, height, { animated = false } = {}) {
+function webpFixture(width, height, { animated = false, animationChunk = false } = {}) {
   const encoder = new TextEncoder();
-  const bytes = new Uint8Array(30);
-  const view = new DataView(bytes.buffer);
-  bytes.set(encoder.encode("RIFF"), 0);
-  view.setUint32(4, bytes.length - 8, true);
-  bytes.set(encoder.encode("WEBP"), 8);
-  bytes.set(encoder.encode("VP8X"), 12);
+  const vp8x = new Uint8Array(30);
+  const view = new DataView(vp8x.buffer);
+  vp8x.set(encoder.encode("RIFF"), 0);
+  vp8x.set(encoder.encode("WEBP"), 8);
+  vp8x.set(encoder.encode("VP8X"), 12);
   view.setUint32(16, 10, true);
-  bytes[20] = animated ? 0x02 : 0;
+  vp8x[20] = animated ? 0x02 : 0;
   const w = width - 1, h = height - 1;
-  bytes[24] = w & 0xff;
-  bytes[25] = (w >>> 8) & 0xff;
-  bytes[26] = (w >>> 16) & 0xff;
-  bytes[27] = h & 0xff;
-  bytes[28] = (h >>> 8) & 0xff;
-  bytes[29] = (h >>> 16) & 0xff;
+  vp8x[24] = w & 0xff;
+  vp8x[25] = (w >>> 8) & 0xff;
+  vp8x[26] = (w >>> 16) & 0xff;
+  vp8x[27] = h & 0xff;
+  vp8x[28] = (h >>> 8) & 0xff;
+  vp8x[29] = (h >>> 16) & 0xff;
+  const parts = [vp8x];
+  if (animationChunk) {
+    const animation = new Uint8Array(14);
+    animation.set(encoder.encode("ANIM"), 0);
+    new DataView(animation.buffer).setUint32(4, 6, true);
+    parts.push(animation);
+  }
+  const bytes = concatBytes(parts);
+  new DataView(bytes.buffer).setUint32(4, bytes.length - 8, true);
   return bytes;
 }
 
@@ -163,6 +172,20 @@ test("rejects animated PNG/WebP and multi-picture JPEG before decoding", async (
   await assert.rejects(inspectPhotoFile(fileFromBytes("image/png", pngFixture(100, 100, { animated: true }))), /Animierte PNG/);
   await assert.rejects(inspectPhotoFile(fileFromBytes("image/webp", webpFixture(100, 100, { animated: true }))), /Animierte WebP/);
   await assert.rejects(inspectPhotoFile(fileFromBytes("image/jpeg", jpegFixture(100, 100, { multiPicture: true }))), /Mehrbild-JPEG/);
+});
+
+test("rejects MPF markers that appear after the JPEG dimension segment", async () => {
+  await assert.rejects(
+    inspectPhotoFile(fileFromBytes("image/jpeg", jpegFixture(100, 100, { multiPicture: true, multiPictureAfterSof: true }))),
+    /Mehrbild-JPEG/
+  );
+});
+
+test("rejects WebP animation chunks even when the VP8X animation flag is clear", async () => {
+  await assert.rejects(
+    inspectPhotoFile(fileFromBytes("image/webp", webpFixture(100, 100, { animationChunk: true }))),
+    /Animierte WebP/
+  );
 });
 
 test("rechecks decoded dimensions and closes a bitmap if decoder output differs", async () => {
