@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import one explicitly selected local image/video into the metadata-only outbox."""
+"""Run one explicitly selected local image/video in shadow mode; discard all detections."""
 from __future__ import annotations
 
 import argparse
@@ -21,8 +21,8 @@ from camera.outbox import OutboxFull, SQLiteOutbox
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Locally infer one explicitly selected media file and queue only "
-            "unverified detection metadata. No media upload or network client is used."
+            "Locally inspect one explicitly selected media file in experimental shadow mode. "
+            "All detections are discarded; no outbox, source event, media upload or network client is used."
         )
     )
     parser.add_argument("--manifest", type=Path, required=True,
@@ -32,8 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allowed-root", type=Path, required=True,
                         help="approved local directory; symlinks and path traversal are rejected")
     parser.add_argument("--station-id", required=True)
-    parser.add_argument("--outbox", type=Path, required=True,
-                        help="private local metadata-only SQLite outbox")
+    parser.add_argument("--outbox", type=Path, required=False, default=None,
+                        help="deprecated compatibility option; shadow mode never creates or modifies this file")
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--cooldown", type=float, default=30.0)
     parser.add_argument("--max-video-frames", type=int, default=10_000)

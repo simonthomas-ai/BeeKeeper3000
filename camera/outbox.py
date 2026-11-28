@@ -4,9 +4,11 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import sqlite3
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 
@@ -16,6 +18,14 @@ class OutboxError(RuntimeError):
 
 class OutboxFull(OutboxError):
     pass
+
+
+_LEGACY_SOURCE_EVENT_KEYS = frozenset({
+    "id", "observed_at", "station_id", "species", "confidence", "prey_detected"
+})
+_SOURCE_EVENT_KEYS = _LEGACY_SOURCE_EVENT_KEYS | {"origin"}
+_EVENT_ID = re.compile(r"^[\x21-\x7e]{1,128}$")
+_STATION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$")
 
 
 class SQLiteOutbox:
@@ -79,26 +89,87 @@ class SQLiteOutbox:
                 last_emitted_epoch REAL NOT NULL,
                 PRIMARY KEY (species, prey_detected)
             )""")
+            # Older releases of scripts/import_local_media.py wrote untagged
+            # local-media candidates to this same outbox. Their origin cannot be
+            # reconstructed from the legacy schema. Never promote them to camera;
+            # fail closed and let the transaction preserve the original row.
+            db.execute("BEGIN IMMEDIATE")
+            self._migrate_legacy_camera_events(db)
         self._secure()
 
     @staticmethod
+    def _migrate_legacy_camera_events(db) -> None:
+        rows = db.execute("SELECT event_id, payload_json FROM outbox ORDER BY event_id").fetchall()
+        for event_id, payload_json in rows:
+            try:
+                event = json.loads(payload_json)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise OutboxError("existing outbox row contains invalid JSON") from exc
+            if isinstance(event, dict) and set(event) == _LEGACY_SOURCE_EVENT_KEYS:
+                raise OutboxError(
+                    "legacy outbox row has no verifiable origin; manual review required"
+                )
+            try:
+                normalized_id, canonical = SQLiteOutbox._canonical_event(event)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise OutboxError("existing outbox row has an unsupported event schema") from exc
+            if normalized_id != event_id:
+                raise OutboxError("existing outbox row ID does not match its payload")
+            if canonical != payload_json:
+                db.execute(
+                    "UPDATE outbox SET payload_json=? WHERE event_id=?",
+                    (canonical, event_id),
+                )
+
+    @staticmethod
     def _canonical_event(event: dict) -> tuple[str, str]:
-        if not isinstance(event, dict) or set(event) != {
-            "id", "observed_at", "station_id", "species", "confidence", "prey_detected"
-        }:
-            raise ValueError("outbox accepts only the strict source event schema")
-        canonical = json.dumps(
-            event, ensure_ascii=False, allow_nan=False,
-            sort_keys=True, separators=(",", ":")
-        )
+        if not isinstance(event, dict) or set(event) != _SOURCE_EVENT_KEYS:
+            raise ValueError("outbox accepts only the strict camera source event schema")
+        if event.get("origin") != "camera":
+            raise ValueError("camera outbox accepts only explicit origin=camera")
+
         event_id = event.get("id")
-        if not isinstance(event_id, str) or not event_id:
-            raise ValueError("event id is required")
+        if not isinstance(event_id, str) or not _EVENT_ID.fullmatch(event_id):
+            raise ValueError("event id must be 1..128 printable ASCII characters")
+        station_id = event.get("station_id")
+        if not isinstance(station_id, str) or not _STATION_ID.fullmatch(station_id):
+            raise ValueError("station_id must be a short technical identifier")
+
+        observed_at = event.get("observed_at")
+        if not isinstance(observed_at, str) or not 1 <= len(observed_at) <= 40:
+            raise ValueError("observed_at must be an ISO-8601 timestamp")
+        try:
+            timestamp = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("observed_at must be a valid ISO-8601 timestamp") from exc
+        if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+            raise ValueError("observed_at must include an explicit timezone")
+
         species = event.get("species")
-        if not isinstance(species, str) or not species.strip() or len(species) > 160:
-            raise ValueError("event species must be a non-empty label of at most 160 characters")
+        if not isinstance(species, str) or not 1 <= len(species.strip()) <= 160:
+            raise ValueError("event species must contain 1..160 characters")
+        if any(ord(char) < 32 or ord(char) == 127 for char in species):
+            raise ValueError("event species contains control characters")
+
+        confidence = event.get("confidence")
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+            raise ValueError("confidence must be numeric")
+        try:
+            confidence_number = float(confidence)
+        except (OverflowError, TypeError, ValueError) as exc:
+            raise ValueError("confidence must be finite") from exc
+        if not math.isfinite(confidence_number) or not 0 <= confidence_number <= 1:
+            raise ValueError("confidence must be finite and within 0..1")
         if type(event.get("prey_detected")) is not bool:
             raise ValueError("prey_detected must be boolean")
+
+        normalized = dict(event)
+        normalized["species"] = species.strip()
+        normalized["confidence"] = confidence_number
+        canonical = json.dumps(
+            normalized, ensure_ascii=False, allow_nan=False,
+            sort_keys=True, separators=(",", ":")
+        )
         return event_id, canonical
 
     def enqueue(self, event: dict) -> bool:

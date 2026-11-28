@@ -181,8 +181,9 @@ export function toMonitorEvent(event) {
   if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return null;
   const timestamp = typeof event.observed_at === 'string' ? event.observed_at : '';
   if (timestamp.length > 40 || !Number.isFinite(Date.parse(timestamp)) || !/(Z|[+-]\d\d:\d\d)$/.test(timestamp)) return null;
-  const origin = event.origin === undefined ? 'camera' : event.origin;
-  if (origin !== 'camera' && origin !== 'manual_observation') return null;
+  // Never infer a camera source from an omitted, client-controlled origin.
+  if (event.origin !== 'camera' && event.origin !== 'manual_observation') return null;
+  const origin = event.origin;
   const manual = origin === 'manual_observation';
   const rawStation = typeof event.station_id === 'string' ? event.station_id : '';
   const station = rawStation.toLowerCase().replace(/[^a-z0-9._-]/g, '_').slice(0, 80) || 'hornet3000-local';
@@ -203,6 +204,26 @@ export function toMonitorEvent(event) {
       prey_detected: event.prey_detected === true
     }
   };
+}
+
+// A server-normalized legacy event is valid metadata but has no trustworthy
+// producer origin. Quarantine only the exact source-API schema; malformed or
+// extended records must stop cursor processing rather than being silently skipped.
+const LEGACY_SOURCE_EVENT_KEYS = new Set([
+  'id', 'observed_at', 'station_id', 'species', 'confidence', 'prey_detected', 'origin'
+]);
+const LEGACY_STATION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
+
+export function isQuarantinedLegacyEvent(event) {
+  if (!event || typeof event !== 'object' || Array.isArray(event) ||
+      event.origin !== 'legacy_unverified') return false;
+  const keys = Object.keys(event);
+  if (keys.length !== LEGACY_SOURCE_EVENT_KEYS.size ||
+      keys.some(key => !LEGACY_SOURCE_EVENT_KEYS.has(key))) return false;
+  if (typeof event.station_id !== 'string' || !LEGACY_STATION_ID.test(event.station_id)) return false;
+  if (typeof event.prey_detected !== 'boolean') return false;
+  if (typeof event.species !== 'string' || /[\x00-\x1f\x7f]/.test(event.species)) return false;
+  return toMonitorEvent({ ...event, origin: 'camera' }) !== null;
 }
 
 const RETRYABLE_HTTP_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -273,8 +294,12 @@ export async function forwardBatch(events, state, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const save = options.saveState || writeState;
   if (typeof token !== 'string' || token.length < 24) throw new Error('Monitor ingestion token is missing or too short');
+  if (options.onQuarantined !== undefined && typeof options.onQuarantined !== 'function') {
+    throw new Error('onQuarantined must be a function');
+  }
 
   let forwarded = 0;
+  let quarantined = 0;
   for (const event of events) {
     if (!event || typeof event.id !== 'string' || event.id.length < 1 || event.id.length > 128) {
       if (options.rejectInvalid) throw new Error('Cursor page contains an event without a valid stable ID');
@@ -283,6 +308,12 @@ export async function forwardBatch(events, state, options = {}) {
     if (state.has(event.id)) continue;
     const mapped = toMonitorEvent(event);
     if (!mapped) {
+      // Only a fully valid server-quarantined legacy event may be skipped in
+      // cursor mode. Other malformed events still stop the page fail-closed.
+      if (options.quarantineLegacy && isQuarantinedLegacyEvent(event)) {
+        quarantined++;
+        continue;
+      }
       if (options.rejectInvalid) throw new Error(`Cursor page contains invalid source event ${event.id}`);
       continue;
     }
@@ -325,6 +356,8 @@ export async function forwardBatch(events, state, options = {}) {
     }
     forwarded++;
   }
+  // Emit only an aggregate count: never expose event IDs, station IDs or payloads.
+  if (quarantined > 0) options.onQuarantined?.(quarantined);
   return forwarded;
 }
 
@@ -411,7 +444,8 @@ export async function pollOnce(state, options = {}) {
     // would make it permanently unrecoverable and violate lossless catch-up.
     forwarded += await forwardBatch(body.events, currentState, {
       ...options,
-      rejectInvalid: true
+      rejectInvalid: true,
+      quarantineLegacy: true
     });
     await saveCursor(body.next_cursor);
 
@@ -431,7 +465,12 @@ async function main() {
     if (busy) return;
     busy = true;
     try {
-      const count = await pollOnce(state, { requireCursor });
+      const count = await pollOnce(state, {
+        requireCursor,
+        onQuarantined: quarantined => console.warn(
+          `Quarantined ${quarantined} legacy event(s) without explicit producer origin; not forwarded. Check the station producer version.`
+        )
+      });
       if (count) console.log(`Forwarded ${count} event(s); metadata only.`);
     } catch (error) {
       console.error(`Bridge cycle failed: ${error.message}`);

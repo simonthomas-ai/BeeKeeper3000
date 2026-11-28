@@ -1,11 +1,45 @@
 import json
 import threading
+import tempfile
 import unittest
+from pathlib import Path
+from camera.contracts import Detection, make_source_event
+from network.source_api import make_server
+from network.source_event_store import SQLiteSourceEventStore
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from camera.source_client import SourceApiClient, SourceClientError
 
 
 class SourceClientTests(unittest.TestCase):
+    def test_camera_contract_round_trips_through_real_source_api(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            api_key = "source-api-test-key-not-for-production"
+            store = SQLiteSourceEventStore(
+                str(Path(tmp) / "source.sqlite3"), retention_days=30, max_rows=100
+            )
+            server = make_server(
+                api_key, "cursor-secret-test-value-at-least-32-bytes", store, port=0
+            )
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                client = SourceApiClient(
+                    f"http://127.0.0.1:{server.server_port}", api_key
+                )
+                event = make_source_event(
+                    station_id="station-01",
+                    detection=Detection("vespa_velutina_candidate", 0.9),
+                )
+                self.assertEqual(event["origin"], "camera")
+                self.assertTrue(client.send_event(event))
+                stored = store.page(0, 10)["events"]
+                self.assertEqual(len(stored), 1)
+                self.assertEqual(stored[0]["origin"], "camera")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
+
     def test_posts_to_loopback_and_uses_source_auth_header(self):
         received = {}
         class Handler(BaseHTTPRequestHandler):
@@ -23,7 +57,7 @@ class SourceClientTests(unittest.TestCase):
         thread.start()
         try:
             client = SourceApiClient("http://127.0.0.1:%d" % server.server_port, "a" * 32)
-            event = {"id":"camera-1","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_velutina_candidate","confidence":0.9,"prey_detected":False}
+            event = {"id":"camera-1","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"vespa_velutina_candidate","confidence":0.9,"prey_detected":False,"origin":"camera"}
             self.assertTrue(client.send_event(event))
             self.assertEqual(received["path"], "/api/events")
             self.assertEqual(received["key"], "a" * 32)
@@ -54,7 +88,7 @@ class SourceClientTests(unittest.TestCase):
         thread.start()
         try:
             client = SourceApiClient("http://127.0.0.1:%d" % server.server_port, "a" * 32)
-            event = {"id":"camera-redirect","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False}
+            event = {"id":"camera-redirect","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False,"origin":"camera"}
             with self.assertRaises(SourceClientError):
                 client.send_event(event)
             self.assertFalse(followed["value"])
@@ -81,7 +115,7 @@ class SourceClientTests(unittest.TestCase):
         thread.start()
         try:
             client = SourceApiClient("http://127.0.0.1:%d" % server.server_port, "a" * 32)
-            event = {"id":"camera-deleted","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False}
+            event = {"id":"camera-deleted","observed_at":"2026-11-20T00:00:00Z","station_id":"station-1","species":"candidate","confidence":0.8,"prey_detected":False,"origin":"camera"}
             self.assertTrue(client.send_event(event))
             Handler.response_body = b'{"error":"some_other_410"}'
             with self.assertRaises(SourceClientError):

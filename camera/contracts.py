@@ -34,7 +34,7 @@ class Detection:
 
 
 def make_source_event(*, station_id: str, detection: Detection, observed_at: datetime | None = None) -> dict:
-    """Create the strict BeeKeeper source API v1 event; never attach media/GPS."""
+    """Create a strict camera-origin event for the BeeKeeper source API; never attach media/GPS."""
     if not isinstance(station_id, str) or not _ID.fullmatch(station_id):
         raise ValueError("station_id must be a short technical identifier")
     if not isinstance(detection, Detection):
@@ -50,4 +50,5 @@ def make_source_event(*, station_id: str, detection: Detection, observed_at: dat
         "species": detection.species.strip(),
         "confidence": float(detection.confidence),
         "prey_detected": detection.prey_detected,
+        "origin": "camera",
     }

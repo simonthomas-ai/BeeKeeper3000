@@ -27,6 +27,7 @@ def sample_event(index: int, *, timestamp=None):
         "species": "Vespa velutina",
         "confidence": 0.91,
         "prey_detected": index % 2 == 0,
+        "origin": "camera",
     }
 
 
@@ -38,10 +39,16 @@ class SourceContractTests(unittest.TestCase):
         self.assertIs(type(event["prey_detected"]), bool)
         self.assertEqual(event["origin"], "camera")
 
+    def test_quarantines_missing_origin_instead_of_assuming_camera(self):
+        event = sample_event(1)
+        del event["origin"]
+        normalized = validate_source_event(event)
+        self.assertEqual(normalized["origin"], "legacy_unverified")
+
     def test_preserves_explicit_manual_observation_origin(self):
         event = validate_source_event(sample_event(1) | {"origin": "manual_observation"})
         self.assertEqual(event["origin"], "manual_observation")
-        for invalid in ("expert_confirmed", [], None, True):
+        for invalid in ("expert_confirmed", "legacy_unverified", "local_media_unverified", [], None, True):
             with self.subTest(origin=invalid), self.assertRaises(SourceEventError):
                 validate_source_event(sample_event(2) | {"origin": invalid})
 
@@ -311,6 +318,24 @@ class SourceApiTests(unittest.TestCase):
         self.assertEqual(status, 503)
         self.assertEqual(payload["error"], "source_journal_capacity")
         self.assertEqual(self.store.count(), 100)
+
+    def test_post_quarantines_missing_origin_without_camera_classification(self):
+        event = sample_event(1)
+        del event["origin"]
+        status, payload, _ = self.request("POST", "/api/events", body=json.dumps(event))
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["accepted"])
+        stored = self.store.page(0, 10)["events"]
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(stored[0]["origin"], "legacy_unverified")
+
+    def test_post_rejects_client_supplied_legacy_quarantine_origin(self):
+        event = sample_event(1)
+        event["origin"] = "legacy_unverified"
+        status, payload, _ = self.request("POST", "/api/events", body=json.dumps(event))
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"], "invalid_event")
+        self.assertEqual(self.store.count(), 0)
 
     def test_post_rejects_location_and_media_fields(self):
         event = sample_event(1)

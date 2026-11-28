@@ -16,6 +16,7 @@ import math
 from collections import deque
 from pathlib import Path
 from typing import Any, Mapping
+from uuid import uuid4
 
 from camera.contracts import Detection, make_source_event
 from adapters.lifecycle import AdapterConfigurationError, AdapterTransientError
@@ -27,6 +28,14 @@ _SOF_MARKERS = {
     0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7,
     0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF,
 }
+
+
+def _make_local_media_candidate_event(*, station_id: str, detection: Detection) -> dict:
+    """Create an internal local-media candidate that camera/source APIs reject."""
+    event = make_source_event(station_id=station_id, detection=detection)
+    event["id"] = "local-media-" + uuid4().hex
+    event["origin"] = "local_media_unverified"
+    return event
 
 
 def _file_identity_from_stat(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
@@ -432,7 +441,7 @@ class LocalMediaAdapter:
             if previous is not None and now - previous < self.cooldown_seconds:
                 continue
             self._last_event_by_species[detection.species] = now
-            self._pending.append(make_source_event(station_id=self.station_id, detection=detection))
+            self._pending.append(_make_local_media_candidate_event(station_id=self.station_id, detection=detection))
 
     async def read_event(self, timeout_seconds: float) -> Mapping[str, Any] | None:
         if not self._started:

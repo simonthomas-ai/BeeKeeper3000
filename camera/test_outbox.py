@@ -1,11 +1,14 @@
+import json
+import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from camera.outbox import SQLiteOutbox, OutboxFull, OutboxError
 
 
 def event(event_id, species="vespa_velutina_candidate"):
-    return {"id": event_id, "observed_at": "2026-11-20T00:00:00Z", "station_id": "station-1", "species": species, "confidence": 0.8, "prey_detected": False}
+    return {"id": event_id, "observed_at": "2026-11-20T00:00:00Z", "station_id": "station-1", "species": species, "confidence": 0.8, "prey_detected": False, "origin": "camera"}
 
 
 class OutboxTests(unittest.TestCase):
@@ -67,6 +70,146 @@ class OutboxTests(unittest.TestCase):
             self.assertTrue(SQLiteOutbox(path, max_rows=2).enqueue(event("overflow")))
             self.assertEqual([x["id"] for x in SQLiteOutbox(path, max_rows=2).pending()],
                              ["second", "overflow"])
+
+    def test_refuses_to_guess_origin_for_legacy_rows_and_preserves_payload(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "legacy.sqlite3")
+            legacy = event("legacy-ambiguous")
+            del legacy["origin"]
+            original = json.dumps(legacy, sort_keys=True, separators=(",", ":"))
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (legacy["id"], original),
+                )
+
+            with self.assertRaisesRegex(OutboxError, "no verifiable origin"):
+                SQLiteOutbox(path)
+
+            with closing(sqlite3.connect(path)) as db:
+                stored = db.execute(
+                    "SELECT payload_json FROM outbox WHERE event_id=?",
+                    (legacy["id"],),
+                ).fetchone()[0]
+            self.assertEqual(stored, original)
+
+    def test_legacy_origin_failure_rolls_back_prior_canonicalization(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "mixed-legacy.sqlite3")
+            camera = event("a-camera")
+            camera_original = json.dumps(camera, sort_keys=False, separators=(",", ":"))
+            ambiguous = event("z-legacy")
+            del ambiguous["origin"]
+            ambiguous_original = json.dumps(
+                ambiguous, sort_keys=True, separators=(",", ":")
+            )
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.executemany(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    [
+                        (camera["id"], camera_original),
+                        (ambiguous["id"], ambiguous_original),
+                    ],
+                )
+
+            with self.assertRaisesRegex(OutboxError, "no verifiable origin"):
+                SQLiteOutbox(path)
+
+            with closing(sqlite3.connect(path)) as db:
+                stored = dict(db.execute(
+                    "SELECT event_id, payload_json FROM outbox"
+                ).fetchall())
+            self.assertEqual(stored["a-camera"], camera_original)
+            self.assertEqual(stored["z-legacy"], ambiguous_original)
+
+    def test_refuses_to_reclassify_manual_or_unknown_existing_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "unexpected.sqlite3")
+            unexpected = event("unexpected")
+            unexpected["origin"] = "manual_observation"
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (unexpected["id"], json.dumps(unexpected, sort_keys=True, separators=(",", ":"))),
+                )
+
+            with self.assertRaises(OutboxError):
+                SQLiteOutbox(path)
+
+    def test_requires_explicit_camera_origin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            for origin in ("manual_observation", "unknown", None):
+                payload = event("invalid-" + str(origin))
+                payload["origin"] = origin
+                with self.subTest(origin=origin), self.assertRaises(ValueError):
+                    box.enqueue(payload)
+            missing = event("missing")
+            del missing["origin"]
+            with self.assertRaises(ValueError):
+                box.enqueue(missing)
+
+    def test_rejects_invalid_source_metadata_before_enqueue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
+            invalid_values = [
+                ("id", "event id with spaces"),
+                ("station_id", "station/with/slash"),
+                ("observed_at", "2026-11-20T00:00:00"),
+                ("species", "invalid\nspecies"),
+                ("confidence", True),
+                ("confidence", -0.01),
+                ("confidence", 1.01),
+                ("confidence", "0.8"),
+                ("prey_detected", 1),
+            ]
+            for index, (field, value) in enumerate(invalid_values):
+                payload = event("invalid-metadata-" + str(index))
+                payload[field] = value
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    box.enqueue(payload)
+
+    def test_refuses_to_migrate_explicit_camera_row_with_invalid_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "invalid-legacy.sqlite3")
+            legacy = event("legacy-invalid")
+            legacy["confidence"] = "not-numeric"
+            original = json.dumps(legacy, sort_keys=True, separators=(",", ":"))
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.execute(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    (legacy["id"], original),
+                )
+
+            with self.assertRaisesRegex(OutboxError, "unsupported event schema"):
+                SQLiteOutbox(path)
+
+            with closing(sqlite3.connect(path)) as db:
+                stored = db.execute(
+                    "SELECT payload_json FROM outbox WHERE event_id=?",
+                    (legacy["id"],),
+                ).fetchone()[0]
+            self.assertEqual(stored, original)
 
     def test_rejects_payload_with_media_or_extra_fields(self):
         with tempfile.TemporaryDirectory() as tmp:

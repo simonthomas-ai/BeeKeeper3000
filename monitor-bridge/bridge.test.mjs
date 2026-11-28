@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { toMonitorEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement, MAX_STATE_BYTES } from './bridge.mjs';
+import { toMonitorEvent, isQuarantinedLegacyEvent, forwardBatch, readJsonLimited, pollOnce, fetchWithRetry, retryDelayMs, readState, writeState, parseCursorRequirement, MAX_STATE_BYTES } from './bridge.mjs';
 
 const sampleEvent = {
   id: 'event-1',
@@ -13,6 +13,7 @@ const sampleEvent = {
   station_id: 'Yard Cam / North',
   species: 'Vespa velutina',
   confidence: 0.83,
+  origin: 'camera',
   status: 'expert_confirmed',
   image_path: '/private/capture.jpg',
   lat: 51.2,
@@ -64,8 +65,95 @@ test('manual PWA reports stay manual and are never mapped as camera detections',
   assert.equal(mapped.payload.confidence, 0.83);
 });
 
-test('rejects unknown event origins', () => {
+test('rejects missing, quarantined and unknown event origins instead of assuming camera', () => {
+  const { origin, ...legacyEvent } = sampleEvent;
+  assert.equal(toMonitorEvent(legacyEvent), null);
+  assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'legacy_unverified' }), null);
   assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'expert_confirmed' }), null);
+});
+
+test('cursor mode quarantines valid legacy events and continues to later camera events', async () => {
+  const state = new Set();
+  state.cursor = null;
+  const sent = [];
+  const quarantineCounts = [];
+  const legacy = {
+    id: 'legacy-unverified-1',
+    observed_at: sampleEvent.observed_at,
+    station_id: 'legacy-station-01',
+    species: 'Vespa velutina',
+    confidence: 0.83,
+    prey_detected: true,
+    origin: 'legacy_unverified'
+  };
+  const camera = { ...sampleEvent, id: 'camera-after-legacy-1', origin: 'camera' };
+  assert.equal(isQuarantinedLegacyEvent(legacy), true);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, confidence: 2 }), false);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, image_path: '/private/secret.jpg' }), false);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, prey_detected: 'true' }), false);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, station_id: 'station with spaces' }), false);
+
+  const forwarded = await pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-monitor-token-long-enough-123',
+    fetchImpl: async (url, init) => {
+      if (url.startsWith('http://127.0.0.1:8787/')) {
+        return new Response(JSON.stringify({
+          events: [legacy, camera], next_cursor: 'cursor-after-legacy', has_more: false
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      sent.push(JSON.parse(init.body));
+      return new Response(JSON.stringify({ accepted: true }), {
+        status: 202, headers: { 'content-type': 'application/json' }
+      });
+    },
+    saveState: async () => {},
+    sleep: async () => {},
+    onQuarantined: (...args) => {
+      assert.equal(args.length, 1);
+      assert.equal(Number.isSafeInteger(args[0]), true);
+      quarantineCounts.push(args[0]);
+    }
+  });
+
+  assert.equal(forwarded, 1);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].payload.origin_event_id, camera.id);
+  assert.equal(state.cursor, 'cursor-after-legacy');
+  assert.equal(state.has(legacy.id), false);
+  assert.equal(state.has(camera.id), true);
+  assert.deepEqual(quarantineCounts, [1]);
+});
+
+test('malformed legacy quarantine entries still stop the cursor without a diagnostic', async () => {
+  const state = new Set();
+  state.cursor = null;
+  const malformed = {
+    id: 'legacy-malformed-1',
+    observed_at: sampleEvent.observed_at,
+    station_id: 'legacy-station-01',
+    species: 'Vespa velutina',
+    confidence: 0.83,
+    prey_detected: true,
+    origin: 'legacy_unverified',
+    image_path: '/private/secret.jpg'
+  };
+  const quarantineCounts = [];
+  await assert.rejects(() => pollOnce(state, {
+    sourceUrl: 'http://127.0.0.1:8787',
+    sourceKey: 'test-source-api-key-long-enough',
+    endpoint: 'http://127.0.0.1:8765/api/v1/events',
+    token: 'test-monitor-token-long-enough-123',
+    fetchImpl: async () => new Response(JSON.stringify({
+      events: [malformed], next_cursor: 'cursor-after-malformed', has_more: false
+    }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    saveState: async () => {},
+    onQuarantined: count => quarantineCounts.push(count)
+  }), /invalid source event/);
+  assert.equal(state.cursor, null);
+  assert.deepEqual(quarantineCounts, []);
 });
 
 test('rejects invalid confidence, timestamps, IDs and species labels', () => {

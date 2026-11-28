@@ -9,6 +9,7 @@ from unittest.mock import patch
 from adapters.lifecycle import AdapterConfigurationError, AdapterSpec, AdapterSupervisor
 from adapters.local_media import LocalMediaAdapter, image_dimensions
 from camera.contracts import Detection
+from camera.outbox import SQLiteOutbox
 
 
 PNG_HEADER = (
@@ -146,6 +147,8 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             event = await adapter.read_event(1.0)
             self.assertEqual(event["species"], "vespa_velutina_candidate")
             self.assertEqual(event["station_id"], "station-01")
+            self.assertTrue(event["id"].startswith("local-media-"))
+            self.assertEqual(event["origin"], "local_media_unverified")
             self.assertNotIn("image", event)
             self.assertNotIn("image_bytes", event)
             self.assertNotIn("path", event)
@@ -153,6 +156,9 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(await adapter.read_event(1.0))
             await adapter.stop()
         self.assertEqual(cv2.decode_calls, 1)
+        outbox = SQLiteOutbox(str(self.root / "camera-outbox.sqlite3"))
+        with self.assertRaisesRegex(ValueError, "origin=camera"):
+            outbox.enqueue(event)
 
     async def test_image_with_no_detections_completes_without_event(self):
         adapter = self.make_adapter(detector=FakeDetector(detections=[]))
@@ -202,6 +208,7 @@ class LocalMediaAdapterTests(unittest.IsolatedAsyncioTestCase):
             event = await adapter.read_event(1.0)
             self.assertIsNotNone(event)
             self.assertEqual(event["species"], "vespa_velutina_candidate")
+            self.assertEqual(event["origin"], "local_media_unverified")
             self.assertIsNone(await adapter.read_event(1.0))
             self.assertTrue(adapter.completed)
             self.assertTrue(cv2.captures[0].released)
