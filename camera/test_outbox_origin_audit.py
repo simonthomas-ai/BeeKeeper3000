@@ -236,9 +236,7 @@ class OutboxOriginAuditTests(unittest.TestCase):
                     "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
                     (event["id"], json.dumps(event)),
                 )
-            with self.assertRaisesRegex(
-                OutboxAuditError, "ordinary three-column SQLite table"
-            ):
+            with self.assertRaisesRegex(OutboxAuditError, "unsupported schema"):
                 audit_database(path)
 
 
