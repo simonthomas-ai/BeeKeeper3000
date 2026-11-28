@@ -14,7 +14,7 @@ from camera.source_client import SourceApiClient, SourceClientError
 def event(event_id):
     return {"id": event_id, "observed_at": "2026-11-21T00:00:00Z",
             "station_id": "station-1", "species": "vespa_velutina_candidate",
-            "confidence": 0.91, "prey_detected": False}
+            "confidence": 0.91, "prey_detected": False, "origin": "camera"}
 
 
 class OfflineHttpRecoveryTests(unittest.TestCase):

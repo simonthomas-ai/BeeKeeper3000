@@ -113,12 +113,12 @@ jobs:
           from integrations.event_contracts import HiveEvent
           data = Path(os.environ["BK_TEST_STATE_ROOT"]) / "data"
           source = SQLiteSourceEventStore(str(data / "source-events.sqlite3"))
-          source.append({"id":"backup-check-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"candidate","confidence":0.8,"prey_detected":False})
+          source.append({"id":"backup-check-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"candidate","confidence":0.8,"prey_detected":False,"origin":"camera"})
           monitor = SQLiteEventStore(str(data / "monitor-events.sqlite3"))
           monitor(HiveEvent(kind="camera_detection", device_id="ci-station", timestamp="2026-11-20T08:00:00Z", payload={"label":"candidate","confidence":0.8,"verification_status":"unverified"}))
           outbox = SQLiteOutbox(str(data / "camera-outbox.sqlite3"))
           outbox.enqueue_if_due(
-              {"id":"camera-backup-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False},
+              {"id":"camera-backup-1","observed_at":"2026-11-20T08:00:00Z","station_id":"ci-station","species":"vespa_velutina_candidate","confidence":0.8,"prey_detected":False,"origin":"camera"},
               cooldown_seconds=30,
               now_epoch=1000,
           )
@@ -166,6 +166,7 @@ jobs:
               "species":"vespa_velutina_candidate",
               "confidence":0.8,
               "prey_detected":False,
+              "origin":"camera",
           }
           assert not restored.enqueue_if_due(second, cooldown_seconds=30, now_epoch=1029), "restored cooldown was not preserved"
           assert restored.enqueue_if_due(second, cooldown_seconds=30, now_epoch=1030), "restored cooldown did not expire"

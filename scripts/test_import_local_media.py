@@ -48,12 +48,13 @@ class FakeSupervisor:
 
     async def run_once(self, sink, stop_event):
         sink({
-            "id": "camera-00000000000000000000000000000001",
+            "id": "local-media-00000000000000000000000000000001",
             "observed_at": "2026-11-22T12:00:00Z",
             "station_id": "station-01",
             "species": "vespa_velutina_candidate",
             "confidence": 0.91,
             "prey_detected": False,
+            "origin": "local_media_unverified",
         })
 
 
@@ -72,6 +73,17 @@ class LocalMediaCliTests(unittest.TestCase):
             confirm_local_file_access=confirmed,
             shadow=False,
         )
+
+    def test_shadow_cli_does_not_require_unused_outbox(self):
+        args = importer.build_parser().parse_args([
+            "--manifest", "manifest.json",
+            "--source", "images/sample.png",
+            "--allowed-root", "review",
+            "--station-id", "station-01",
+            "--confirm-local-file-access",
+            "--shadow",
+        ])
+        self.assertIsNone(args.outbox)
 
     def test_requires_explicit_local_file_access_confirmation(self):
         args = self.make_args(confirmed=False)
