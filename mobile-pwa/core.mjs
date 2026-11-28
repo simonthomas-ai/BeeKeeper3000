@@ -16,10 +16,11 @@ function readU32LE(bytes,offset){return (bytes[offset]|(bytes[offset+1]<<8)|(byt
 function readU24LE(bytes,offset){return bytes[offset]|(bytes[offset+1]<<8)|(bytes[offset+2]<<16)}
 function pngDimensions(bytes){
  if(bytes.length<45||!PNG_SIGNATURE.every((value,index)=>bytes[index]===value)||readU32BE(bytes,8)!==13||ascii(bytes,12,4)!=="IHDR")throw new Error("PNG-Bild ist ungültig oder unvollständig");
- let offset=8,foundEnd=false;
+ let offset=8,foundEnd=false,ihdrCount=0;
  while(offset+12<=bytes.length){
   const size=readU32BE(bytes,offset),type=ascii(bytes,offset+4,4);
   if(size>bytes.length-offset-12)throw new Error("PNG-Bild enthält einen ungültigen Chunk");
+  if(type==="IHDR"&&++ihdrCount>1)throw new Error("PNG-Bild enthält mehrere IHDR-Header");
   if(type==="acTL")throw new Error("Animierte PNG-Bilder werden nicht unterstützt");
   offset+=size+12;
   if(type==="IEND"){foundEnd=true;break}
