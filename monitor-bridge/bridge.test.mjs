@@ -13,6 +13,7 @@ const sampleEvent = {
   station_id: 'Yard Cam / North',
   species: 'Vespa velutina',
   confidence: 0.83,
+  origin: 'camera',
   status: 'expert_confirmed',
   image_path: '/private/capture.jpg',
   lat: 51.2,
@@ -64,8 +65,32 @@ test('manual PWA reports stay manual and are never mapped as camera detections',
   assert.equal(mapped.payload.confidence, 0.83);
 });
 
-test('rejects unknown event origins', () => {
-  assert.equal(toMonitorEvent({ ...sampleEvent, origin: 'expert_confirmed' }), null);
+test('requires explicit origin and rejects quarantined or unknown origins', () => {
+  const { origin, ...legacyEvent } = sampleEvent;
+  assert.equal(toMonitorEvent(legacyEvent), null);
+  for (const invalidOrigin of ['legacy_unverified', 'local_media_unverified', 'expert_confirmed', 'unknown']) {
+    assert.equal(toMonitorEvent({ ...sampleEvent, origin: invalidOrigin }), null);
+  }
+});
+
+test('forwardBatch never forwards a legacy event without explicit origin', async () => {
+  const { origin, ...legacyEvent } = sampleEvent;
+  let networkCalls = 0;
+  const count = await forwardBatch([legacyEvent], new Set(), {
+    token: 'test-only-token-long-enough-123',
+    fetchImpl: async () => { networkCalls++; throw new Error('must not send'); }
+  });
+  assert.equal(count, 0);
+  assert.equal(networkCalls, 0);
+});
+
+test('cursor forwarding stops on an event without explicit origin', async () => {
+  const { origin, ...legacyEvent } = sampleEvent;
+  await assert.rejects(() => forwardBatch([legacyEvent], new Set(), {
+    rejectInvalid: true,
+    token: 'test-only-token-long-enough-123',
+    fetchImpl: async () => assert.fail('invalid event must not reach network')
+  }), /invalid source event/);
 });
 
 test('rejects invalid confidence, timestamps, IDs and species labels', () => {
