@@ -204,7 +204,7 @@ class RuntimeTests(unittest.TestCase):
             "species": "vespa_velutina_candidate",
             "confidence": 0.91,
             "prey_detected": False,
-        "origin": "camera",
+            "origin": "camera",
         }
         with tempfile.TemporaryDirectory() as tmp:
             box = SQLiteOutbox(str(Path(tmp) / "outbox.sqlite3"))
