@@ -158,5 +158,18 @@ class OutboxOriginAuditTests(unittest.TestCase):
         self.assertNotIn(str(path), rendered)
 
 
+    def test_symlink_database_path_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target.sqlite3"
+            link = Path(tmp) / "linked.sqlite3"
+            make_database(target, [])
+            try:
+                link.symlink_to(target)
+            except (OSError, NotImplementedError) as exc:
+                self.skipTest(f"symlink creation unavailable on this runner: {exc}")
+            with self.assertRaisesRegex(OutboxAuditError, "symbolic link"):
+                audit_database(link)
+
+
 if __name__ == "__main__":
     unittest.main()
