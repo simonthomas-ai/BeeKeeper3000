@@ -319,6 +319,14 @@ class SourceApiTests(unittest.TestCase):
         self.assertEqual(payload["error"], "source_journal_capacity")
         self.assertEqual(self.store.count(), 100)
 
+    def test_post_rejects_missing_origin_without_persisting(self):
+        event = sample_event(1)
+        del event["origin"]
+        status, payload, _ = self.request("POST", "/api/events", body=json.dumps(event))
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"], "invalid_event")
+        self.assertEqual(self.store.count(), 0)
+
     def test_post_rejects_location_and_media_fields(self):
         event = sample_event(1)
         event["latitude"] = 51.2
