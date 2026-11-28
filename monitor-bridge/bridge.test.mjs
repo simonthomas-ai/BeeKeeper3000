@@ -77,10 +77,21 @@ test('cursor mode quarantines valid legacy events and continues to later camera 
   state.cursor = null;
   const sent = [];
   const quarantineCounts = [];
-  const legacy = { ...sampleEvent, id: 'legacy-unverified-1', origin: 'legacy_unverified' };
+  const legacy = {
+    id: 'legacy-unverified-1',
+    observed_at: sampleEvent.observed_at,
+    station_id: 'legacy-station-01',
+    species: 'Vespa velutina',
+    confidence: 0.83,
+    prey_detected: true,
+    origin: 'legacy_unverified'
+  };
   const camera = { ...sampleEvent, id: 'camera-after-legacy-1', origin: 'camera' };
   assert.equal(isQuarantinedLegacyEvent(legacy), true);
   assert.equal(isQuarantinedLegacyEvent({ ...legacy, confidence: 2 }), false);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, image_path: '/private/secret.jpg' }), false);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, prey_detected: 'true' }), false);
+  assert.equal(isQuarantinedLegacyEvent({ ...legacy, station_id: 'station with spaces' }), false);
 
   const forwarded = await pollOnce(state, {
     sourceUrl: 'http://127.0.0.1:8787',
@@ -119,7 +130,16 @@ test('cursor mode quarantines valid legacy events and continues to later camera 
 test('malformed legacy quarantine entries still stop the cursor without a diagnostic', async () => {
   const state = new Set();
   state.cursor = null;
-  const malformed = { ...sampleEvent, id: 'legacy-malformed-1', origin: 'legacy_unverified', confidence: 2 };
+  const malformed = {
+    id: 'legacy-malformed-1',
+    observed_at: sampleEvent.observed_at,
+    station_id: 'legacy-station-01',
+    species: 'Vespa velutina',
+    confidence: 0.83,
+    prey_detected: true,
+    origin: 'legacy_unverified',
+    image_path: '/private/secret.jpg'
+  };
   const quarantineCounts = [];
   await assert.rejects(() => pollOnce(state, {
     sourceUrl: 'http://127.0.0.1:8787',
