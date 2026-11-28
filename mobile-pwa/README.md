@@ -14,7 +14,7 @@ Open `http://127.0.0.1:8000/` on the same device. For a phone on another device,
 
 - Nothing is uploaded and no API key exists in the PWA. There is no auto-sync or background capture.
 - Photo, note, exact GPS and orientation values are stored only in local IndexedDB. Images are re-encoded as JPEG to remove original metadata where browser image decoding permits.
-- Selected photos are limited to 8 MiB and 16 megapixels. JPEG, PNG and WebP headers are parsed before `createImageBitmap`; invalid or inconsistent headers, known animated-image flags and oversized dimensions are rejected before browser decoding. Decoded bitmap dimensions are checked again before canvas allocation, and the bitmap is closed after processing.
+- Selected photos are limited to 8 MiB and 16 megapixels. JPEG, PNG and WebP headers are parsed before `createImageBitmap`; invalid or inconsistent headers, known animation flags/container chunks and oversized dimensions are rejected before browser decoding. Decoded bitmap dimensions are checked again before canvas allocation, and the bitmap is closed after processing.
 - HEIC/HEIF and other unsupported formats must be converted locally to JPEG before selection. No conversion service or upload is used.
 - Header preflight reduces exposure to oversized-image decoder allocations but cannot prove that a browser decoder is free of vulnerabilities or all memory-exhaustion paths. Keep the browser and operating system updated.
 - Export uses the seven-field source API v2 metadata contract and explicitly marks `origin=manual_observation`; no photos, private notes, GPS, compass data, tokens or diagnostics are exported.
