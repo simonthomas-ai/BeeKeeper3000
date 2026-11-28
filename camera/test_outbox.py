@@ -98,6 +98,40 @@ class OutboxTests(unittest.TestCase):
                 ).fetchone()[0]
             self.assertEqual(stored, original)
 
+    def test_legacy_origin_failure_rolls_back_prior_canonicalization(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "mixed-legacy.sqlite3")
+            camera = event("a-camera")
+            camera_original = json.dumps(camera, sort_keys=False, separators=(",", ":"))
+            ambiguous = event("z-legacy")
+            del ambiguous["origin"]
+            ambiguous_original = json.dumps(
+                ambiguous, sort_keys=True, separators=(",", ":")
+            )
+            with closing(sqlite3.connect(path)) as db, db:
+                db.execute("""CREATE TABLE outbox (
+                    event_id TEXT PRIMARY KEY,
+                    payload_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+                )""")
+                db.executemany(
+                    "INSERT INTO outbox(event_id, payload_json) VALUES(?, ?)",
+                    [
+                        (camera["id"], camera_original),
+                        (ambiguous["id"], ambiguous_original),
+                    ],
+                )
+
+            with self.assertRaisesRegex(OutboxError, "no verifiable origin"):
+                SQLiteOutbox(path)
+
+            with closing(sqlite3.connect(path)) as db:
+                stored = dict(db.execute(
+                    "SELECT event_id, payload_json FROM outbox"
+                ).fetchall())
+            self.assertEqual(stored["a-camera"], camera_original)
+            self.assertEqual(stored["z-legacy"], ambiguous_original)
+
     def test_refuses_to_reclassify_manual_or_unknown_existing_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = str(Path(tmp) / "unexpected.sqlite3")
